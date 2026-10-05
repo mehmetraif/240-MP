@@ -14,3 +14,4 @@ Dither Dither.qml
 MenuRow MenuRow.qml
 HelpLine HelpLine.qml
 ScrollMarks ScrollMarks.qml
+WebPlayerLaunch WebPlayerLaunch.qml

@@ -1,4 +1,4 @@
-#include "NetflixBackend.h"
+#include "WebPlayerBackend.h"
 #include "../scripts/ScriptLauncher.h"
 #include "../../util/DisplayHandoff.h"
 #include <QDir>
@@ -8,13 +8,13 @@
 
 namespace {
 
-// The browsers netflix.sh looks for, in its order. Keep the two in step.
+// The browsers web-player.sh looks for, in its order. Keep the two in step.
 const char *const kBrowsers[] = { "chromium", "chromium-browser",
                                   "google-chrome-stable", "google-chrome" };
 
 bool haveBrowser() {
 #ifdef Q_OS_MACOS
-    // netflix.sh falls back to Safari, which every Mac has.
+    // web-player.sh falls back to Safari, which every Mac has.
     return true;
 #else
     for (const char *name : kBrowsers) {
@@ -27,33 +27,35 @@ bool haveBrowser() {
 
 } // namespace
 
-NetflixBackend::NetflixBackend(const QString &appRoot, const QString &dataRoot,
-                               DisplayHandoff *handoff, QObject *parent)
-    : QObject(parent), m_appRoot(appRoot), m_dataRoot(dataRoot)
+WebPlayerBackend::WebPlayerBackend(const QString &service, const QString &url,
+                                   const QString &appRoot, const QString &dataRoot,
+                                   DisplayHandoff *handoff, QObject *parent)
+    : QObject(parent), m_service(service), m_url(url),
+      m_appRoot(appRoot), m_dataRoot(dataRoot)
 {
     m_launcher = new ScriptLauncher(m_appRoot, m_dataRoot, handoff, this);
-    m_launcher->setHandoffOwner(QStringLiteral("netflix"));
+    m_launcher->setHandoffOwner(m_service);
     connect(m_launcher, &ScriptLauncher::runningChanged,
-            this, &NetflixBackend::runningChanged);
+            this, &WebPlayerBackend::runningChanged);
     connect(m_launcher, &ScriptLauncher::finished,
-            this, &NetflixBackend::finished);
+            this, &WebPlayerBackend::finished);
 }
 
-bool NetflixBackend::running() const {
+bool WebPlayerBackend::running() const {
     return m_launcher->isBusy();
 }
 
-QString NetflixBackend::browserProfile() const {
-    // Where netflix.sh keeps the browser's profile, and so the sign-in.
-    return m_dataRoot + QStringLiteral("/netflix/browser");
+QString WebPlayerBackend::browserProfile() const {
+    // Where web-player.sh keeps the browser's profile, and so the sign-in.
+    return m_dataRoot + QLatin1Char('/') + m_service + QStringLiteral("/browser");
 }
 
-bool NetflixBackend::launch() {
+bool WebPlayerBackend::launch() {
     m_lastError.clear();
 
-    const QString script = m_appRoot + QStringLiteral("/modules/netflix/netflix.sh");
+    const QString script = m_appRoot + QStringLiteral("/scripts/web-player.sh");
     if (!QFileInfo::exists(script)) {
-        m_lastError = QStringLiteral("netflix.sh is missing from the app");
+        m_lastError = QStringLiteral("web-player.sh is missing from the app");
         return false;
     }
     if (!haveBrowser()) {
@@ -70,12 +72,13 @@ bool NetflixBackend::launch() {
 
     ScriptEntry entry;
     entry.path        = script;
-    entry.basename    = QStringLiteral("netflix.sh");
-    entry.meta.name   = QStringLiteral("Netflix");
+    entry.basename    = QStringLiteral("web-player.sh");
+    entry.meta.name   = m_service;
     entry.meta.mode   = QStringLiteral("takeover");
     // The browser is a family of processes; the screen comes back once all
     // of them have gone.
     entry.meta.wait   = QStringLiteral("pgroup");
+    entry.meta.args   = QStringLiteral("\"%1\" \"%2\"").arg(m_service, m_url);
 
     QString error;
     if (!m_launcher->start(entry, &error)) {
@@ -85,20 +88,21 @@ bool NetflixBackend::launch() {
     return true;
 }
 
-QString NetflixBackend::output() const {
+QString WebPlayerBackend::output() const {
     return m_launcher->outputText();
 }
 
-void NetflixBackend::close() {
+void WebPlayerBackend::close() {
     if (m_launcher->isBusy())
         m_launcher->requestStop();
 }
 
-void NetflixBackend::signOut() {
+void WebPlayerBackend::signOut() {
     if (m_launcher->isBusy()) {
-        qWarning("[Netflix] Not signing out while the browser is open");
+        qWarning("[WebPlayer] Not signing out of %s while the browser is open",
+                 qPrintable(m_service));
         return;
     }
     if (QDir(browserProfile()).removeRecursively())
-        qInfo("[Netflix] Signed out: browser profile removed");
+        qInfo("[WebPlayer] Signed out of %s: browser profile removed", qPrintable(m_service));
 }

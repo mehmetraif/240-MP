@@ -1,7 +1,0 @@
-# For the Netflix module (modules/netflix): Chromium with Widevine, which
-# Netflix's player needs, and cage, which gives the browser the screen when
-# there is no desktop. Without recommends, like the rest, so the Pi's Chromium
-# tweaks (rpi-chromium-mods), the GPU drivers and the fonts that Chromium only
-# recommends are named here. os/build.sh skips all of it with MP240_NETFLIX=0.
-chromium rpi-chromium-mods libwidevinecdm0 libgl1-mesa-dri fonts-liberation
-cage

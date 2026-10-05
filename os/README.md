@@ -18,7 +18,7 @@ Compared with flashing Raspberry Pi OS Lite and running `scripts/install.sh` ([I
   - no Raspberry Pi Connect agent.
 
   cloud-init applies Raspberry Pi Imager's settings on the first boot and is then switched off, because otherwise its stages delay every boot.
-- **Netflix's browser is included.** Chromium with Widevine and the `cage` kiosk compositor, for the Netflix module, which opens Netflix's own player full screen. They add about 400 MB; build with `MP240_NETFLIX=0` to leave them out.
+- **The streaming modules' browser is included.** Chromium with Widevine and the `cage` kiosk compositor, for the Netflix and Prime Video modules, which open each service's own player full screen. They add about 400 MB; build with `MP240_STREAMING=0` to leave them out.
 - **Stopping isn't powering off.** `systemctl stop` and `systemctl restart` leave the Pi on. Quit in the app still powers it off, and Exit to Terminal still drops to a login shell, as with `install.sh`.
 
 Everything else (the launcher, in-app updates, Exit to Terminal, the data directory in `~/.local/share/240-MP`) is the same as a manual install. The launcher, stop helper and terminal unit are taken from `scripts/install.sh` at build time.
@@ -69,7 +69,7 @@ The image lands in `os/work/pi-gen/deploy/`. `os/build.sh` fetches pi-gen at a p
 | `FIRST_USER_PASS` | — | Password of the first user. Without one, the account is locked. |
 | `FIRST_USER_NAME` | `pi` | The first user; the app runs as this user. |
 | `MP240_DISPLAY` | `hdmi` | Initial display preset: `hdmi`, `crt-ntsc` or `crt-pal`. |
-| `MP240_NETFLIX` | `1` | `0` leaves out the Netflix module's browser (Chromium, Widevine, cage). |
+| `MP240_STREAMING` | `1` | `0` leaves out the Netflix and Prime Video modules' browser (Chromium, Widevine, cage). |
 | `ENABLE_SSH` | `0` | `1` enables SSH (it then also waits for the app, after mDNS). |
 | `TARGET_HOSTNAME` | `240mp` | |
 | `IMG_NAME` | `240mp-os` | |
