@@ -49,7 +49,8 @@ jobs:
             libdrm-dev \
             libssl-dev \
             libsdl2-dev \
-            libpcsclite-dev
+            libpcsclite-dev \
+            libmpv-dev
 
       # APP_VERSION stays "dev": a branch build has no release to update to,
       # and "dev" turns the in-app updater's download off.

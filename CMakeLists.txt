@@ -65,6 +65,8 @@ add_executable(240mp
     src/modules/web_player/WebPlayerBackend.cpp
     src/modules/web_player/TmdbCatalog.cpp
     src/player/MpvController.cpp
+    src/player/EmbeddedMpv.cpp
+    src/player/VideoSurface.cpp
     src/util/YtDlpLocator.cpp
     src/util/MpvLocator.cpp
     src/util/ExecPath.cpp
@@ -107,6 +109,24 @@ endif()
 
 if(NOT APPLE)
     target_include_directories(240mp PRIVATE ${Libdrm_INCLUDE_DIRS})
+endif()
+
+# libmpv's headers, for Transparent Background: video played inside the app's
+# own window (src/player/EmbeddedMpv). Optional, and only the headers: libmpv
+# itself is opened at run time, so the app still runs where it isn't installed
+# (libmpv-dev on Debian / Raspberry Pi OS; Homebrew's mpv on macOS).
+if(NOT PKG_CONFIG_FOUND)
+    find_package(PkgConfig QUIET)
+endif()
+if(PKG_CONFIG_FOUND)
+    pkg_check_modules(MPV QUIET mpv)
+endif()
+if(MPV_FOUND)
+    target_compile_definitions(240mp PRIVATE MP240_EMBEDDED_MPV=1)
+    # client.h and render.h need nothing of the dependencies pkg-config lists.
+    target_include_directories(240mp PRIVATE ${MPV_INCLUDEDIR})
+else()
+    message(STATUS "libmpv headers not found — Transparent Background will be unavailable")
 endif()
 
 target_include_directories(240mp PRIVATE

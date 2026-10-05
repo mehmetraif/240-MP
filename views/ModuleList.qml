@@ -165,6 +165,11 @@ FocusScope {
             if (event.key === Qt.Key_Escape || event.key === Qt.Key_Backspace || event.key === Qt.Key_Back) {
                 appRoot.navigateTo("views/Settings.qml", {}, { currentIndex: menuList.currentIndex })
                 event.accepted = true
+            } else if (event.key === Qt.Key_Space && root.videoBehind) {
+                // The play/pause key stops a video left playing behind the
+                // menus (Transparent Background).
+                mpvController.stopBackground()
+                event.accepted = true
             }
         }
     }
@@ -178,7 +183,8 @@ FocusScope {
     // --- FOOTER ---
     HintBar {
         id: footer
-        text: root.hints.back + ":SETTINGS " + root.hints.navigate + ":NAVIGATE " + root.hints.select + ":SELECT"
+        text: root.hints.back + ":SETTINGS " + root.hints.navigate + ":NAVIGATE "
+              + (root.videoBehind ? root.hints.play_pause + ":STOP " : "") + root.hints.select + ":SELECT"
         anchors.bottom: parent.bottom
         anchors.left: parent.left
         anchors.bottomMargin: root.sh * 0.1041667 //50

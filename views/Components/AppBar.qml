@@ -22,6 +22,18 @@ Item {
     width: root.sw * 0.75 //480
     height: content.height + 2 * root.px
 
+    // The logo's own ground, the background colour: through the gaps in its
+    // drawing, a video playing behind the menus would show otherwise.
+    Rectangle {
+        visible: appBar.hasLogo
+        x: logo.x
+        y: logo.y
+        width: logo.width
+        height: logo.height
+        color: root.surfaceColor
+        antialiasing: false
+    }
+
     Image {
         id: logo
         visible: appBar.hasLogo

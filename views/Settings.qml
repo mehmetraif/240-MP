@@ -133,6 +133,22 @@ FocusScope {
             moduleId: ""
         })
 
+        // Transparent Background — video played inside the app's own window,
+        // so back from it returns to the menus with the picture going on
+        // behind them (MpvController). It needs libmpv, so it is offered only
+        // where that is installed. Takes effect on the next video.
+        if (mpvController.embeddedAvailable()) {
+            items.push({
+                type: "list_single",
+                key: "transparent_background",
+                label: "Transparent Background",
+                options: ["Off", "On", "Dim"],
+                value: appSettings["transparent_background"] || "Off",
+                description: "Back from a video returns to the menus and leaves it playing behind them, until you play something else or stop it on the main menu\n[ON] The menus over the picture  [DIM] Over it darkened, easier to read",
+                moduleId: ""
+            })
+        }
+
         // Video Output Range, the RGB range mpv converts YUV into. mpv's default
         // is full range; a display expecting studio (limited) levels renders that
         // as crushed blacks and blown whites, and the reverse reads as washed-out

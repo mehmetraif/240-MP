@@ -25,6 +25,7 @@
 #include "modules/scripts/ScriptsBackend.h"
 #include "modules/web_player/WebPlayerBackend.h"
 #include "player/MpvController.h"
+#include "player/VideoSurface.h"
 #include "input/InputManager.h"
 #include "input/IdleTracker.h"
 #include "update/UpdateManager.h"
@@ -235,6 +236,8 @@ int main(int argc, char *argv[]) {
     // The title bar's logos, in the theme's colour on the art-pixel grid
     // (image://osdicon/…). The engine owns it.
     engine.addImageProvider(QStringLiteral("osdicon"), new OsdIconProvider);
+    // The picture of a video played inside this window (Transparent Background).
+    qmlRegisterType<VideoSurface>("MP240.Video", 1, 0, "VideoSurface");
 
     engine.load(QUrl::fromLocalFile(appRoot + "/Main.qml"));
     if (engine.rootObjects().isEmpty()) {

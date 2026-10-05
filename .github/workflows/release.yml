@@ -47,6 +47,13 @@ jobs:
           cmake --install "$BUILD"
           echo "SDL2_PREFIX=${RUNNER_TEMP}/sdl2-install" >> "$GITHUB_ENV"
 
+      # libmpv's headers, for Transparent Background (src/player/EmbeddedMpv):
+      # the app opens libmpv at run time, from the Homebrew mpv users install
+      # anyway. Without them the setting is simply left out, so a failure here
+      # only warns.
+      - name: Install mpv (libmpv headers)
+        run: brew install mpv || echo "::warning::brew install mpv failed; Transparent Background will be left out"
+
       - name: Configure
         run: |
           cmake -B build \
@@ -171,7 +178,8 @@ jobs:
             libdrm-dev \
             libssl-dev \
             libsdl2-dev \
-            libpcsclite-dev
+            libpcsclite-dev \
+            libmpv-dev
 
       - name: Configure
         run: |

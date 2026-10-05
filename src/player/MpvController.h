@@ -1,19 +1,27 @@
 #pragma once
+#include <QImage>
 #include <QObject>
 #include <QProcess>
 #include <QLocalSocket>
+#include <QSize>
 #include <QTimer>
 #include <QJsonArray>
 #include <QStringList>
 
 class AppCore;
 class DisplayHandoff;
+class EmbeddedMpv;
 
 class MpvController : public QObject {
     Q_OBJECT
     Q_PROPERTY(int position    READ position    NOTIFY positionChanged)
     Q_PROPERTY(int duration    READ duration    NOTIFY durationChanged)
     Q_PROPERTY(int playlistPos READ playlistPos NOTIFY playlistPosChanged)
+    // Transparent Background (see below): a session is playing inside the
+    // app's own window, and VideoSurface shows its picture...
+    Q_PROPERTY(bool videoActive READ videoActive NOTIFY videoActiveChanged)
+    // ...and goes on behind the menus, back having returned to them.
+    Q_PROPERTY(bool background READ background NOTIFY backgroundChanged)
 
 public:
     explicit MpvController(const QString &appRoot, const QString &dataRoot,
@@ -58,6 +66,28 @@ public:
     // the settings a module can override: its own Scaling.
     Q_INVOKABLE void setActiveModule(const QString &moduleId) { m_activeModule = moduleId; }
 
+    // Transparent Background (app setting "transparent_background", On or
+    // Dim): video is played inside the app's own window (EmbeddedMpv) rather
+    // than by an mpv process over it, so the menus can be drawn over the
+    // picture. Back from playback then returns to the menus and leaves the
+    // video playing behind them: the module takes it as stopped (it saves
+    // where it got to, and goes back), while the picture and the sound go
+    // on. Choosing the same thing again brings it back full screen where it
+    // is; playing anything else, Main.qml's STOP, a takeover or the setting
+    // turned off ends it.
+    //
+    // Needs libmpv, opened at run time: embeddedAvailable() says whether it is
+    // there (Settings offers the setting only then).
+    Q_INVOKABLE bool embeddedAvailable() const;
+    bool videoActive() const;
+    bool background() const { return m_background; }
+    // Ends a session playing behind the menus.
+    Q_INVOKABLE void stopBackground();
+    // The embedded session's newest picture, and the size to draw it at
+    // (VideoSurface).
+    QImage videoFrame() const;
+    void setVideoTargetSize(const QSize &size);
+
     // Which display fullscreen playback should open on, matching the UI's
     // app-level "display_index" (index into QGuiApplication::screens(), plus
     // that screen's QScreen::name()). main.cpp calls this once at startup;
@@ -82,6 +112,9 @@ signals:
     void playbackEnded(int finalPositionMs, int finalDurationMs, const QString &reason);
 
     void skipRequested();
+    void videoActiveChanged();
+    void backgroundChanged();
+    void videoFrameReady();
     // The OSC's SUBTITLE button when the sub is burned into the stream and mpv
     // has nothing to cycle (see `sub-cycle` in scripts/mpv-osc.lua). The module
     // owns the change — typically stop, re-request the stream, relaunch.
@@ -101,6 +134,28 @@ private:
     enum class VideoProfile { Pi3, Pi4, PiFullKms, Generic };
 
     void sendCommand(const QJsonArray &args);
+    // The mpv command line for a session, up to how its picture is shown.
+    QStringList sessionArgs(const QString &url, float startSeconds, int audioTrack, int subTrack,
+                            const QStringList &subFiles, const QStringList &subLangs, bool loop,
+                            int playlistStart, float transcodeOffsetSec, const QString &plexToken,
+                            bool muteAudio, const QString &oscMode, bool shuffle,
+                            const QStringList &subTitles, float imageDurationSec, bool imageContent,
+                            const QStringList &extraArgs, const QString &jellyfinToken,
+                            const QStringList &extraUrls, bool embedded);
+    // Transparent Background is on, and libmpv is there to play inside the app.
+    bool transparentBackground() const;
+    // The decode flags for a session played inside the app: the hardware
+    // decoders' copy-back modes, which hand frames to the software renderer.
+    void appendEmbeddedVideoArgs(QStringList &args) const;
+    void startEmbedded(QStringList args);
+    // Ends an embedded session without a word to its module: as a process
+    // replaced by the next is, or one left playing behind the menus.
+    void endEmbedded();
+    void onEmbeddedFinished(const QString &lastEndReason);
+    // Back during an embedded session: the menus come back over the picture.
+    void detachToMenus();
+    // The session behind the menus chosen again: full screen, where it is.
+    void reattach(float startSeconds);
     VideoProfile detectVideoProfile() const;
     // Appends the profile-specific --vo/--gpu-context/--hwdec flags (honouring the
     // app-level "mpv_video_args" override) to a forming mpv argument list.
@@ -128,6 +183,13 @@ private:
 
     AppCore        *m_appCore      = nullptr;
     QString         m_activeModule;
+    EmbeddedMpv    *m_embedded     = nullptr;
+    bool            m_background   = false;
+    int             m_detachPositionMs = 0;
+    // The embedded session's command line, to know it when it is asked for again.
+    QStringList     m_sessionArgs;
+    QSize           m_videoTargetSize { 640, 480 };
+    QString         m_embeddedInputConfPath;
     DisplayHandoff *m_handoff      = nullptr;
     VideoProfile  m_videoProfile  = VideoProfile::Generic;
     QProcess     *m_process        = nullptr;

@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Window
+import MP240.Video
 
 Window {
     id: root
@@ -104,6 +105,8 @@ Window {
         function onAppSettingChanged(key, value) {
             if (key === "color_scheme") {
                 root.currentTheme = value
+            } else if (key === "transparent_background") {
+                root.transparentBackground = value
             } else if (key === "screensaver_timeout") {
                 var sec = parseInt(value)
                 if (sec > 0) {
@@ -144,6 +147,7 @@ Window {
             savedTheme = "Video 1"
         }
         root.currentTheme = savedTheme
+        root.transparentBackground = (cfg.app && cfg.app.transparent_background) || "Off"
 
         // Screensaver: the tracker starts disabled; this is the single place the
         // saved setting is applied (live changes land in onAppSettingChanged above,
@@ -271,10 +275,40 @@ Window {
             }
         }
         function onPlaybackEnded(finalPositionMs, finalDurationMs, reason) {
-            idleTracker.mpvActive = false
+            // A video left playing behind the menus is still playing.
+            idleTracker.mpvActive = mpvController.videoActive
             idleTracker.resetActivity()
             root.dismissScreenSaver()
         }
+        function onVideoActiveChanged() {
+            idleTracker.mpvActive = mpvController.videoActive
+            idleTracker.resetActivity()
+        }
+    }
+
+    // --- VIDEO PLAYED INSIDE THIS WINDOW (Transparent Background) ---
+    // MpvController plays it here rather than in an mpv window of its own
+    // while the setting is on: its picture lies over everything while it
+    // plays full screen, and under the menus once back has returned to them,
+    // where it goes on playing (videoBehind). The menus draw no background of
+    // their own, so the picture is theirs then; full-screen dialogs keep
+    // theirs. DIM darkens it under them, for reading.
+    readonly property bool videoActive: mpvController ? mpvController.videoActive : false
+    readonly property bool videoBehind: mpvController ? mpvController.background : false
+    property string transparentBackground: "Off"
+
+    VideoSurface {
+        anchors.fill: parent
+        controller: mpvController
+        visible: root.videoActive
+        z: root.videoBehind ? -2 : 5000
+    }
+    Rectangle {
+        anchors.fill: parent
+        z: -1
+        visible: root.videoBehind && root.transparentBackground === "Dim"
+        color: root.surfaceColor
+        opacity: 0.6
     }
 
     // A running user script suppresses the screen saver too — a takeover script
