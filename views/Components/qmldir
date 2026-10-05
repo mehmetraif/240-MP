@@ -20,3 +20,4 @@ OnScreenKeyboard OnScreenKeyboard.qml
 WebPlayerBrowse WebPlayerBrowse.qml
 InfoPanel InfoPanel.qml
 EntryOptions EntryOptions.qml
+PlayerMenu PlayerMenu.qml

@@ -650,18 +650,20 @@ void MpvController::onIpcReadyRead() {
         }
         const double val = data.toDouble();
         // Behind the menus the session is no module's any more: it goes on
-        // being followed, unreported, should it be chosen again.
+        // being followed, unreported, should it be chosen again. Under its
+        // player's own menu it is still that player's.
+        const bool report = !m_background || m_playerMenu;
         if (name == "time-pos") {
             m_position = int(val * 1000.0);
-            if (!m_background)
+            if (report)
                 emit positionChanged(m_position);
         } else if (name == "duration") {
             m_duration = int(val * 1000.0);
-            if (!m_background)
+            if (report)
                 emit durationChanged(m_duration);
         } else if (name == "playlist-pos") {
             m_playlistPos = int(val);
-            if (!m_background)
+            if (report)
                 emit playlistPosChanged(m_playlistPos);
         }
     }
@@ -997,11 +999,17 @@ void MpvController::endEmbedded() {
     m_embedded->stop();
     m_sessionArgs.clear();
     m_sessionNote.clear();
+    const bool wasMenu = m_playerMenu;
+    m_playerMenu = false;
     if (m_background) {
         m_background = false;
         emit backgroundChanged();
     }
     emit videoActiveChanged();
+    // Its player had its menu open over it (something else took the screen):
+    // for it, playback stopped.
+    if (wasMenu)
+        emit playbackEnded(m_position, m_duration, QStringLiteral("stopped"));
 }
 
 void MpvController::onEmbeddedFinished(const QString &lastEndReason) {
@@ -1019,13 +1027,16 @@ void MpvController::onEmbeddedFinished(const QString &lastEndReason) {
     m_sessionArgs.clear();
     m_sessionNote.clear();
     const bool wasBackground = m_background;
+    const bool wasMenu = m_playerMenu;
+    m_playerMenu = false;
     if (wasBackground) {
         m_background = false;
         emit backgroundChanged();
     }
     emit videoActiveChanged();
-    // Its module took it as stopped already, when back left it behind the menus.
-    if (wasBackground)
+    // Its module took it as stopped already, when back left it behind the
+    // menus; not so a player with its menu open over it.
+    if (wasBackground && !wasMenu)
         return;
     // The same reasons as a process's: a file mpv couldn't play is "failed",
     // the playlist played out "eof", anything else (quit) "stopped".
@@ -1041,12 +1052,42 @@ void MpvController::detachToMenus() {
         return;
     m_background = true;
     m_detachPositionMs = m_position;
+    m_playerMenu = m_sessionNote.value(QStringLiteral("menu")).toBool();
     emit backgroundChanged();
     // The deck's own menu, if it is open, goes with the full-screen view.
     sendCommand({"script-message", "240mp-osd-menu-hide"});
-    // For its module, playback stopped here: it saves where it got to and
-    // goes back to the menus, which now lie over the picture.
+    // A player with a menu of its own opens it over the picture, and the
+    // session stays its.
+    if (m_playerMenu) {
+        emit playerMenuRequested();
+        return;
+    }
+    // For any other module, playback stopped here: it saves where it got to
+    // and goes back to the menus, which now lie over the picture.
     emit playbackEnded(m_position, m_duration, QStringLiteral("stopped"));
+}
+
+void MpvController::closePlayerMenu() {
+    if (!m_playerMenu)
+        return;
+    m_playerMenu = false;
+    m_background = false;
+    emit backgroundChanged();
+}
+
+void MpvController::leavePlayerMenu() {
+    if (!m_playerMenu)
+        return;
+    m_playerMenu = false;
+    // As back without a menu: its player takes it as stopped, saves where it
+    // is now, and goes back to its module's menus, the picture going on
+    // behind them. Chosen again from there, it carries on (reattach()).
+    m_detachPositionMs = m_position;
+    emit playbackEnded(m_position, m_duration, QStringLiteral("stopped"));
+}
+
+void MpvController::setVideoProperty(const QString &name, const QVariant &value) {
+    sendCommand({"set_property", name, QJsonValue::fromVariant(value)});
 }
 
 void MpvController::reattach(float startSeconds) {

@@ -16,7 +16,7 @@ On a Raspberry Pi, 240-MP can also be the whole system. The **240-MP OS** image 
 - **Search with the remote**, typed on an on-screen keyboard.
 - **Info screens** for films and videos: the story, genre, director, cast and rating. One comes up when the cursor rests on a title (3 seconds by default), or straight away with ►.
 - **Options** on any entry, with ►: add it to **Favorites**, or have it **Play at Startup**, straight after the boot screen, where it was stopped or from the beginning (Settings → Startup From), without asking.
-- **Transparent Background.** Back from a video returns to the menus while the video keeps playing behind them, like a deck's menu over the tape, and the first row of the main menu takes it back to full screen. A slider from TRANSPARENT to SOLID sets how much of it shows through: at SOLID none, while it plays on, sound and all. Select on the setting turns it off. It needs libmpv (`libmpv2` on Raspberry Pi OS, part of Homebrew's mpv on macOS).
+- **Transparent Background.** Back from a video returns to the menus while the video keeps playing behind them, like a deck's menu over the tape, and the first row of the main menu takes it back to full screen. A Local Files or YouTube video first opens a menu of its own over the picture: its module's settings for it, Favorites, Browse, and Close Video. A slider from TRANSPARENT to SOLID sets how much of it shows through: at SOLID none, while it plays on, sound and all. Select on the setting turns it off. It needs libmpv (`libmpv2` on Raspberry Pi OS, part of Homebrew's mpv on macOS).
 - **Scaling** for 16:9 pictures on a 4:3 screen: Letterbox, 14:9, Pan & Scan or Anamorphic. Set it for every module, or for one module in its own settings.
 - **Netflix and Prime Video** catalogues from TMDB in the same tree. A title plays in the service's own player.
 - **240-MP OS**, a Raspberry Pi OS Lite image that boots straight into 240-MP and shows a VHS boot screen while its services come up.
@@ -87,15 +87,15 @@ Every screen below is the app itself, running at 640×480. The film and YouTube 
 ### Playing
 
 <table>
-<tr><th width="50%">Resume</th><th width="50%">Playback menu</th></tr>
-<tr><td><img src="docs/screenshots/resume.png" width="100%" alt="Resume" /></td><td><img src="docs/screenshots/playback-menu.png" width="100%" alt="Playback menu" /></td></tr>
+<tr><th width="50%">Resume</th><th width="50%">Deck menu</th></tr>
+<tr><td><img src="docs/screenshots/resume.png" width="100%" alt="Resume" /></td><td><img src="docs/screenshots/playback-menu.png" width="100%" alt="Deck menu" /></td></tr>
 <tr><td>Pick up where you left off, or start from the beginning.</td><td>▲ or ▼ during playback opens the deck's menu: the position bar, audio and subtitle tracks, crop (the four Scalings in turn) and stop.</td></tr>
 </table>
 
 <table>
-<tr><th width="50%">Back to the menus</th><th width="50%">Main menu</th></tr>
-<tr><td><img src="docs/screenshots/menus-over-video.png" width="100%" alt="Back to the menus" /></td><td><img src="docs/screenshots/main-menu-over-video.png" width="100%" alt="Main menu" /></td></tr>
-<tr><td>With Transparent Background, back returns to the menus and the video plays on behind them, here at 40% solid. Choose it again to watch it full screen from where it is.</td><td>The main menu leads with the video, the cursor on it: select takes it back to full screen where it is. Play/pause stops it (<code>[SPACE]:STOP</code>), and playing anything else replaces it.</td></tr>
+<tr><th width="33%">The video's menu</th><th width="33%">Back to the menus</th><th width="33%">Main menu</th></tr>
+<tr><td><img src="docs/screenshots/player-menu.png" width="100%" alt="The video's menu" /></td><td><img src="docs/screenshots/menus-over-video.png" width="100%" alt="Back to the menus" /></td><td><img src="docs/screenshots/main-menu-over-video.png" width="100%" alt="Main menu" /></td></tr>
+<tr><td>With Transparent Background, back during a Local Files or YouTube video opens its menu over the picture, which plays on, here at 40% solid. ◄ ► change its module's settings for it, at once or as you go back to it. Close Video goes to the main menu; back, to the video.</td><td>Browse in that menu, or back from any other module's video, returns to the module's menus, the video playing on behind them. Choose it again to watch it full screen from where it is.</td><td>The main menu leads with the video, the cursor on it: select takes it back to full screen where it is. Play/pause stops it (<code>[SPACE]:STOP</code>), and playing anything else replaces it.</td></tr>
 </table>
 
 ### Netflix, Prime Video and YouTube
@@ -233,6 +233,7 @@ Photos of an earlier version, before the menus above, on a CRT.
 - Shuffle playback
 - Playback history
 - Switch audio/subtitle tracks during playback
+- With Transparent Background, back during a video opens its menu over it: subtitles, looping and Scaling, then Favorites, Play at Startup, Browse Local Files and Close Video. Looping and Scaling change as it plays; the subtitles reload it from where it is when you go back to it
 
 ### Netflix and Prime Video
 - Browse what the service carries in your country in the same tree as Local Files: **Recently Watched** and **Favorites** first, then **Search** (on an on-screen keyboard), **Movies** and **Series** by Popular and by genre, a page of titles at a time with **More…** at the end
@@ -309,6 +310,7 @@ Photos of an earlier version, before the menus above, on a CRT.
     - **Subtitles** in a **Subtitle Language**: Off, On, or With Auto for YouTube's automatic captions too.
     - **Playback Speed**: 0.75x to 2x.
     - **Resume Playback**, and whether to **Display Shorts** (on by default).
+- With Transparent Background, back during a video opens its menu over it: the Advanced settings for it, then Favorites, Play at Startup, Watch Later, Browse YouTube and Close Video. Speed and Scaling change as it plays; the others reload it from where it is when you go back to it
 - **Sign in** in its settings, if you want to, opens Google's sign-in page full screen in Chromium, to sign in with a keyboard. yt-dlp then searches and plays as that account, which YouTube asks for fewer bot checks and lets play age-restricted videos. **Sign out** forgets it
     - YouTube can block an account used through yt-dlp, as [yt-dlp's wiki](https://github.com/yt-dlp/yt-dlp/wiki/Extractors#youtube) warns, so sign in with a spare one
     - Needs Chromium, with `cage` and `wtype` without a desktop (see Netflix and Prime Video), or Google Chrome on a Mac

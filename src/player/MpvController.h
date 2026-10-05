@@ -96,6 +96,19 @@ public:
     // loadAndPlay() clears it, so a player that notes nothing leaves no row.
     Q_INVOKABLE void noteSession(const QVariantMap &note);
     QVariantMap backgroundNote() const { return m_background ? m_sessionNote : QVariantMap(); }
+    // A player with a playback menu of its own says so in its note (menu:
+    // true): back then has it open the menu over the picture
+    // (playerMenuRequested), the session staying its player's, where any
+    // other player takes back as stopped and goes back to its menus. Its end
+    // still comes as playbackEnded, while the menu is open too.
+    // closePlayerMenu() takes the picture back to full screen;
+    // leavePlayerMenu() does what back always did, for the menu's way to its
+    // module's browser: playbackEnded "stopped", the video playing on behind.
+    Q_INVOKABLE void closePlayerMenu();
+    Q_INVOKABLE void leavePlayerMenu();
+    // Sets a property of the session that plays, for a setting changed while
+    // it plays: speed, panscan, loop-playlist and the like.
+    Q_INVOKABLE void setVideoProperty(const QString &name, const QVariant &value);
     // The embedded session's newest picture, and the size to draw it at
     // (VideoSurface).
     QImage videoFrame() const;
@@ -127,6 +140,7 @@ signals:
     void skipRequested();
     void videoActiveChanged();
     void backgroundChanged();
+    void playerMenuRequested();
     void videoFrameReady();
     // The OSC's SUBTITLE button when the sub is burned into the stream and mpv
     // has nothing to cycle (see `sub-cycle` in scripts/mpv-osc.lua). The module
@@ -202,6 +216,8 @@ private:
     // The embedded session's command line, to know it when it is asked for again.
     QStringList     m_sessionArgs;
     QVariantMap     m_sessionNote;
+    // Back has its player's menu open over the picture (see closePlayerMenu).
+    bool            m_playerMenu   = false;
     QSize           m_videoTargetSize { 640, 480 };
     QString         m_embeddedInputConfPath;
     DisplayHandoff *m_handoff      = nullptr;
