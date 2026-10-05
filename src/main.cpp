@@ -27,6 +27,7 @@
 #include "input/InputManager.h"
 #include "input/IdleTracker.h"
 #include "update/UpdateManager.h"
+#include "boot/BootProgress.h"
 #include "util/ExecPath.h"
 #include "util/DisplayHandoff.h"
 #ifdef Q_OS_MAC
@@ -66,10 +67,10 @@ static QString resolveDataRoot() {
 // could also leave a headless Pi on a blank VT with DRM master dropped, because
 // ~DisplayHandoff never got the chance to put the display back.
 //
-// Async-signal-safe: only sets a flag. A 100 ms timer in main() polls it and calls
-// quit() from the event loop, where destructors run properly.
-static volatile std::sig_atomic_t g_termRequested = 0;
-extern "C" void mp240HandleTerm(int) { g_termRequested = 1; }
+// Async-signal-safe: only records the signal. A 100 ms timer in main() polls it and
+// exits from the event loop, where destructors run properly.
+static volatile std::sig_atomic_t g_termSignal = 0;
+extern "C" void mp240HandleTerm(int sig) { g_termSignal = sig; }
 
 int main(int argc, char *argv[]) {
     QGuiApplication app(argc, argv);
@@ -95,9 +96,13 @@ int main(int argc, char *argv[]) {
     QTimer termPoll;
     termPoll.setInterval(100);
     QObject::connect(&termPoll, &QTimer::timeout, &app, [&app]() {
-        if (g_termRequested) {
+        if (g_termSignal) {
             qInfo("[main] Termination signal received — shutting down cleanly");
-            app.quit();
+            // 128 + signal number, the shell convention for "ended by a signal".
+            // It lets the autostart service's stop helper (240mp-stop) tell a
+            // `systemctl stop`/`restart` apart from the user choosing Quit
+            // (exit 0), which is the only one that should power the Pi off.
+            app.exit(128 + g_termSignal);
         }
     });
     termPoll.start();
@@ -163,6 +168,7 @@ int main(int argc, char *argv[]) {
     InputManager        inputManager(dataRoot, &appCore);
     IdleTracker         idleTracker(60);   // disabled until Main.qml applies the saved setting
     UpdateManager       updateManager(appRoot, dataRoot);
+    BootProgress        bootProgress;      // inert outside the 240-MP OS image (os/)
 
     // Playback follows the UI's display: mpv gets a --fs-screen* arg derived
     // from this on macOS / desktop Linux (no-op at index 0 and on headless).
@@ -192,6 +198,7 @@ int main(int argc, char *argv[]) {
     ctx->setContextProperty("mpvController", &mpvController);
     ctx->setContextProperty("inputManager",  &inputManager);
     ctx->setContextProperty("updateManager", &updateManager);
+    ctx->setContextProperty("bootProgress",  &bootProgress);
 #ifdef Q_OS_MAC
     // Target display geometry in Qt coordinates (top-left origin), so the QML
     // Window bindings position onto the chosen screen. The native fullscreen
@@ -214,7 +221,16 @@ int main(int argc, char *argv[]) {
 
     // Gamepad key events are posted straight to the root window so they reach
     // the QML focus item even when another window (mpv) holds OS focus.
-    inputManager.setTargetWindow(qobject_cast<QQuickWindow *>(engine.rootObjects().first()));
+    QQuickWindow *rootWindow = qobject_cast<QQuickWindow *>(engine.rootObjects().first());
+    inputManager.setTargetWindow(rootWindow);
+
+    // On the OS image the services held back for the app start once its first
+    // frame is on screen. The timer is a backstop for a platform whose window
+    // never reports a swap; markReady() only acts once.
+    if (rootWindow)
+        QObject::connect(rootWindow, &QQuickWindow::frameSwapped, &bootProgress,
+                         &BootProgress::markReady, Qt::SingleShotConnection);
+    QTimer::singleShot(5000, &bootProgress, &BootProgress::markReady);
 
 #ifdef Q_OS_MAC
     if (QWindow *win = qobject_cast<QWindow *>(engine.rootObjects().first())) {

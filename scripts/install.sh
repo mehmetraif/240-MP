@@ -227,16 +227,18 @@ UNIT
     # Exit 11 is "Apply & Restart" from the in-app updater (views/Update.qml):
     # do nothing here — it's a failure status, so Restart=on-failure relaunches
     # through the launcher, which applies the staged update before exec.
+    # A stop or restart from outside (systemctl stop/restart, a shutdown) ends the
+    # app by signal — it exits 128+signal, or dies of it — and leaves the Pi on.
     sudo tee /usr/local/bin/240mp-stop > /dev/null << 'STOP_HELPER'
 #!/usr/bin/env bash
-# Called by 240mp.service ExecStopPost. systemd sets $EXIT_STATUS to the app's exit code.
-if [ "${EXIT_STATUS:-}" = "10" ]; then
-    systemctl start 240mp-terminal.service
-elif [ "${EXIT_STATUS:-}" = "11" ]; then
-    :   # in-app update restart — Restart=on-failure brings the app back up
-else
-    systemctl poweroff
-fi
+# Called by 240mp.service ExecStopPost. systemd sets $EXIT_STATUS to the app's
+# exit code, or to the signal name if a signal killed it.
+case "${EXIT_STATUS:-}" in
+    10) systemctl start 240mp-terminal.service ;;
+    11) : ;;  # in-app update restart — Restart=on-failure brings the app back up
+    129|130|143|HUP|INT|TERM|KILL) : ;;  # stopped from outside, not by the user
+    *)  systemctl poweroff ;;
+esac
 STOP_HELPER
     sudo chmod +x /usr/local/bin/240mp-stop
 
