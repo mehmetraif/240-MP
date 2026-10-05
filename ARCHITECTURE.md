@@ -46,7 +46,7 @@ The guiding idea: **browse structured content, then hand off to the right tool f
     ModuleList.qml
     Settings.qml
     ...
-    Components/                     # shared QML components (AppBar, HintBar, MenuRow, HelpLine, ScrollMarks, TreeBrowser, OnScreenKeyboard, WebPlayerBrowse, WebPlayerLaunch, the Osd* elements, ChoiceOverlay, qmldir)
+    Components/                     # shared QML components (AppBar, HintBar, MenuRow, HelpLine, ScrollMarks, TreeBrowser, InfoPanel, OnScreenKeyboard, WebPlayerBrowse, WebPlayerLaunch, the Osd* elements, ChoiceOverlay, qmldir)
     BootScreen.qml                  # boot screen of the 240-MP OS image (see os/README.md)
   Main.qml                          # app root
   CMakeLists.txt
@@ -598,10 +598,18 @@ Anything shaped like folders, browsed as a horizontal tree, the way Local Files,
 | `savedTrail` | A `trailState()` to reopen on creation: pass it through `navigateTo`'s list state so coming back lands in the same folders |
 | `reservedBottom` | Room the host keeps under the tree for a line of its own (a `HelpLine` while it shows); the spine stays put |
 | `activated(item)` | Select on an entry that isn't a folder |
-| `optionsRequested(item)` | Right on an entry that isn't a folder (YouTube's Watch Later) |
+| `preview`, `previewDelay` | Whether an entry that isn't a folder has an info screen, and how long (ms) the cursor rests on one before asking for it on its own; `0` asks only on Right or the INFO key (Space, which is the play/pause button) |
+| `previewRequested(item)` | Right on an entry that isn't a folder, with `preview` on, or the cursor resting on one: show its info (the tree's last layer, an `InfoPanel`) |
+| `optionsRequested(item)` | Right on an entry that isn't a folder, with `preview` off (YouTube's Watch Later) |
 | `leaveRequested()` | Back with no folder left to close |
 
 `openItem({ name, path })` opens a folder that isn't an entry of the current one, like a search's results; `folderName` is the open folder's name, for the `AppBar` subtitle, and `currentEntry` the entry under the cursor, for a footer that says what select will do (`[ENTER]:OPEN` on a folder, `:PLAY` on a film). A key already held as the tree appears (Back held to close a player) does not repeat into it.
+
+### InfoPanel (`views/Components/InfoPanel.qml`)
+
+A film's info, the way a deck's INFO key puts up what is on the tape, laid out like Plex's detail page: the PLAY box, the name, a line of facts (`1997 - 2HR:29MIN`), the story (scrolling through when long), then its details as `MenuRow` lines (`GENRE······DRAMA`). It is a tree's last layer: the Netflix, Prime Video and YouTube views open it on `previewRequested` with `show(item)`, then set `details` (`{ title, facts, summary, rows: [{ label, value }] }`) from their backend: `TmdbCatalog.loadDetails` (TMDB details and credits, the story in English when TMDB has none in the chosen language), `YouTubeBackend.loadDetails` (what the list knows at once, then yt-dlp's length, views and description). Select plays (`playRequested`), up/down close it and move on through the list (`moveRequested`), left or back close it; with `saveHint` set, right asks to save (`saveRequested`, YouTube's Watch Later).
+
+When it comes up is the app's **INFO SCREEN** setting (`app.info_screen`): `off`, `key` (Right on a film, or INFO), or `1`, `2`, `3` (the default) or `5` seconds the cursor rests on a film before it comes up on its own.
 
 ### OnScreenKeyboard (`views/Components/OnScreenKeyboard.qml`)
 
