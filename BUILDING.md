@@ -83,6 +83,7 @@ On macOS all user configuration is stored at:
 ```
 ~/Library/Application Support/240-MP/
   config.json       ← app and module settings
+  lists.json        ← each module's recently watched and favorites
   plex_auth.json    ← plex auth
   input.cfg         ← optional gamepad mapping overrides (see Gamepad input below)
 ```
@@ -189,6 +190,7 @@ On Raspberry Pi OS all user configuration is stored at:
 ```
 ~/.local/share/240-MP/
   config.json      ← app and module settings
+  lists.json       ← each module's recently watched and favorites
   plex_auth.json   ← plex auth
   input.cfg        ← optional gamepad mapping overrides (see Gamepad input below)
 ```

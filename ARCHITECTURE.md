@@ -46,7 +46,7 @@ The guiding idea: **browse structured content, then hand off to the right tool f
     ModuleList.qml
     Settings.qml
     ...
-    Components/                     # shared QML components (AppBar, HintBar, MenuRow, HelpLine, ScrollMarks, TreeBrowser, InfoPanel, OnScreenKeyboard, WebPlayerBrowse, WebPlayerLaunch, the Osd* elements, ChoiceOverlay, qmldir)
+    Components/                     # shared QML components (AppBar, HintBar, MenuRow, HelpLine, ScrollMarks, TreeBrowser, InfoPanel, EntryOptions, OnScreenKeyboard, WebPlayerBrowse, WebPlayerLaunch, the Osd* elements, ChoiceOverlay, qmldir)
     BootScreen.qml                  # boot screen of the 240-MP OS image (see os/README.md)
   Main.qml                          # app root
   CMakeLists.txt
@@ -140,6 +140,9 @@ A real example (Plex) — note `requires_auth`, dynamic options, and apply slots
 | `get_settings()` | Returns entire `config.json` as a map |
 | `get_setting(moduleId, key)` | Returns a single setting value |
 | `save_setting(moduleId, key, value)` | Writes to `config.json`; supports dot-notation keys |
+| `get_list(moduleId, name)` | One of a module's lists of entries (`recent`, `favorites`), newest first, from `lists.json` |
+| `add_to_list(moduleId, name, entry, limit)` | Puts an entry first, in place of one with its `path`, and keeps the newest `limit` (50 unless given) |
+| `remove_from_list(moduleId, name, path)` / `list_contains(moduleId, name, path)` | Takes an entry off a list / says whether one is on it |
 | `get_module_info(moduleId)` | Returns `{name, icon}` for a module |
 | `get_module_settings_schema(moduleId)` | Returns the module's settings array |
 | `invoke_module_action(moduleId, slotName)` | Routes to the registered backend via `QMetaObject::invokeMethod` |
@@ -601,16 +604,20 @@ Anything shaped like folders, browsed as a horizontal tree, the way Local Files,
 | `activated(item)` | Select on an entry that isn't a folder |
 | `preview`, `previewDelay` | Whether an entry that isn't a folder has an info screen, and how long (ms) the cursor rests on one before asking for it on its own; `0` asks only on Right or the INFO key (Space, which is the play/pause button) |
 | `previewRequested(item)` | Right on an entry that isn't a folder, with `preview` on, or the cursor resting on one: show its info (the tree's last layer, an `InfoPanel`) |
-| `optionsRequested(item)` | Right on an entry that isn't a folder, with `preview` off (YouTube's Watch Later) |
+| `optionsRequested(item)` | Right on an entry that isn't a folder, with `preview` off: offer its options (an `EntryOptions`) |
 | `leaveRequested()` | Back with no folder left to close |
 
 `openItem({ name, path })` opens a folder that isn't an entry of the current one, like a search's results; `folderName` is the open folder's name, for the `AppBar` subtitle, and `currentEntry` the entry under the cursor, for a footer that says what select will do (`[ENTER]:OPEN` on a folder, `:PLAY` on a film). A key already held as the tree appears (Back held to close a player) does not repeat into it.
 
 ### InfoPanel (`views/Components/InfoPanel.qml`)
 
-A film's info, the way a deck's INFO key puts up what is on the tape, laid out like Plex's detail page: the PLAY box, the name, a line of facts (`1997 - 2HR:29MIN`), the story (scrolling through when long), then its details as `MenuRow` lines (`GENRE······DRAMA`). It is a tree's last layer: the Netflix, Prime Video and YouTube views open it on `previewRequested` with `show(item)`, then set `details` (`{ title, facts, summary, rows: [{ label, value }] }`) from their backend: `TmdbCatalog.loadDetails` (TMDB details and credits, the story in English when TMDB has none in the chosen language), `YouTubeBackend.loadDetails` (what the list knows at once, then yt-dlp's length, views and description). Select plays (`playRequested`), up/down close it and move on through the list (`moveRequested`), left or back close it; with `saveHint` set, right asks to save (`saveRequested`, YouTube's Watch Later).
+A film's info, the way a deck's INFO key puts up what is on the tape, laid out like Plex's detail page: the PLAY box, the name, a line of facts (`1997 - 2HR:29MIN`), the story (scrolling through when long), then its details as `MenuRow` lines (`GENRE······DRAMA`). It is a tree's last layer: the Netflix, Prime Video and YouTube views open it on `previewRequested` with `show(item)`, then set `details` (`{ title, facts, summary, rows: [{ label, value }] }`) from their backend: `TmdbCatalog.loadDetails` (TMDB details and credits, the story in English when TMDB has none in the chosen language), `YouTubeBackend.loadDetails` (what the list knows at once, then yt-dlp's length, views and description). Select plays (`playRequested`), up/down close it and move on through the list (`moveRequested`), left or back close it, and right asks for its options (`optionsRequested`: an `EntryOptions`), `optionsHint` being the footer's hint for that (`""` for a host with none).
 
 When it comes up is the app's **INFO SCREEN** setting (`app.info_screen`): `off`, `key` (Right on a film, or INFO), or `1`, `2`, `3` (the default) or `5` seconds the cursor rests on a film before it comes up on its own.
+
+### Recently Watched and Favorites
+
+The tree modules (Local Files, Netflix, Prime Video, YouTube) begin with **RECENTLY WATCHED** and **FAVORITES**, then **SEARCH** and their own folders. Both are the module's lists in AppCore (`get_list(moduleId, "recent" | "favorites")`, kept in `lists.json` in the data folder), holding entries as the tree had them, so one plays from there as it would from anywhere else: a view puts an entry on `recent` as it plays it (the newest 30), and on `favorites` from its options (`EntryOptions`). YouTube's RECENTLY WATCHED is its own watch history (`history`), which keeps the resume positions too. Local Files leaves out the entries whose file has gone (`existing()`, a drive taken out, say), and its SEARCH walks the whole media folder a slice at a time, so a big library never holds the screen still: `search(path, words)` gives what the last search for that folder found, or starts it and `searchReady(path)` follows, keeping the first 200 names that hold every word.
 
 ### OnScreenKeyboard (`views/Components/OnScreenKeyboard.qml`)
 
@@ -627,6 +634,10 @@ Full-screen keyboard-driven chooser: a prompt, the thing being acted on, and a s
 | `choices` | `var` | List of `{ label, action }` maps |
 
 Call `open()` to show it. It emits `activated(action)` when the user picks one and `closed()` once it hides (bind `onClosed: <host>.forceActiveFocus()`); Up/Down wrap, Esc/Back cancels. As with NfcCardWriter, **behaviour keys off `action`, never the label text** — labels are free to change with state (`"Resume Next Episode"` vs `"Play Next Episode"`) without touching the handler.
+
+### EntryOptions (`views/Components/EntryOptions.qml`)
+
+An entry's options, as a `ChoiceOverlay`: **Add to Favorites** or **Remove from Favorites** (the module's `favorites` list, `moduleId`), then whatever the host adds in `moreChoices` and acts on in its own `onActivated` (YouTube's **Save to Watch Later**). A tree view opens it with `offer(entry)` on Right on an entry (`optionsRequested`, from the tree or its `InfoPanel`), and refreshes its FAVORITES folder on `favoritesEdited()`.
 
 ### NfcCardWriter (`views/Components/NfcCardWriter.qml`)
 
@@ -663,4 +674,4 @@ User configuration is stored in `config.json` in the app's data directory:
 }
 ```
 
-Each module's settings live under `modules.<id>`. Use `save_setting` / `get_setting` (which support dot-notation keys) rather than writing the file directly. The data directory is created on first run and is separate from the app itself, so rebuilding never wipes user settings. For the exact per-OS path (macOS vs Raspberry Pi OS), see [BUILDING.md](BUILDING.md#configuration).
+Each module's settings live under `modules.<id>`. Use `save_setting` / `get_setting` (which support dot-notation keys) rather than writing the file directly. A module's lists (RECENTLY WATCHED, FAVORITES) are in `lists.json` beside it, through `get_list` / `add_to_list` / `remove_from_list`. The data directory is created on first run and is separate from the app itself, so rebuilding never wipes user settings. For the exact per-OS path (macOS vs Raspberry Pi OS), see [BUILDING.md](BUILDING.md#configuration).
