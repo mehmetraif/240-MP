@@ -25,8 +25,13 @@
 // Two user files besides subscriptions/playlists:
 //   youtube_history.json     — watch history + resume positions, keyed by videoId
 //   youtube_watch_later.json — ordered saved-video list (newest first)
+//
+// The module browses all of it, and YouTube's search (yt-dlp ytsearch), as one
+// tree (TreeBrowser) through listing().
 class YouTubeBackend : public QObject {
     Q_OBJECT
+    // What stands in the way of browsing, when anything does; "" otherwise.
+    Q_PROPERTY(QString problem READ problem NOTIFY problemChanged)
 public:
     explicit YouTubeBackend(const QString &appRoot, const QString &dataRoot,
                             QObject *parent = nullptr);
@@ -67,6 +72,23 @@ public:
     Q_INVOKABLE void         removeFromWatchLater(const QString &videoId);
     Q_INVOKABLE void         delete_watch_later(); // settings action slot
 
+    // The module's tree, by path:
+    //   home             SEARCH, then SUBSCRIPTIONS, CHANNELS, PLAYLISTS,
+    //                    WATCH LATER and HISTORY, each where it has anything
+    //   subscriptions    the subscriptions feed, newest first
+    //   channels         the subscribed channels: channel/<id> each
+    //   playlists        youtube_playlists.txt's: playlist/<id> each
+    //   watchlater, history
+    //   search/<words>   YouTube's matches for the words, MORE at the end
+    // Videos carry what Player.qml plays (videoId, url, title, channelName)
+    // and isShort. An invalid QVariant (undefined in QML) means the entries are
+    // on their way, and listingReady(path) follows. A playlist only a branch
+    // asks for (preview) isn't fetched: yt-dlp is slow on a Pi.
+    Q_INVOKABLE QVariant listing(const QString &path, bool preview = false);
+    // Loads the next matches of a search onto its end.
+    Q_INVOKABLE void     loadMore(const QString &path);
+    QString problem() const { return m_problem; }
+
 signals:
     void subscriptionsFeedLoaded(const QVariant &videos);
     void channelsLoaded(const QVariant &channels);
@@ -74,6 +96,8 @@ signals:
     void playlistsLoaded(const QVariant &playlists);
     void playlistVideosLoaded(const QString &playlistId, const QVariant &videos);
     void errorOccurred(const QString &message);
+    void listingReady(const QString &path);
+    void problemChanged();
 
 private:
     struct ChannelEntry {
@@ -98,6 +122,14 @@ private:
         QString name;                  // empty when the line had no "Name |" prefix
     };
 
+    struct Search {
+        QVariantList videos;           // YouTube's order
+        int          requested = 0;    // matches asked for so far
+        bool         loading   = false;
+        bool         exhausted = false;
+        qint64       failedMs  = 0;
+    };
+
     QString      historyFilePath() const;
     QVariantMap  loadHistory() const;
     void         saveHistory(const QVariantMap &history);
@@ -112,6 +144,14 @@ private:
     QVariantList buildFeed() const;
     QVariantList buildChannelList() const;
     QNetworkRequest makeRequest(const QUrl &url) const;
+
+    QVariant     channelListing(const QString &path);
+    QVariant     playlistListing(const QString &path, bool preview);
+    QVariant     searchListing(const QString &path);
+    void         searchPage(const QString &path);
+    QVariantList videoEntries(const QVariantList &videos) const;
+    void         answerLater(const QStringList &paths);
+    void         setProblem(const QString &problem);
 
     QList<PlaylistFileRef> readPlaylistEntries(QString *error = nullptr) const;
     void         ensurePlaylistsFresh(bool forceRefresh);
@@ -144,10 +184,25 @@ private:
     bool    m_emitPlaylistsWhenDone = false;
     QString m_emitPlaylistVideosWhenDone;     // playlistId, or empty
 
+    // The tree's view of the caches: when each last filled (or failed
+    // outright), and the paths waiting for that.
+    qint64      m_channelsLoadedMs  = 0;
+    qint64      m_channelsFailedMs  = 0;
+    QStringList m_channelWaits;
+    qint64      m_playlistsLoadedMs = 0;
+    qint64      m_playlistsFailedMs = 0;
+    QStringList m_playlistWaits;
+    QHash<QString, Search> m_searches;        // search/<words> -> matches
+    QString     m_problem;
+
     static constexpr qint64 kCacheTtlMs      = 15 * 60 * 1000;
     static constexpr int    kMaxFeedItems    = 100;
     static constexpr int    kMaxHistoryItems = 100;
     static constexpr int    kMaxPlaylistItems = 500;             // caps infinite Mix/Radio lists
     static constexpr int    kMaxConcurrentPlaylistFetches = 2;   // yt-dlp is heavy on the Pi
     static constexpr int    kPlaylistFetchTimeoutMs = 60000;
+    static constexpr int    kSearchPageSize  = 20;
+    // A source that failed outright is shown empty this long before the tree
+    // may ask again, so a tree refreshing on the failure can't loop on it.
+    static constexpr qint64 kRetryAfterMs    = 15000;
 };
