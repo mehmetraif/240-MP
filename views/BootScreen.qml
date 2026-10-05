@@ -4,8 +4,8 @@ import Components
 // Boot screen of the 240-MP OS image (os/README.md). The image puts the app on
 // screen first and starts the services it held back afterwards, in the order
 // it lists them; this shows them coming up while the cassette plays — the tape
-// winds across in step with the progress bar. Any key closes it early; the
-// services carry on in the background either way.
+// winds across in step with the progress bar. Any key closes it early, though
+// it doesn't say so; the services carry on in the background either way.
 //
 // Binds only to root.* (Main.qml mirrors bootProgress there), which stays
 // valid while this Loader-hosted view is torn down.
@@ -18,9 +18,15 @@ FocusScope {
     property real shownProgress: root.bootValue
     Behavior on shownProgress { NumberAnimation { duration: 450; easing.type: Easing.OutCubic } }
 
-    readonly property int unit: cassette.pixelSize
+    // The column the bar and the text share: about 3/8 of the screen's width,
+    // in whole bar steps of whole art pixels (20 steps of 12 px, 240 px, at
+    // 640×480), so the bar spans it exactly.
+    readonly property int barSteps: 20
+    readonly property real columnWidth: barSteps * root.px
+        * Math.max(2, Math.round(root.sw * 0.375 / barSteps / root.px))
+    readonly property real columnX: Math.round((root.sw - columnWidth) / 2)
 
-    // The text runs as wide as the cassette: the longest service line sets its
+    // The longest service line runs the column's width, which sets the text's
     // size, kept within what a CRT reads comfortably. TextMetrics rather than
     // FontMetrics.advanceWidth(), so the size follows the font once it is set.
     TextMetrics {
@@ -39,7 +45,16 @@ FocusScope {
         return line.toUpperCase()
     }
     readonly property real textSize: Math.max(root.sh * 0.0375, Math.min(root.sh * 0.0583333,
-        Math.floor(100 * cassette.width / Math.max(1, probe.advanceWidth))))
+        Math.floor(100 * columnWidth / Math.max(1, probe.advanceWidth))))
+
+    // The cassette and everything under it sit as one block in the middle of
+    // the screen, spaced in art pixels.
+    readonly property real barGap: root.px * 8
+    readonly property real statusGap: root.px * 5
+    readonly property real linesGap: root.px * 3
+    readonly property real blockHeight: cassette.height + barGap + bar.height
+        + statusGap + status.height + linesGap + lines.height
+    readonly property real blockY: Math.round((root.sh - blockHeight) / 2)
 
     // Cycles 0..3 for the "..." after whatever is starting.
     property int dots: 0
@@ -96,31 +111,31 @@ FocusScope {
 
     VhsCassette {
         id: cassette
-        // Under a third of the screen height, in whole art pixels.
-        pixelSize: Math.max(1, Math.floor(root.sh * 0.3 / gridHeight))
+        // On the same 240-line pixel grid as the rest of the on-screen display:
+        // 160×92 at 640×480.
+        pixelSize: root.px
         ink: root.primaryColor
         x: Math.round((root.sw - width) / 2)
-        y: Math.round(root.sh * 0.14)
+        y: bootRoot.blockY
         progress: bootRoot.shownProgress
     }
 
-    // The deck's segment bar in the cassette's own pixel grid: 20 steps of 4
-    // art pixels span the cassette's 80-pixel width exactly.
+    // The deck's segment bar, across the column.
     OsdTicks {
         id: bar
-        x: cassette.x
-        y: cassette.y + cassette.height + bootRoot.unit * 5
-        width: cassette.width
-        height: bootRoot.unit * 4
-        pixel: bootRoot.unit
-        segments: 20
+        x: bootRoot.columnX
+        anchors.top: cassette.bottom
+        anchors.topMargin: bootRoot.barGap
+        width: bootRoot.columnWidth
+        segments: bootRoot.barSteps
         value: bootRoot.shownProgress
     }
 
     Text {
         id: status
         anchors.left: bar.left
-        y: bar.y + bar.height + bootRoot.unit * 3
+        anchors.top: bar.bottom
+        anchors.topMargin: bootRoot.statusGap
         text: root.bootLabel !== "" ? "LOADING" + "...".substr(0, bootRoot.dots) : "READY"
         color: root.primaryColor
         font.family: root.globalFont
@@ -139,9 +154,10 @@ FocusScope {
     // One line per service, in the order the image starts them; the one
     // starting now is inverted, like a deck's menu marks what is selected.
     Column {
+        id: lines
         anchors.left: bar.left
         anchors.top: status.bottom
-        anchors.topMargin: bootRoot.unit * 2
+        anchors.topMargin: bootRoot.linesGap
 
         Repeater {
             model: root.bootSteps
@@ -165,13 +181,5 @@ FocusScope {
                 }
             }
         }
-    }
-
-    HintBar {
-        anchors.left: parent.left
-        anchors.leftMargin: root.sw * 0.125 //80
-        anchors.bottom: parent.bottom
-        anchors.bottomMargin: root.sh * 0.1041667 //50
-        text: root.hints.select + ":SKIP"
     }
 }
