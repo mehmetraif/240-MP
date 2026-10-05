@@ -511,3 +511,15 @@ QString AppCore::startupModuleEntryPoint() const {
     }
     return {};
 }
+
+QString AppCore::moduleIdForSource(const QString &source) const {
+    static const QRegularExpression folderRe(QStringLiteral("(?:^|/)modules/([^/]+)/"));
+    const QRegularExpressionMatch match = folderRe.match(source);
+    if (!match.hasMatch())
+        return {};
+    for (const auto &m : m_modules) {
+        if (m.folder == match.captured(1))
+            return m.id;
+    }
+    return {};
+}

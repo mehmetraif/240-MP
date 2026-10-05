@@ -279,6 +279,10 @@ Window {
         focus: true;
         source: "views/ModuleList.qml";
 
+        // Playback follows the open module's own settings where it has them
+        // (its Scaling).
+        onSourceChanged: mpvController.setActiveModule(appCore.moduleIdForSource(source.toString()))
+
         Keys.onPressed: (event) => {
             if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_Q) {
                 Qt.quit()

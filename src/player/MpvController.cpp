@@ -313,11 +313,22 @@ void MpvController::loadAndPlay(const QString &url, float startSeconds,
     if (QUrl(url).host().endsWith(QStringLiteral(".plex.direct")))
         args << QStringLiteral("--tls-verify=no");
 
-    // Auto Crop: start with panscan=1 unless the current decode path can't crop.
-    // The Pi3 overlay (smooth) path blanks video under panscan, so suppress there —
-    // matching the 1080p Playback trade-off. The OSC CROP button still toggles live.
-    if (autoCropEnabled() && !cropUnavailable())
-        args << QStringLiteral("--panscan=1");
+    // Scaling: how a picture of another shape fills the screen, a 16:9 film on
+    // a 4:3 tube above all. 14:9 crops a little of the sides (panscan 0.43 is
+    // 14:9 for a 16:9 picture), Pan & Scan all the bars' worth, and Anamorphic
+    // squeezes the picture to fill the screen, for a TV set to 16:9. The
+    // cropping ones need panscan, which the Pi3 overlay (smooth) path blanks
+    // video under, so it keeps the whole picture there, matching the 1080p
+    // Playback trade-off. The OSC CROP button still toggles panscan live.
+    const QString scaling = videoScaling();
+    if (scaling == QLatin1String("Anamorphic")) {
+        args << QStringLiteral("--keepaspect=no");
+    } else if (!cropUnavailable()) {
+        if (scaling == QLatin1String("Pan & Scan"))
+            args << QStringLiteral("--panscan=1");
+        else if (scaling == QLatin1String("14:9"))
+            args << QStringLiteral("--panscan=0.43");
+    }
 
     // Video Levels: the RGB range mpv converts YUV into. Emitted only when the
     // user has overridden it, so "Auto" leaves both mpv's own default and
@@ -738,6 +749,20 @@ bool MpvController::autoCropEnabled() const {
         return false;
     const QVariant v = m_appCore->get_setting(QString(), "auto_crop");
     return v.toString().compare(QStringLiteral("On"), Qt::CaseInsensitive) == 0;
+}
+
+QString MpvController::videoScaling() const {
+    if (!m_appCore)
+        return QStringLiteral("Letterbox");
+    if (!m_activeModule.isEmpty()) {
+        const QString own = m_appCore->get_setting(m_activeModule, "video_scaling").toString();
+        if (!own.isEmpty() && own.compare(QStringLiteral("Default"), Qt::CaseInsensitive) != 0)
+            return own;
+    }
+    const QString app = m_appCore->get_setting(QString(), "video_scaling").toString();
+    if (!app.isEmpty())
+        return app;
+    return autoCropEnabled() ? QStringLiteral("Pan & Scan") : QStringLiteral("Letterbox");
 }
 
 QString MpvController::videoOutputLevels() const {

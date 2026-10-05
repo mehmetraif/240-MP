@@ -52,6 +52,14 @@
       "options_slot": "get_subtitle_languages",
       "default": "-",
       "description": "Select which language to automatically load subtitles for.\n[Any] is the same as 'no preference'."
+    },
+    {
+      "key": "video_scaling",
+      "label": "Scaling",
+      "type": "list_single",
+      "options": ["Default", "Letterbox", "14:9", "Pan & Scan", "Anamorphic"],
+      "default": "Default",
+      "description": "How a 16:9 picture fills the 4:3 screen in this module\n[DEFAULT] As Settings' Scaling says"
     }
   ]
 }

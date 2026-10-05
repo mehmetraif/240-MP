@@ -95,20 +95,25 @@ FocusScope {
                 label: "1080p Playback",
                 options: ["On", "Off"],
                 value: appSettings["smooth_playback"] || "On",
-                description: "[ON] Enable 1080p content playback, crop will not function\n[OFF] Enable crop, 1080p content playback will stutter",
+                description: "[ON] Enable 1080p content playback, crop, 14:9 and Pan & Scan will not function\n[OFF] Enable crop, 1080p content playback will stutter",
                 moduleId: ""
             })
         }
 
-        // Auto Crop — default crop (panscan) state for every video. Off by default;
-        // crop can still be toggled live during playback via the mpv OSC.
+        // Scaling — how a picture of another shape fills the screen: a 16:9 film
+        // on a 4:3 tube above all. Every video module's settings can override
+        // it for that module. It replaces Auto Crop, whose ON reads as Pan &
+        // Scan until a Scaling is chosen. The OSC's CROP still toggles live.
+        var scalingOpts = ["Letterbox", "14:9", "Pan & Scan", "Anamorphic"]
+        var scaling = appSettings["video_scaling"]
+                      || (appSettings["auto_crop"] === "On" ? "Pan & Scan" : "Letterbox")
         items.push({
             type: "list_single",
-            key: "auto_crop",
-            label: "Auto Crop",
-            options: ["Off", "On"],
-            value: appSettings["auto_crop"] || "Off",
-            description: "[ON] Video starts cropped to fill screen\n[OFF] Video starts at its original aspect ratio",
+            key: "video_scaling",
+            label: "Scaling",
+            options: scalingOpts,
+            value: scalingOpts.indexOf(scaling) >= 0 ? scaling : "Letterbox",
+            description: "How a 16:9 picture fills the 4:3 screen, in every module that doesn't set its own\n[LETTERBOX] All of it, bars above and below  [14:9] A little of the sides cut, thinner bars  [PAN & SCAN] Fills it, the sides cut  [ANAMORPHIC] Fills it squeezed, for a TV set to 16:9",
             moduleId: ""
         })
 

@@ -56,6 +56,9 @@ public:
     // or empty when the module is unknown. Lets one module route into another
     // without hardcoding a path across module boundaries.
     Q_INVOKABLE QString module_entry_point(const QString &moduleId) const;
+    // The module a view's source belongs to (".../modules/<folder>/..."), or
+    // "" for one of the app's own views.
+    Q_INVOKABLE QString moduleIdForSource(const QString &source) const;
 
     // Registers a module backend: stores it for action routing, exposes it to QML under
     // contextProperty, and connects its optional signals/slots by introspection (only

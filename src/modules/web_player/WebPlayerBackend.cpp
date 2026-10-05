@@ -110,7 +110,8 @@ bool WebPlayerBackend::launch(const QString &url) {
     // The browser is a family of processes; the screen comes back once all
     // of them have gone.
     entry.meta.wait   = QStringLiteral("pgroup");
-    entry.meta.args   = QStringLiteral("\"%1\" \"%2\"").arg(m_service, url.isEmpty() ? m_url : url);
+    entry.meta.args   = QStringLiteral("\"%1\" \"%2\" \"%3\"")
+                            .arg(m_service, url.isEmpty() ? m_url : url, scaling());
 
     QString error;
     if (!m_launcher->start(entry, &error)) {
@@ -122,6 +123,30 @@ bool WebPlayerBackend::launch(const QString &url) {
         emit openedChanged();
     }
     return true;
+}
+
+QString WebPlayerBackend::scaling() const {
+    // Straight from config.json, as at construction: the app's settings never
+    // reach a module backend's onSettingChanged.
+    QJsonObject config;
+    QFile f(m_dataRoot + QStringLiteral("/config.json"));
+    if (f.open(QIODevice::ReadOnly))
+        config = QJsonDocument::fromJson(f.readAll()).object();
+    QString value = config.value(QStringLiteral("modules")).toObject().value(moduleId()).toObject()
+                        .value(QStringLiteral("video_scaling")).toString();
+    if (value.isEmpty() || value == QLatin1String("Default")) {
+        const QJsonObject app = config.value(QStringLiteral("app")).toObject();
+        value = app.value(QStringLiteral("video_scaling")).toString();
+        if (value.isEmpty() && app.value(QStringLiteral("auto_crop")).toString() == QLatin1String("On"))
+            value = QStringLiteral("Pan & Scan");
+    }
+    if (value == QLatin1String("14:9"))
+        return QStringLiteral("14:9");
+    if (value == QLatin1String("Pan & Scan"))
+        return QStringLiteral("panscan");
+    if (value == QLatin1String("Anamorphic"))
+        return QStringLiteral("anamorphic");
+    return QStringLiteral("letterbox");
 }
 
 QString WebPlayerBackend::output() const {

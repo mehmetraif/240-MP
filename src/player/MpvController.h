@@ -54,6 +54,10 @@ public:
     // toggle only where the smoothness-vs-crop trade-off actually exists.
     Q_INVOKABLE bool hasSmoothPlaybackTradeoff() const;
 
+    // The module whose views are open (Main.qml, as its loader changes), for
+    // the settings a module can override: its own Scaling.
+    Q_INVOKABLE void setActiveModule(const QString &moduleId) { m_activeModule = moduleId; }
+
     // Which display fullscreen playback should open on, matching the UI's
     // app-level "display_index" (index into QGuiApplication::screens(), plus
     // that screen's QScreen::name()). main.cpp calls this once at startup;
@@ -104,9 +108,13 @@ private:
     // App-level "smooth_playback" setting (default ON). On the Pi 3 this selects the
     // smooth zero-copy overlay path; turning it OFF restores the crop-capable scaler path.
     bool smoothPlaybackEnabled() const;
-    // App-level "auto_crop" setting (default OFF). When ON, playback starts with
-    // panscan=1 so video fills a CRT/4:3 screen by default (still toggleable live).
+    // App-level "auto_crop" setting (default OFF), from before Scaling: its ON
+    // reads as Pan & Scan while no Scaling has been chosen.
     bool autoCropEnabled() const;
+    // The Scaling in force ("Letterbox", "14:9", "Pan & Scan", "Anamorphic"):
+    // the active module's own "video_scaling", unless it is "Default", then the
+    // app's.
+    QString videoScaling() const;
     // True when the active decode path can't crop (Pi 3 overlay path with smooth
     // playback ON): --panscan blanks the video there. Gates auto-crop and tells
     // the OSC scripts to hide their CROP button.
@@ -119,6 +127,7 @@ private:
     static constexpr const char *kHandoffOwner = "mpv";
 
     AppCore        *m_appCore      = nullptr;
+    QString         m_activeModule;
     DisplayHandoff *m_handoff      = nullptr;
     VideoProfile  m_videoProfile  = VideoProfile::Generic;
     QProcess     *m_process        = nullptr;

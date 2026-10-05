@@ -72,6 +72,14 @@
       "type": "toggle",
       "default": "OFF",
       "description": "Hide file extensions when browsing."
+    },
+    {
+      "key": "video_scaling",
+      "label": "Scaling",
+      "type": "list_single",
+      "options": ["Default", "Letterbox", "14:9", "Pan & Scan", "Anamorphic"],
+      "default": "Default",
+      "description": "How a 16:9 picture fills the 4:3 screen in this module\n[DEFAULT] As Settings' Scaling says"
     }
   ]
 }
