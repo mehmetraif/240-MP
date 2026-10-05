@@ -12,7 +12,7 @@ Think of 240-MP as a **browsing shell** that hands off to **purpose-built tools*
 
 - The app shell handles browsing, auth, and settings
 - **Modules** are self-contained media integrations (Local Files, Plex, Ambient Mode, etc...) that the shell discovers and loads at startup.
-- When a user picks something to play, the shell hands off to a dedicated fullscreen tool and resumes when that tool exits. For video, that tool is **mpv**, launched as a subprocess by `MpvController`. mpv is installed separately (`apt install mpv` / `brew install mpv`).  240-MP does not link against libmpv.
+- When a user picks something to play, the shell hands off to a dedicated fullscreen tool and resumes when that tool exits. For video, that tool is **mpv**, launched as a subprocess by `MpvController`. mpv is installed separately (`apt install mpv` / `brew install mpv`).  240-MP does not link against libmpv. The one exception is the **Transparent Background** setting, which plays video inside the app's own window through libmpv, opened at run time (see [Transparent Background](#transparent-background-video-inside-the-app)).
 
 The guiding idea: **browse structured content, then hand off to the right tool for the job** rather than bundling everything into one binary.
 
@@ -31,6 +31,8 @@ The guiding idea: **browse structured content, then hand off to the right tool f
       ...
     player/
       MpvController.h/.cpp          # mpv subprocess controller: QProcess launch + IPC socket
+      EmbeddedMpv.h/.cpp            # mpv inside the app's window (Transparent Background), libmpv opened at run time
+      VideoSurface.h/.cpp           # the QML item that shows EmbeddedMpv's picture
     boot/
       BootProgress.h/.cpp           # boot screen state on the 240-MP OS image (inert elsewhere)
   modules/                          # QML + assets per module (discovered at startup)
@@ -144,6 +146,7 @@ A real example (Plex) — note `requires_auth`, dynamic options, and apply slots
 | `add_to_list(moduleId, name, entry, limit)` | Puts an entry first, in place of one with its `path`, and keeps the newest `limit` (50 unless given) |
 | `remove_from_list(moduleId, name, path)` / `list_contains(moduleId, name, path)` | Takes an entry off a list / says whether one is on it |
 | `get_module_info(moduleId)` | Returns `{name, icon}` for a module |
+| `moduleEntryPoint(moduleId)` | An enabled module's QML entry point (`startupModuleEntryPoint()` is the startup module's) |
 | `get_module_settings_schema(moduleId)` | Returns the module's settings array |
 | `invoke_module_action(moduleId, slotName)` | Routes to the registered backend via `QMetaObject::invokeMethod` |
 | `get_module_auth_state(moduleId)` | Returns the module's auth state (for `requires_auth` settings) |
@@ -203,6 +206,8 @@ The current MPV implementation is a good reference implementation of the "browse
 
     **The baseline for every module to keep in mind:** by the time `playbackEnded` fires, mpv has already exited, so a handler that returns without either calling `goBack()` or starting fresh playback (`loadAndPlay`, e.g. in an autoplay/retry scenario) will leave the now-defunct Player view focused over a dead subprocess which will cause the app to freeze. So please handle the one signal, then branch on `reason` only where you have special behavior, and make sure no branch falls through.
 
+    With Transparent Background on, back from a video fires `playbackEnded(…, "stopped")` while the picture goes on behind the menus (see below): handled as above, it returns to the menus over it.
+
 ### Per-device video decode profiles
 
 The `--vo`/`--hwdec` flags mpv launches with are auto-selected per device to try to target hardware-decodes efficiently per device without the need for user setup. `MpvController::detectVideoProfile()` reads `/proc/device-tree/model` once at startup; `appendVideoArgs()` then picks the flag set:
@@ -258,6 +263,17 @@ app constants →
 ### Custom OSC (Lua)
 
 The on-screen controls mpv shows during playback are custom Lua scripts in `scripts/` (`mpv-osc.lua` for normal playback, `mpv-osc-ambient.lua` for Ambient Mode), loaded via mpv's `--script=` flag. Options are passed in with `--script-opts=` (e.g. `transcode-offset=<sec>`). The remote's key events reach these scripts through the `keypress` IPC bridge described above.
+
+### Transparent Background: video inside the app
+
+With Settings → **Transparent Background** (`app.transparent_background`: `Off`, `On`, `Dim`), `loadAndPlay()` plays the video inside the app's own window instead of starting an mpv process over it, so the menus can be drawn over the picture. Back from a video then returns to the menus and leaves it playing behind them, the way a deck's menu lies over the tape.
+
+- **`EmbeddedMpv`** (`src/player/EmbeddedMpv.h/.cpp`) is mpv as a library. libmpv is opened at run time with `QLibrary` (`libmpv.so.2`, or `libmpv.2.dylib` in Homebrew's prefixes), never linked, so the app runs where it is missing; `mpvController.embeddedAvailable()` says whether it loaded, and Settings offers the row only then. Its headers are optional at build time (`pkg-config mpv`, so `libmpv-dev` / Homebrew's mpv); without them `MP240_EMBEDDED_MPV` is left undefined and it is never available.
+- **The same session.** `sessionArgs()` builds the command line the subprocess gets, and `EmbeddedMpv::start()` turns it into options and a playlist: `--x=y` is option `x`, a repeated list option (`--script`, `--sub-file`, `--http-header-fields`) is gathered and set whole as a node array, so an item keeps any character, and an option this libmpv doesn't know is skipped with a warning where the mpv command line would refuse to start. On top: `vo=libmpv`, `idle=once` (it quits when its playlist has played out, as the process exits), `input-default-bindings=yes` (libmpv leaves them off). Decoding uses each profile's copy-back mode (Pi 4 `drm-copy,v4l2m2m-copy`, Pi 3 `v4l2m2m-copy`, Pi 5 `auto-copy-safe`, desktop Linux `vaapi-copy,nvdec-copy,no`, macOS `videotoolbox-copy`), the `mpv_video_args` override is not used, and libmpv reads no `mpv.conf`. The IPC socket, the OSC scripts and every signal work as for the process; there is no `DisplayHandoff`, since the app keeps the screen.
+- **The picture** comes from libmpv's software renderer (`MPV_RENDER_API_TYPE_SW`), on a thread of its own, at the pixel size of the **`VideoSurface`** item (`src/player/VideoSurface.h/.cpp`, `import MP240.Video`) that shows it: the same CPU colour conversion and scaling `--vo=drm` does on a Pi 4, into memory rather than a KMS buffer. It works on every scene graph backend. On a Pi 3 the CPU is short for it.
+- **Back** is mapped by the session's input.conf to `script-message 240mp-menu` (the OSC's own menu, while open, still takes it first). `detachToMenus()` then emits `playbackEnded(pos, dur, "stopped")`: the module saves where it got to, reports it stopped, and goes back, while the session goes on (`mpvController.background`). Its position is followed but no longer reported. `Main.qml` puts the `VideoSurface` over everything while a session plays full screen and under the views while `background` (`root.videoBehind`); the views draw no background of their own, so the picture is theirs, and `Dim` lays the background colour at 60% between them. Full-screen dialogs keep their own background, and the title bar's logo gets a box of it.
+- **Chosen again** (the same command line apart from `--start`), the session is not reloaded: `reattach()` brings it back full screen. A module resuming at the point it saved when back left it carries on where the picture is now; any other start (from the beginning, say) is sought.
+- **It ends** when its playlist plays out, with play/pause on the main menu (`stopBackground()`, `[SPACE]:STOP` in its footer), with any other playback, when something else takes the screen (`DisplayHandoff::handingOff`, emitted at every `acquire()`: a takeover script, a web player) and when the setting is turned off. Behind the menus no `playbackEnded` follows: its module took it as stopped already. A server told the stream stopped (a Plex, Jellyfin or Emby transcode) may end it sooner.
 
 ### Raspberry Pi headless hand-off (EGLFS)
 
@@ -619,6 +635,8 @@ When it comes up is the app's **INFO SCREEN** setting (`app.info_screen`): `off`
 
 The tree modules (Local Files, Netflix, Prime Video, YouTube) begin with **RECENTLY WATCHED** and **FAVORITES**, then **SEARCH** and their own folders. Both are the module's lists in AppCore (`get_list(moduleId, "recent" | "favorites")`, kept in `lists.json` in the data folder), holding entries as the tree had them, so one plays from there as it would from anywhere else: a view puts an entry on `recent` as it plays it (the newest 30), and on `favorites` from its options (`EntryOptions`). YouTube's RECENTLY WATCHED is its own watch history (`history`), which keeps the resume positions too. Local Files leaves out the entries whose file has gone (`existing()`, a drive taken out, say), and its SEARCH walks the whole media folder a slice at a time, so a big library never holds the screen still: `search(path, words)` gives what the last search for that folder found, or starts it and `searchReady(path)` follows, keeping the first 200 names that hold every word.
 
+One favourite can **PLAY AT STARTUP**: chosen in its options (`EntryOptions`, which puts it on FAVORITES too), it is the app setting `startup_favorite` (`{ module, path, name }`). After the boot screen `Main.qml`'s `openStartupModule()` opens its module, ahead of Start on Module, with `navParams.startupPlay` set to the entry, as long as it is still one of that module's favourites; the module's router passes it on to its tree view, which plays it as if chosen in FAVORITES (a trail into that folder, so back from it lands there). Only as the view first opens: a view coming back gets `navListState` instead. Settings → Play at Startup can only turn it off. `AppCore::save_setting` takes a JS object for this (QML hands it over as a `QJSValue`).
+
 ### OnScreenKeyboard (`views/Components/OnScreenKeyboard.qml`)
 
 Typing with a remote: a grid of letters and digits under the line being typed, the way a deck's menu spells a title. The arrows move the box, Select types what is in it (or `SPACE`, `DEL`, `OK` on the last row), Back cancels; a real keyboard types straight in. It covers its parent below the title bar: `open(initial)`, then `accepted(text)` or `canceled()`.
@@ -637,7 +655,7 @@ Call `open()` to show it. It emits `activated(action)` when the user picks one a
 
 ### EntryOptions (`views/Components/EntryOptions.qml`)
 
-An entry's options, as a `ChoiceOverlay`: **Add to Favorites** or **Remove from Favorites** (the module's `favorites` list, `moduleId`), then whatever the host adds in `moreChoices` and acts on in its own `onActivated` (YouTube's **Save to Watch Later**). A tree view opens it with `offer(entry)` on Right on an entry (`optionsRequested`, from the tree or its `InfoPanel`), and refreshes its FAVORITES folder on `favoritesEdited()`.
+An entry's options, as a `ChoiceOverlay`: **Add to Favorites** or **Remove from Favorites** (the module's `favorites` list, `moduleId`), **Play at Startup** or **Don't Play at Startup** (see above), then whatever the host adds in `moreChoices` and acts on in its own `onActivated` (YouTube's **Save to Watch Later**). A tree view opens it with `offer(entry)` on Right on an entry (`optionsRequested`, from the tree or its `InfoPanel`), and refreshes its FAVORITES folder on `favoritesEdited()`.
 
 ### NfcCardWriter (`views/Components/NfcCardWriter.qml`)
 

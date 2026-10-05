@@ -23,7 +23,7 @@ brew install cmake
 brew install mpv
 ```
 
-Note: 240-MP uses mpv as an external subprocess for video playback. It does not link against libmpv at build time, so mpv only needs to be on your `PATH` when running the app.
+Note: 240-MP uses mpv as an external subprocess for video playback. It does not link against libmpv at build time, so mpv only needs to be on your `PATH` when running the app. The Transparent Background setting (video played inside the app's window) opens Homebrew's libmpv at run time; it is built in when `pkg-config` finds mpv's headers, which `brew install mpv pkgconf` provides.
 
 **Install yt-dlp and Deno (optional, required only for the YouTube module):**
 
@@ -109,7 +109,7 @@ sudo apt-get install -y \
   mpv
 ```
 
-`mpv` is the playback engine — 240-MP launches it as a subprocess. No libmpv build dependency is required.
+`mpv` is the playback engine — 240-MP launches it as a subprocess. No libmpv build dependency is required. `libmpv-dev` is optional: with its headers the Transparent Background setting is built in, which plays video inside the app's window through libmpv (`libmpv2`, opened at run time; `install.sh` and the OS image install it).
 
 For the NFC Reader module, `libpcsclite-dev` is optional and only needed for PC/SC readers such as the ACR122U — it is detected automatically at configure time. A PN532 USB reader needs no build dependency at all.
 
