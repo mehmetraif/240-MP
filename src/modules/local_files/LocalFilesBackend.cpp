@@ -39,9 +39,10 @@ static constexpr int kSearchSlice = 400;
 LocalFilesBackend::~LocalFilesBackend() = default;
 
 LocalFilesBackend::LocalFilesBackend(const QString &appRoot, const QString &dataRoot, QObject *parent)
-    : QObject(parent), m_appRoot(appRoot), m_dataRoot(dataRoot), m_mediaRoot(dataRoot + "/media")
+    : QObject(parent), m_appRoot(appRoot), m_dataRoot(dataRoot)
 {
-    // Resolve the configured media directory (falls back to the dataRoot/media default).
+    m_mediaRoot = defaultMediaRoot();
+    // Resolve the configured media directory (falls back to the default above).
     QFile f(m_dataRoot + "/config.json");
     if (f.open(QIODevice::ReadOnly)) {
         QJsonObject cfg = QJsonDocument::fromJson(f.readAll()).object();
@@ -188,9 +189,14 @@ QString LocalFilesBackend::mediaRoot() const {
     return m_mediaRoot;
 }
 
+QString LocalFilesBackend::defaultMediaRoot() const {
+    const QString dir = qEnvironmentVariable("MP240_MEDIA_DIR");
+    return dir.isEmpty() ? m_dataRoot + QStringLiteral("/media") : dir;
+}
+
 void LocalFilesBackend::setMediaRoot(const QString &path) {
-    // An empty (reset) setting means back to the dataRoot/media default.
-    m_mediaRoot = path.isEmpty() ? m_dataRoot + "/media" : path;
+    // An empty (reset) setting means back to the default.
+    m_mediaRoot = path.isEmpty() ? defaultMediaRoot() : path;
     QDir().mkpath(m_mediaRoot);
     // What was found was found in the old folder.
     m_search.reset();

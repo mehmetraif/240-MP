@@ -1,0 +1,3 @@
+# For the film partition (see 00-run.sh): mkfs.exfat, which the first boot's
+# initramfs formats it with, and fsck.exfat.
+exfatprogs

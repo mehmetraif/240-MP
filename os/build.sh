@@ -19,6 +19,9 @@
 #   MP240_STREAMING   1 (default) or 0: the browser the Netflix and Prime
 #                     Video modules open (Chromium with Widevine, and cage),
 #                     about 400 MB
+#   MP240_ROOT_SIZE   GiB the system keeps of the card, 8 by default; the rest
+#                     becomes the exFAT film partition on the first boot. 0: no
+#                     film partition, the system takes the whole card
 #   TARGET_HOSTNAME   default "240mp"
 #   IMG_NAME          default "240mp-os"
 #   WPA_COUNTRY, LOCALE_DEFAULT, KEYBOARD_KEYMAP, KEYBOARD_LAYOUT,
@@ -83,6 +86,13 @@ mkdir -p "${STAGE}/01-app/files"
 if [ "${MP240_STREAMING:-1}" = "0" ]; then
     touch "${STAGE}/04-streaming/SKIP"
 fi
+# The film partition, unless MP240_ROOT_SIZE=0 leaves the card to the system.
+case "${MP240_ROOT_SIZE:-8}" in
+    ''|*[!0-9]*) echo "error: MP240_ROOT_SIZE must be a whole number of GiB" >&2; exit 1 ;;
+esac
+if [ "${MP240_ROOT_SIZE:-8}" -eq 0 ]; then
+    touch "${STAGE}/05-media/SKIP"
+fi
 # pi-gen silently skips a prerun.sh or NN-run.sh that isn't executable, which
 # would leave the stage without its root filesystem or the app. Don't rely on
 # the checkout having kept the bits (a ZIP download, a Windows clone).
@@ -134,6 +144,7 @@ CONFIG="${PIGEN}/config"
     # Read by the stage's own scripts, so they have to reach their environment.
     printf 'export MP240_DISPLAY=%q\n' "${MP240_DISPLAY:-hdmi}"
     printf 'export MP240_LOCK_FIRST_USER=%q\n' "${MP240_LOCK_FIRST_USER}"
+    printf 'export MP240_ROOT_SIZE=%q\n' "${MP240_ROOT_SIZE:-8}"
 } > "${CONFIG}"
 
 # ── Build ─────────────────────────────────────────────────────────────────────
