@@ -12,6 +12,36 @@
       "description": "Opens Netflix's own player full screen\nNeeds Chromium with Widevine (on the 240-MP OS image already)"
     },
     {
+      "key": "region",
+      "label": "Catalogue Region",
+      "type": "list_single",
+      "options": [
+        "TR",
+        "US",
+        "GB",
+        "DE",
+        "FR",
+        "NL",
+        "ES",
+        "IT",
+        "CA",
+        "AU"
+      ],
+      "default": "TR",
+      "description": "The country whose Netflix catalogue to list\nTitles come from TMDB, which needs a free API key in tmdb_api_key.txt"
+    },
+    {
+      "key": "catalog_language",
+      "label": "Catalogue Language",
+      "type": "list_single",
+      "options": [
+        "English",
+        "Turkish"
+      ],
+      "default": "English",
+      "description": "The language of titles and genres in the catalogue"
+    },
+    {
       "key": "sign_out",
       "label": "Sign out",
       "type": "action",

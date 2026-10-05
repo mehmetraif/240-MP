@@ -2,7 +2,10 @@
 #include "../scripts/ScriptLauncher.h"
 #include "../../util/DisplayHandoff.h"
 #include <QDir>
+#include <QFile>
 #include <QFileInfo>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QStandardPaths>
 #include <QDebug>
 
@@ -27,12 +30,24 @@ bool haveBrowser() {
 
 } // namespace
 
-WebPlayerBackend::WebPlayerBackend(const QString &service, const QString &url,
+WebPlayerBackend::WebPlayerBackend(const Service &service,
                                    const QString &appRoot, const QString &dataRoot,
                                    DisplayHandoff *handoff, QObject *parent)
-    : QObject(parent), m_service(service), m_url(url),
+    : QObject(parent), m_service(service.id), m_url(service.homeUrl),
       m_appRoot(appRoot), m_dataRoot(dataRoot)
 {
+    m_catalog = new TmdbCatalog(m_dataRoot, service.catalog, this);
+    // The catalogue's settings as they stand: AppCore isn't available to
+    // backends at construction time, so straight from config.json, as the
+    // other backends do.
+    QFile f(m_dataRoot + QStringLiteral("/config.json"));
+    if (f.open(QIODevice::ReadOnly)) {
+        const QJsonObject settings = QJsonDocument::fromJson(f.readAll()).object()
+            .value(QStringLiteral("modules")).toObject().value(moduleId()).toObject();
+        for (const QString &key : { QStringLiteral("region"), QStringLiteral("catalog_language") })
+            applySetting(key, settings.value(key).toVariant());
+    }
+
     m_launcher = new ScriptLauncher(m_appRoot, m_dataRoot, handoff, this);
     m_launcher->setHandoffOwner(m_service);
     connect(m_launcher, &ScriptLauncher::runningChanged,
@@ -50,7 +65,24 @@ QString WebPlayerBackend::browserProfile() const {
     return m_dataRoot + QLatin1Char('/') + m_service + QStringLiteral("/browser");
 }
 
-bool WebPlayerBackend::launch() {
+void WebPlayerBackend::onSettingChanged(const QString &moduleId, const QString &key,
+                                        const QVariant &value) {
+    if (moduleId == this->moduleId())
+        applySetting(key, value);
+}
+
+void WebPlayerBackend::applySetting(const QString &key, const QVariant &value) {
+    if (key == QLatin1String("region")) {
+        m_catalog->setRegion(value.toString());
+    } else if (key == QLatin1String("catalog_language")) {
+        const QString language = value.toString();
+        if (!language.isEmpty())
+            m_catalog->setLanguage(language == QLatin1String("Turkish") ? QStringLiteral("tr-TR")
+                                                                        : QStringLiteral("en-US"));
+    }
+}
+
+bool WebPlayerBackend::launch(const QString &url) {
     m_lastError.clear();
 
     const QString script = m_appRoot + QStringLiteral("/scripts/web-player.sh");
@@ -78,7 +110,7 @@ bool WebPlayerBackend::launch() {
     // The browser is a family of processes; the screen comes back once all
     // of them have gone.
     entry.meta.wait   = QStringLiteral("pgroup");
-    entry.meta.args   = QStringLiteral("\"%1\" \"%2\"").arg(m_service, m_url);
+    entry.meta.args   = QStringLiteral("\"%1\" \"%2\"").arg(m_service, url.isEmpty() ? m_url : url);
 
     QString error;
     if (!m_launcher->start(entry, &error)) {

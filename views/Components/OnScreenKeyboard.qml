@@ -79,8 +79,11 @@ FocusScope {
     readonly property real cellH: root.sh * 0.0666667 //32
     readonly property real fontSize: root.sh * 0.05 //24
 
+    // Everything under the title bar.
     Rectangle {
-        anchors.fill: parent
+        y: root.sh * 0.1916667 //92
+        width: parent.width
+        height: parent.height - y
         color: root.surfaceColor
     }
 

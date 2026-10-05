@@ -63,6 +63,7 @@ add_executable(240mp
     src/modules/scripts/ScriptsBackend.cpp
     src/modules/scripts/ScriptLauncher.cpp
     src/modules/web_player/WebPlayerBackend.cpp
+    src/modules/web_player/TmdbCatalog.cpp
     src/player/MpvController.cpp
     src/util/YtDlpLocator.cpp
     src/util/MpvLocator.cpp

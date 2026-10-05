@@ -64,7 +64,7 @@ FocusScope {
             }
         }
         if (branched)
-            layoutBranches()
+            layoutBranches(true)
     }
 
     // Under the cursor, or null.
@@ -84,10 +84,16 @@ FocusScope {
     readonly property real treeBottom: root.sh * 0.8333333 //400
     // The spine, in tree-area coordinates.
     readonly property real spine: Math.round((treeBottom - treeTop) / 2)
+    // How far the area reaches above and below the spine: only rows wholly
+    // inside it are drawn, so none is cut in half by its edge.
+    readonly property real bandTop: -spine
+    readonly property real bandBottom: treeBottom - treeTop - spine
     // Branches: the gap before each level leaves room for the lanes their
     // lines turn in, one a line's width apart from the next.
     readonly property real branchGap: root.sw * 0.0625 //40
     readonly property real laneStep: 2 * lineWidth
+    // Narrower than this, a level of branches isn't worth drawing.
+    readonly property real minBranchWidth: root.sw * 0.1 //64
     readonly property real blockGap: Math.round(rowHeight / 2)
     // Entries a branch shows: a window around the remembered row for the folder
     // under the cursor, the first few for the others.
@@ -106,8 +112,9 @@ FocusScope {
     property int revision: 0
     // Last cursor row per folder, so reopening one lands where it was left.
     property var remembered: ({})
-    // Left edge of each open folder's column.
+    // Left edge and width of each open folder's column.
     property var columnX: []
+    property var columnW: []
     // The branches off the current folder, in strip coordinates with y from the
     // spine: blocks of entries { x, top, width, rows: [{ label }] }, the dotted
     // lines to them { x0, y0, x1, y1, lane }, and how far right they reach.
@@ -115,13 +122,17 @@ FocusScope {
     property var wires: []
     property real branchLeft: 0
     property real branchRight: 0
+    // Where placeStrip() put the strip (it may still be sliding there).
+    property real stripTarget: 0
     property bool branched: false
     // Open folders left of this one are off to the left: their names are
     // hidden and the spine runs on through them from the screen's edge.
     property int firstShown: 0
     property string folderName: ""
-    // The top folder has nothing in it (once it has come in).
-    readonly property bool rootEmpty: { revision; return !listing(rootPath).pending && listing(rootPath).items.length === 0 }
+    // The top folder has nothing in it (once it has come in). Not asked
+    // before the tree is ready: a listing is measured once and kept, and until
+    // then the measuring font may not be set yet.
+    readonly property bool rootEmpty: { revision; return ready && !listing(rootPath).pending && listing(rootPath).items.length === 0 }
     property bool ready: false
 
     FontMetrics {
@@ -139,23 +150,29 @@ FocusScope {
         return Math.ceil(metrics.advanceWidth(text.toUpperCase()))
     }
 
-    // { items, width, pending }. A folder only a branch asked for, and that its
+    // { items, width, fullWidth, leaf, pending }: width is the column's as a
+    // folder on the way, fullWidth what its longest name needs, and leaf says
+    // nothing in it is a folder. A folder only a branch asked for, and that its
     // source left unfetched, is asked for again once it is opened.
     function listing(path, preview) {
-        if (!path) return { items: [], width: 0, pending: false }
+        if (!path) return { items: [], width: 0, fullWidth: 0, leaf: true, pending: false }
         // Bindings can ask before the host has set fetch; nothing is kept then.
-        if (!fetch) return { items: [], width: 0, pending: true }
+        if (!fetch) return { items: [], width: 0, fullWidth: 0, leaf: true, pending: true }
         var l = listings[path]
         if (l && !(l.pending && l.previewOnly && !preview))
             return l
         var items = fetch(path, !!preview)
         if (items === null || items === undefined) {
-            l = { items: [], width: textWidth("loading\u2026"), pending: true, previewOnly: !!preview }
+            var lw = textWidth("loading\u2026")
+            l = { items: [], width: lw, fullWidth: lw, leaf: true, pending: true, previewOnly: !!preview }
         } else {
             var w = items.length > 0 ? 0 : textWidth("(empty)")
-            for (var i = 0; i < items.length; ++i)
+            var leaf = true
+            for (var i = 0; i < items.length; ++i) {
                 w = Math.max(w, textWidth(displayName(items[i])))
-            l = { items: items, width: Math.min(maxColumnWidth, w), pending: false }
+                if (items[i].isFolder) leaf = false
+            }
+            l = { items: items, width: Math.min(maxColumnWidth, w), fullWidth: w, leaf: leaf, pending: false }
         }
         listings[path] = l
         return l
@@ -172,15 +189,26 @@ FocusScope {
         return parts[parts.length - 1] || path
     }
 
-    // Places the columns side by side.
+    // Places the columns side by side. The one with the cursor, when nothing
+    // in it branches, takes the room up to the right edge for long names.
     function placeColumns() {
         var xs = []
+        var ws = []
         var x = 0
         for (var i = 0; i < trail.count; ++i) {
+            var l = listing(trail.get(i).path)
+            var w = l.width
+            if (i === trail.count - 1 && l.leaf) {
+                // The cursor's box reaches a pad past the column.
+                var room = rightEdge - leftEdge - pad - (i > 0 ? ws[i - 1] + gap : 0)
+                w = Math.max(w, Math.min(l.fullWidth, room))
+            }
             xs.push(x)
-            x += listing(trail.get(i).path).width + gap
+            ws.push(w)
+            x += w + gap
         }
         columnX = xs
+        columnW = ws
     }
 
     // Slides the strip so the parent folder starts at the left edge, unless
@@ -190,9 +218,10 @@ FocusScope {
     // Only opening and closing folders move it.
     function placeStrip() {
         var activeLeft = columnX[active]
-        var right = Math.max(activeLeft + listing(trail.get(active).path).width, branchRight)
+        var right = Math.max(activeLeft + columnW[active], branchRight)
         var want = leftEdge - (active > 0 ? columnX[active - 1] : 0)
         var stripX = Math.max(leftEdge - activeLeft, Math.min(want, rightEdge - right))
+        stripTarget = stripX
         strip.x = stripX
         // Only the parent stays named, and only while it is wholly on screen.
         firstShown = Math.max(0, active - 1)
@@ -225,20 +254,23 @@ FocusScope {
             if (items.length > branchRows)
                 rows.push({ label: "\u2026" })
         }
-        var w = 0
+        // A folder still on its way keeps a whole column's room, so the
+        // strip is placed for its entries rather than for "loading…".
+        var w = l.pending ? maxColumnWidth : 0
         for (var k = 0; k < rows.length; ++k)
             w = Math.max(w, textWidth(rows[k].label))
         return { path: path, rows: rows, offset: offset, width: Math.min(maxColumnWidth, w) }
     }
 
-    // One level of branches. parents: the folders it branches from, top to
-    // bottom, { path, y, end } with y the middle of the folder's row and end
-    // where a line can leave it. The one on the spine keeps its remembered
+    // One level of branches, its blocks no wider than room. parents: the
+    // folders it branches from, top to bottom, { path, y, end } with y the
+    // middle of the folder's row and end where a line can leave it. The one
+    // on the spine keeps its remembered
     // entry on the spine; every other block grows away from the spine from
     // its folder's row, as near to it as the block before it allows. A line
     // that has to turn does it in a lane of its own, the farther from the
     // spine the further left, so no two lines cross.
-    function branchLevel(parents, laneLeft, x) {
+    function branchLevel(parents, laneLeft, x, room) {
         var level = { blocks: [], wires: [], width: 0, anchor: null }
         var top = -rowHeight / 2
         var bottom = rowHeight / 2
@@ -285,6 +317,10 @@ FocusScope {
                     b.top += shift
                     target += shift
                 }
+                // One that would cross the area's edge is left out with its
+                // line, and so is every one further out.
+                if (b.top < bandTop || b.top + h > bandBottom)
+                    break
                 limit = sides[s].up ? b.top - blockGap : b.top + h + blockGap
                 level.blocks.push(b)
                 var wire = { x0: q.end, y0: q.y, x1: x - pad, y1: target, lane: -1 }
@@ -300,6 +336,7 @@ FocusScope {
         }
         for (var m = 0; m < level.blocks.length; ++m) {
             level.blocks[m].x = x
+            level.blocks[m].width = Math.min(level.blocks[m].width, room)
             level.width = Math.max(level.width, level.blocks[m].width)
         }
         return level
@@ -307,12 +344,14 @@ FocusScope {
 
     // Lays out the branches off the folder with the cursor: one level from
     // every folder in it that is near enough to show, and a second from each
-    // folder in the block under the cursor.
-    function layoutBranches() {
+    // folder in the block under the cursor. stripFixed: the strip stays where
+    // it is (the cursor moved, or a branch's entries came in), rather than
+    // being placed again for these branches.
+    function layoutBranches(stripFixed) {
         var col = trail.get(active)
         var items = listing(col.path).items
         var colX = columnX[active]
-        var colW = listing(col.path).width
+        var colW = columnW[active]
         var reach = Math.ceil(spine / rowHeight) + 1
         var parents = []
         for (var i = Math.max(0, col.sel - reach); i < Math.min(items.length, col.sel + reach + 1); ++i) {
@@ -325,14 +364,20 @@ FocusScope {
                 end: colX + name + (i === col.sel ? 2 : 1) * pad
             })
         }
+        // Nothing may reach past the right edge: where it is now, if the strip
+        // stays put, or else where it is once the strip has slid as far as it
+        // goes, which puts this column at the left edge.
+        var reachRight = stripFixed ? rightEdge - stripTarget : colX + rightEdge - leftEdge
         var x1 = colX + colW + branchGap
-        var first = branchLevel(parents, colX + colW, x1)
+        if (reachRight - x1 < minBranchWidth)
+            parents = []
+        var first = branchLevel(parents, colX + colW, x1, reachRight - x1)
         var all = first.blocks.slice()
         var lines = first.wires.slice()
         var right = first.blocks.length > 0 ? x1 + first.width : 0
         var a = first.anchor
-        if (a) {
-            var x2 = x1 + first.width + branchGap
+        var x2 = x1 + first.width + branchGap
+        if (a && reachRight - x2 >= minBranchWidth) {
             var next = []
             for (var k = 0; k < a.rows.length; ++k) {
                 var entry = a.rows[k].item
@@ -343,7 +388,7 @@ FocusScope {
                     end: x1 + Math.min(a.width, textWidth(a.rows[k].label)) + pad
                 })
             }
-            var second = branchLevel(next, x1 + first.width, x2)
+            var second = branchLevel(next, x1 + first.width, x2, reachRight - x2)
             all = all.concat(second.blocks)
             lines = lines.concat(second.wires)
             if (second.blocks.length > 0)
@@ -379,7 +424,7 @@ FocusScope {
     function relayout() {
         branchTimer.stop()
         placeColumns()
-        layoutBranches()
+        layoutBranches(false)
         placeStrip()
     }
 
@@ -428,10 +473,20 @@ FocusScope {
     Timer {
         id: branchTimer
         interval: 180
-        onTriggered: tree.layoutBranches()
+        onTriggered: tree.layoutBranches(true)
     }
 
+    // A key already held as the tree appears (BACK held to close a player,
+    // say) goes on repeating into it. Only presses that begin here count, or
+    // the repeat would climb out of every folder, and out of the module.
+    property bool keysArmed: false
+
     Keys.onPressed: function(event) {
+        if (event.isAutoRepeat && !keysArmed) {
+            event.accepted = true
+            return
+        }
+        keysArmed = true
         switch (event.key) {
         case Qt.Key_Up:
             move(-1)
@@ -475,6 +530,8 @@ FocusScope {
         property bool collapsed: false
         // The next column is collapsed too, so the line runs into it unbroken.
         property bool joinsNext: false
+        // From placeColumns(); its listing's own width until then.
+        property real columnWidth: -1
 
         readonly property var entries: { tree.revision; return tree.listing(folderPath) }
         readonly property var items: entries.items
@@ -483,7 +540,7 @@ FocusScope {
         property real slide: 0
         property int lastIndex: 0
 
-        width: entries.width
+        width: columnWidth >= 0 ? columnWidth : entries.width
         height: parent ? parent.height : 0
 
         onCursorIndexChanged: {
@@ -523,11 +580,14 @@ FocusScope {
                 readonly property bool current: index === col.reach
                 readonly property bool cursor: current && col.role === "active"
                 readonly property string label: entry ? tree.displayName(entry) : ""
+                // Where it rests between slides; a row the area's edge would
+                // cut there isn't drawn.
+                readonly property real restY: tree.spine - height / 2 + (index - col.reach) * height
 
-                visible: entry !== undefined
+                visible: entry !== undefined && restY >= 0 && restY + height <= col.height
                 width: col.width
                 height: tree.rowHeight
-                y: tree.spine - height / 2 + (index - col.reach + col.slide) * height
+                y: restY + col.slide * height
 
                 // The cursor: the row in a solid box, its name in the
                 // background colour, as a deck's menu marks what is selected.
@@ -625,6 +685,7 @@ FocusScope {
                     required property string path
                     required property int sel
                     x: tree.columnX[index] !== undefined ? tree.columnX[index] : 0
+                    columnWidth: tree.columnW[index] !== undefined ? tree.columnW[index] : -1
                     folderPath: path
                     cursorIndex: sel
                     role: index === tree.active ? "active" : "path"
@@ -695,14 +756,15 @@ FocusScope {
                 Repeater {
                     model: tree.blocks
                     Column {
+                        id: block
                         required property var modelData
                         x: modelData.x
                         y: tree.spine + modelData.top
                         Repeater {
-                            model: parent.modelData.rows
+                            model: block.modelData.rows
                             Text {
                                 required property var modelData
-                                width: Math.min(implicitWidth, tree.maxColumnWidth)
+                                width: Math.min(implicitWidth, block.modelData.width)
                                 height: tree.rowHeight
                                 verticalAlignment: Text.AlignVCenter
                                 text: modelData.label
