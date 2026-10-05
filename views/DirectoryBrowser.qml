@@ -136,6 +136,12 @@ FocusScope {
         }
     }
 
+    // ▲ / ▼ while lines are hidden above or below.
+    ScrollMarks {
+        anchors.fill: dirList
+        list: dirList
+    }
+
     HintBar {
         text: root.hints.back + ":CANCEL  " + root.hints.navigate + ":NAVIGATE  " + root.hints.select + ":SELECT"
         anchors.bottom: parent.bottom

@@ -135,7 +135,8 @@ FocusScope {
         anchors.topMargin: root.sh * 0.25 //120
         anchors.leftMargin: root.sw * 0.115625 //74
         width: root.sw * 0.76875 //492
-        height: root.sh * 0.525 //252
+        // One row short of the space, so the ▼ fits above the help line.
+        height: root.sh * 0.4666667 //224
         clip: true
         focus: !remapRoot.capturing
 
@@ -172,6 +173,12 @@ FocusScope {
             value: modelData.isReset ? "" : (modelData.value || "")
             selected: rowList.currentIndex === index
         }
+    }
+
+    // ▲ / ▼ while lines are hidden above or below.
+    ScrollMarks {
+        anchors.fill: rowList
+        list: rowList
     }
 
     // --- HELP TEXT --- on one line that scrolls when it is too long.

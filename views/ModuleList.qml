@@ -169,6 +169,12 @@ FocusScope {
         }
     }
 
+    // ▲ / ▼ while lines are hidden above or below.
+    ScrollMarks {
+        anchors.fill: menuList
+        list: menuList
+    }
+
     // --- FOOTER ---
     HintBar {
         id: footer

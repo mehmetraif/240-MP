@@ -5,7 +5,8 @@ import QtQuick
 // the value against the line's right end. Everything sits on the font's
 // character grid, one dot per cell, so the dots meet the value exactly. The
 // selected line is a solid bar with its text in the background colour. A line
-// without a value (a submenu) is just its label.
+// without a value (a submenu) is just its label, and a heading over a group of
+// lines is its label with a rule on to the line's end.
 Item {
     id: menuRow
 
@@ -13,6 +14,8 @@ Item {
     // "" for a line with no value.
     property string value: ""
     property bool selected: false
+    // A group's heading rather than a line: "MODULES ─────".
+    property bool heading: false
     property real fontSize: root.sh * 0.05 //24
 
     readonly property color ink: selected ? root.surfaceColor : root.primaryColor
@@ -72,6 +75,18 @@ Item {
             color: menuRow.ink
             antialiasing: false
         }
+    }
+
+    // A heading's rule, from a cell past the label to the line's end, at the
+    // height the dots would be.
+    Rectangle {
+        visible: menuRow.heading
+        x: Math.round(menuRow.pad + (menuRow.labelCells + 1) * menuRow.cell)
+        y: Math.round(labelText.y + labelText.baselineOffset - menuRow.capMiddle - height / 2)
+        width: Math.max(0, Math.round(menuRow.pad + menuRow.lineCells * menuRow.cell) - x)
+        height: root.px
+        color: menuRow.ink
+        antialiasing: false
     }
 
     // The value: cut short with "…" when it is too long for the line, and

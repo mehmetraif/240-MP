@@ -249,7 +249,8 @@ FocusScope {
         anchors.topMargin: root.sh * 0.25 //120
         anchors.leftMargin: root.sw * 0.115625 //74
         width: root.sw * 0.76875 //492
-        height: root.sh * 0.525 //252
+        // One row short of the space, so the ▼ fits above the help line.
+        height: root.sh * 0.4666667 //224
         clip: true
         focus: true
 
@@ -334,29 +335,22 @@ FocusScope {
             width: settingsList.width
             height: root.sh * 0.0583333 //28
 
-            // --- SECTION LABEL ---
-            Text {
-                visible: modelData.type == "section"
-                text: modelData.label || ""
-                color: root.secondaryColor
-                font.family: root.globalFont
-                font.capitalization: Font.AllUppercase
-                anchors.verticalCenter: parent.verticalCenter
-                topPadding: root.sh * 0.0020833 //1
-                leftPadding: root.sw * 0.009375 //6
-                rightPadding: root.sw * 0.009375 //6
-                font.pixelSize: root.sh * 0.0291667 //14
-            }
-
-            // --- SELECTABLE ROW --- laid out like a camcorder's menu: "DISPLAY······ON".
+            // A line laid out like a camcorder's menu, "DISPLAY······ON", or a
+            // section's heading, as large as the lines under it: "MODULES ─────".
             MenuRow {
-                visible: modelData.type !== "section"
                 anchors.fill: parent
+                heading: modelData.type === "section"
                 label: modelData.label || ""
                 value: modelData.type === "list_single" ? (modelData.value || "") : ""
                 selected: settingsList.currentIndex === index
             }
         }
+    }
+
+    // ▲ / ▼ while lines are hidden above or below.
+    ScrollMarks {
+        anchors.fill: settingsList
+        list: settingsList
     }
 
     // --- HELP TEXT --- (shown when a focused row has a description), on one

@@ -13,3 +13,4 @@ PixelIcon PixelIcon.qml
 Dither Dither.qml
 MenuRow MenuRow.qml
 HelpLine HelpLine.qml
+ScrollMarks ScrollMarks.qml

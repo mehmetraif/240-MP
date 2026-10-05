@@ -195,7 +195,8 @@ FocusScope {
         anchors.topMargin: root.sh * 0.25 //120
         anchors.leftMargin: root.sw * 0.115625 //74
         width: root.sw * 0.76875 //492
-        height: root.sh * 0.525 //252
+        // One row short of the space, so the ▼ fits above the help line.
+        height: root.sh * 0.4666667 //224
         clip: true
         focus: true
 
@@ -258,6 +259,12 @@ FocusScope {
                 ? moduleSettingsRoot.currentDisplayValue(modelData) : ""
             selected: settingsList.currentIndex === index
         }
+    }
+
+    // ▲ / ▼ while lines are hidden above or below.
+    ScrollMarks {
+        anchors.fill: settingsList
+        list: settingsList
     }
 
     // --- HELP TEXT --- (shown when a focused row has a description), on one
