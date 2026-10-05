@@ -37,7 +37,7 @@ struct DrmSavedState {
 //     drmSetMaster() returns EACCES for non-root while any other process holds
 //     master, and Qt EGLFS runs VT_AUTO and never calls drmDropMaster() itself.
 //
-//   release():  drmSetMaster  ->  restore CRTC  ->  VT switch back
+//   release():  drmSetMaster  ->  restore CRTC (and clear the cursor)  ->  VT switch back
 //     Exactly the inverse. The CRTC restore uses LEGACY drmModeSetCrtc, not an
 //     atomic commit: the child's atomic cleanup leaves CRTC_ACTIVE=0, and EGLFS
 //     then gets EINVAL on its first page flip.

@@ -105,6 +105,31 @@ FocusScope {
         onTriggered: launchRoot.backend.close()
     }
 
+    // While the browser is open its keys are for typing, and the app reads the
+    // same keyboard. With a text field focused here, InputManager leaves them
+    // as they are: Right Shift stays Shift rather than standing in for BACK
+    // (held for an "@", it closed the browser), and remote remaps don't fire.
+    // The keys it doesn't take still reach the handlers below.
+    TextInput {
+        id: typingFocus
+        width: 1
+        height: 1
+        opacity: 0
+        maximumLength: 0
+        focus: launchRoot.running
+    }
+
+    // An open browser counts as activity: a screen saver would take the keys
+    // this view needs to hold BACK, and be what greets the user when the
+    // browser closes.
+    Timer {
+        interval: 10000
+        repeat: true
+        triggeredOnStart: true
+        running: launchRoot.running
+        onTriggered: if (idleTracker) idleTracker.resetActivity()
+    }
+
     Connections {
         target: launchRoot.backend
         function onFinished(exitCode, reason) {
