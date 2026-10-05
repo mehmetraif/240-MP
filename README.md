@@ -10,7 +10,7 @@ It's built to work in conjuction with [MPV](https://github.com/anthonycaccese/24
 
 On a 4:3 screen a 16:9 picture is letterboxed; Settings → **Scaling** picks **14:9**, **Pan & Scan** or **Anamorphic** instead, for every module or, in a module's own settings, for that one.
 
-With Settings → **Transparent Background**, back from a video returns to the menus and leaves it playing behind them, like a deck's menu over the tape (**Dim** darkens it under them, for reading). Choose it again to watch it full screen where it is; play/pause on the main menu stops it. It plays the video inside 240-MP's own window through libmpv (`libmpv2` on Raspberry Pi OS, part of Homebrew's mpv on macOS).
+With Settings → **Transparent Background**, back from a video returns to the menus and leaves it playing behind them, like a deck's menu over the tape. Its slider, the deck's tape bar, sets how much of the picture shows through them: ◄ ► move it from TRANSPARENT (all of it) toward SOLID (none, which turns the setting off). Choose it again to watch it full screen where it is; play/pause on the main menu stops it. It plays the video inside 240-MP's own window through libmpv (`libmpv2` on Raspberry Pi OS, part of Homebrew's mpv on macOS).
 
 A favourite can start the show: right on it, **Options** → **Play at Startup** plays it straight after the boot screen (Settings → Play at Startup turns it off).
 

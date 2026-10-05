@@ -135,16 +135,21 @@ FocusScope {
 
         // Transparent Background — video played inside the app's own window,
         // so back from it returns to the menus with the picture going on
-        // behind them (MpvController). It needs libmpv, so it is offered only
-        // where that is installed. Takes effect on the next video.
+        // behind them (MpvController). A slider, like the deck's tape bar,
+        // from TRANSPARENT to SOLID: how solid the menus' ground is over the
+        // picture, in tenths, and seen at once over a video behind them.
+        // SOLID turns it off. It needs libmpv, so it is offered only where
+        // that is installed.
         if (mpvController.embeddedAvailable()) {
             items.push({
-                type: "list_single",
+                type: "slider",
                 key: "transparent_background",
                 label: "Transparent Background",
-                options: ["Off", "On", "Dim"],
-                value: appSettings["transparent_background"] || "Off",
-                description: "Back from a video returns to the menus and leaves it playing behind them, until you play something else or stop it on the main menu\n[ON] The menus over the picture  [DIM] Over it darkened, easier to read",
+                value: root.solidityOf(appSettings["transparent_background"]),
+                step: 10,
+                startText: "TRANSPARENT",
+                endText: "SOLID",
+                description: "How much of a video shows through the menus when back returns to them and leaves it playing behind, until you play something else or stop it on the main menu\n[SOLID] Off: back stops the video, as it always has",
                 moduleId: ""
             })
         }
@@ -242,6 +247,7 @@ FocusScope {
             }
         }
         settingsList.positionViewAtIndex(settingsList.currentIndex, ListView.Contain)
+        settingsList.showWholeRows()
     }
 
     function firstSelectableAfter(idx) {
@@ -318,6 +324,7 @@ FocusScope {
                 currentIndex--
             }
             settingsList.positionViewAtIndex(currentIndex, ListView.Contain)
+            showWholeRows()
         }
         Keys.onDownPressed: {
             if (currentIndex < count - 1) currentIndex++
@@ -326,40 +333,70 @@ FocusScope {
                 currentIndex++
             }
             settingsList.positionViewAtIndex(currentIndex, ListView.Contain)
+            showWholeRows()
+        }
+
+        // Rows are whole lines, a slider's several, so a scroll can stop with
+        // a slider cut by an edge: carry on past it, keeping the current row.
+        function showWholeRows() {
+            var top = itemAt(0, contentY + 1)
+            if (top && top !== currentItem && top.y < contentY - 1)
+                contentY = Math.min(top.y + top.height, originY + contentHeight - height)
+            var bottom = itemAt(0, contentY + height - 1)
+            if (bottom && bottom !== currentItem && bottom.y + bottom.height > contentY + height + 1)
+                contentY = Math.max(bottom.y - height, originY)
+        }
+
+        // The current row, changed, in place of the old one. A new model
+        // starts the list from the top, so it is put back where it was.
+        function replaceCurrentRow(row) {
+            var updated = settingsItems.slice()
+            updated[currentIndex] = row
+            var savedIndex = currentIndex
+            var savedY = contentY
+            settingsItems = updated
+            currentIndex = savedIndex
+            contentY = savedY
+        }
+
+        // A slider's step toward one end (-1 left, 1 right), kept and saved.
+        function moveSlider(direction) {
+            var row = settingsItems[currentIndex]
+            var v = Math.max(0, Math.min(100, row.value + direction * row.step))
+            if (v === row.value)
+                return
+            replaceCurrentRow(Object.assign({}, row, { value: v }))
+            appCore.save_setting(row.moduleId, row.key, v)
         }
 
         Keys.onLeftPressed: {
             var row = settingsItems[currentIndex]
-            if (row && row.type === "list_single") {
+            if (row && row.type === "slider") {
+                moveSlider(-1)
+            } else if (row && row.type === "list_single") {
                 var opts = row.options
                 var idx = opts.indexOf(row.value)
                 var newIdx = (idx - 1 + opts.length) % opts.length
                 var newVal = opts[newIdx]
                 // Display the label; persist the parallel value when one exists.
                 var savedVal = row.values ? row.values[newIdx] : newVal
-                var updated = settingsItems.slice()
-                updated[currentIndex] = Object.assign({}, row, { value: newVal })
-                var savedIndex = currentIndex
-                settingsItems = updated
-                currentIndex = savedIndex
+                replaceCurrentRow(Object.assign({}, row, { value: newVal }))
                 appCore.save_setting(row.moduleId, row.key, savedVal)
             }
         }
 
         Keys.onRightPressed: {
             var row = settingsItems[currentIndex]
-            if (row && row.type === "list_single") {
+            if (row && row.type === "slider") {
+                moveSlider(1)
+            } else if (row && row.type === "list_single") {
                 var opts = row.options
                 var idx = opts.indexOf(row.value)
                 var newIdx = (idx + 1) % opts.length
                 var newVal = opts[newIdx]
                 // Display the label; persist the parallel value when one exists.
                 var savedVal = row.values ? row.values[newIdx] : newVal
-                var updated = settingsItems.slice()
-                updated[currentIndex] = Object.assign({}, row, { value: newVal })
-                var savedIndex = currentIndex
-                settingsItems = updated
-                currentIndex = savedIndex
+                replaceCurrentRow(Object.assign({}, row, { value: newVal }))
                 appCore.save_setting(row.moduleId, row.key, savedVal)
             }
         }
@@ -387,17 +424,41 @@ FocusScope {
         }
 
         delegate: Item {
+            id: rowItem
+            readonly property bool slider: modelData.type === "slider"
+            readonly property real lineHeight: root.sh * 0.0583333 //28
+            // A slider's bar takes whole lines under its own, so every line
+            // keeps to the list's rule as it scrolls.
+            readonly property int barLines: slider ? Math.ceil((tape.height + 2 * root.px) / lineHeight) : 0
             width: settingsList.width
-            height: root.sh * 0.0583333 //28
+            height: lineHeight * (1 + barLines)
 
             // A line laid out like a camcorder's menu, "DISPLAY······ON", or a
             // section's heading, as large as the lines under it: "MODULES ─────".
             MenuRow {
-                anchors.fill: parent
+                width: parent.width
+                height: rowItem.lineHeight
                 heading: modelData.type === "section"
                 label: modelData.label || ""
-                value: modelData.type === "list_single" ? (modelData.value || "") : ""
+                value: modelData.type === "list_single" ? (modelData.value || "")
+                     : rowItem.slider ? (modelData.value >= 100 ? "Off" : "On") : ""
                 selected: settingsList.currentIndex === index
+            }
+
+            // A slider's setting, as the deck's tape bar shows how far the
+            // tape is: ◄ ► move the ▼ between the two ends.
+            Loader {
+                id: tape
+                active: rowItem.slider
+                x: root.sw * 0.009375 //6
+                y: rowItem.lineHeight + Math.round((rowItem.barLines * rowItem.lineHeight - height) / 2)
+                width: parent.width - 2 * x
+                sourceComponent: OsdTapeBar {
+                    fontSize: root.sh * 0.0333333 //16
+                    value: modelData.value / 100
+                    startText: modelData.startText
+                    endText: modelData.endText
+                }
             }
         }
     }

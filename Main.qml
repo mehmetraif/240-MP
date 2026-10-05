@@ -106,7 +106,7 @@ Window {
             if (key === "color_scheme") {
                 root.currentTheme = value
             } else if (key === "transparent_background") {
-                root.transparentBackground = value
+                root.backdropSolidity = root.solidityOf(value)
             } else if (key === "screensaver_timeout") {
                 var sec = parseInt(value)
                 if (sec > 0) {
@@ -147,7 +147,7 @@ Window {
             savedTheme = "Video 1"
         }
         root.currentTheme = savedTheme
-        root.transparentBackground = (cfg.app && cfg.app.transparent_background) || "Off"
+        root.backdropSolidity = root.solidityOf(cfg.app && cfg.app.transparent_background)
 
         // Screensaver: the tracker starts disabled; this is the single place the
         // saved setting is applied (live changes land in onAppSettingChanged above,
@@ -292,10 +292,21 @@ Window {
     // plays full screen, and under the menus once back has returned to them,
     // where it goes on playing (videoBehind). The menus draw no background of
     // their own, so the picture is theirs then; full-screen dialogs keep
-    // theirs. DIM darkens it under them, for reading.
+    // theirs. The setting's slider says how solid their ground is over it.
     readonly property bool videoActive: mpvController ? mpvController.videoActive : false
     readonly property bool videoBehind: mpvController ? mpvController.background : false
-    property string transparentBackground: "Off"
+    property int backdropSolidity: 100
+
+    // "transparent_background": how solid the menus' ground is over a video
+    // behind them, 0 (TRANSPARENT) to 100 (SOLID, which is off: back stops
+    // the video, as it always has). Its first values were words.
+    function solidityOf(raw) {
+        var s = String(raw === undefined || raw === null ? "" : raw).toLowerCase()
+        if (s === "on") return 0
+        if (s === "dim") return 60
+        var n = parseInt(s)
+        return isNaN(n) ? 100 : Math.max(0, Math.min(100, n))
+    }
 
     VideoSurface {
         anchors.fill: parent
@@ -306,9 +317,9 @@ Window {
     Rectangle {
         anchors.fill: parent
         z: -1
-        visible: root.videoBehind && root.transparentBackground === "Dim"
+        visible: root.videoBehind && root.backdropSolidity > 0
         color: root.surfaceColor
-        opacity: 0.6
+        opacity: root.backdropSolidity / 100
     }
 
     // A running user script suppresses the screen saver too — a takeover script

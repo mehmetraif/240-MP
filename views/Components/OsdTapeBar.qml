@@ -2,11 +2,15 @@ import QtQuick
 
 // The deck's tape position bar: a ▼ over where the tape is, a ruled bar filled
 // from the start of the tape up to there, and BEGIN and END under its ends.
+// Any setting between two ends reads the same way with its own names under
+// them (Settings' TRANSPARENT … SOLID).
 Item {
     id: tape
 
     // 0 to 1: how far into the tape.
     property real value: 0
+    property string startText: "BEGIN"
+    property string endText: "END"
     property color color: root.primaryColor
     property int pixel: root.px
     property real fontSize: root.sh * 0.0416667 //20
@@ -64,7 +68,7 @@ Item {
     Text {
         anchors.top: bar.bottom
         anchors.left: bar.left
-        text: "BEGIN"
+        text: tape.startText
         color: tape.color
         font.family: root.globalFont
         font.pixelSize: tape.fontSize
@@ -73,7 +77,7 @@ Item {
         id: endLabel
         anchors.top: bar.bottom
         anchors.right: bar.right
-        text: "END"
+        text: tape.endText
         color: tape.color
         font.family: root.globalFont
         font.pixelSize: tape.fontSize

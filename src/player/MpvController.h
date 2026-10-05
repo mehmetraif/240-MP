@@ -66,15 +66,16 @@ public:
     // the settings a module can override: its own Scaling.
     Q_INVOKABLE void setActiveModule(const QString &moduleId) { m_activeModule = moduleId; }
 
-    // Transparent Background (app setting "transparent_background", On or
-    // Dim): video is played inside the app's own window (EmbeddedMpv) rather
-    // than by an mpv process over it, so the menus can be drawn over the
-    // picture. Back from playback then returns to the menus and leaves the
-    // video playing behind them: the module takes it as stopped (it saves
-    // where it got to, and goes back), while the picture and the sound go
-    // on. Choosing the same thing again brings it back full screen where it
-    // is; playing anything else, Main.qml's STOP, a takeover or the setting
-    // turned off ends it.
+    // Transparent Background (app setting "transparent_background": how solid
+    // the menus' ground is over the picture, 0 to 100 on Settings' TRANSPARENT
+    // ... SOLID slider, on below SOLID): video is played inside the app's own
+    // window (EmbeddedMpv) rather than by an mpv process over it, so the menus
+    // can be drawn over the picture. Back from playback then returns to the
+    // menus and leaves the video playing behind them: the module takes it as
+    // stopped (it saves where it got to, and goes back), while the picture
+    // and the sound go on. Choosing the same thing again brings it back full
+    // screen where it is; playing anything else, Main.qml's STOP, a takeover
+    // or the setting turned off ends it.
     //
     // Needs libmpv, opened at run time: embeddedAvailable() says whether it is
     // there (Settings offers the setting only then).
