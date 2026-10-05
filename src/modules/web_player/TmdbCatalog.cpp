@@ -361,16 +361,31 @@ void TmdbCatalog::resolveTitleUrl(const QVariantMap &title) {
     const QString path = title.value(QStringLiteral("path")).toString();
     const QString name = title.value(QStringLiteral("title")).toString();
     const QString fallback = m_service.searchUrl.arg(QString::fromLatin1(QUrl::toPercentEncoding(name)));
+    const QString type = title.value(QStringLiteral("mediaType")).toString();
     const int id = title.value(QStringLiteral("tmdbId")).toInt();
     if (id <= 0 || m_service.wikidataProperty.isEmpty()) {
         emit titleUrlReady(path, fallback);
         return;
     }
-    // Wikidata keeps both TMDB's id and the service's for many titles.
-    const QString tmdbProperty = title.value(QStringLiteral("mediaType")).toString() == QLatin1String("tv")
-                                     ? QStringLiteral("P4983") : QStringLiteral("P4947");
-    const QString sparql = QStringLiteral("SELECT ?id WHERE { ?item wdt:%1 \"%2\" ; wdt:%3 ?id } LIMIT 1")
-                               .arg(tmdbProperty).arg(id).arg(m_service.wikidataProperty);
+    // Wikidata keeps the service's id for many titles, next to TMDB's id or
+    // IMDb's; more of them have IMDb's, which TMDB gives.
+    get(QStringLiteral("/%1/%2/external_ids").arg(type).arg(id), {},
+        [this, path, fallback, type, id](const QVariantMap &ids) {
+            const QString imdb = ids.value(QStringLiteral("imdb_id")).toString();
+            findOnWikidata(path, fallback, type, id,
+                           imdb.startsWith(QLatin1String("tt")) ? imdb : QString());
+        });
+}
+
+void TmdbCatalog::findOnWikidata(const QString &path, const QString &fallback,
+                                 const QString &type, int tmdbId, const QString &imdbId) {
+    const QString tmdbProperty = type == QLatin1String("tv") ? QStringLiteral("P4983")
+                                                             : QStringLiteral("P4947");
+    QString match = QStringLiteral("?item wdt:%1 \"%2\"").arg(tmdbProperty).arg(tmdbId);
+    if (!imdbId.isEmpty())
+        match = QStringLiteral("{ %1 } UNION { ?item wdt:P345 \"%2\" }").arg(match, imdbId);
+    const QString sparql = QStringLiteral("SELECT ?id WHERE { %1 . ?item wdt:%2 ?id } LIMIT 1")
+                               .arg(match, m_service.wikidataProperty);
     QNetworkRequest request(QUrl(m_wikidataUrl + QLatin1Char('?')
                                  + encoded({ { QStringLiteral("format"), QStringLiteral("json") },
                                              { QStringLiteral("query"), sparql } })));

@@ -977,6 +977,7 @@ QString InputManager::labelForButton(int button) const {
 void InputManager::updateHints() {
     QVariantMap h;
     h["navigate"]   = QStringLiteral("[▲▼]");
+    h["arrows"]     = QStringLiteral("[▲▼◄►]");   // the trees: all four move
     h["change"]     = QStringLiteral("[◄►]");
     h["browse"]     = QStringLiteral("[►]");
     h["back"]       = QStringLiteral("[ESC]");

@@ -86,8 +86,19 @@ FocusScope {
 
     HintBar {
         visible: !osk.visible && !watchLater.visible
-        text: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE "
-              + root.hints.browse + ":SAVE " + root.hints.select + ":SELECT"
+        // What select does with the entry under the cursor: a video plays,
+        // and right saves it to Watch Later rather than moving.
+        readonly property var entry: tree.currentEntry
+        readonly property bool onVideo: !!entry && entry.kind === "video"
+        text: root.hints.back + ":BACK "
+              + (onVideo ? root.hints.navigate.replace("]", "\u25C4]") + ":NAVIGATE "
+                           + root.hints.browse + ":SAVE "
+                         : root.hints.arrows + ":NAVIGATE ")
+              + root.hints.select
+              + (onVideo ? ":PLAY"
+                 : !entry || entry.isFolder ? ":OPEN"
+                 : entry.kind === "search" ? ":SEARCH"
+                 : entry.kind === "more" ? ":MORE" : ":OPEN")
         anchors.bottom: parent.bottom
         anchors.left: parent.left
         anchors.bottomMargin: root.sh * 0.1041667 //50

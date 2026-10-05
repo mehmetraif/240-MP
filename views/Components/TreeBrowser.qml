@@ -71,6 +71,9 @@ FocusScope {
 
     // Under the cursor, or null.
     function currentItem() { return selectedItem() }
+    // The same, as a property that follows the cursor: for a footer that says
+    // what select will do with it.
+    property var currentEntry: null
 
     // --- Layout ---
     readonly property real fontSize: root.sh * 0.0375 //18
@@ -423,6 +426,7 @@ FocusScope {
         var sel = (col.sel + delta + n) % n
         trail.setProperty(active, "sel", sel)
         remembered[col.path] = sel
+        currentEntry = selectedItem()
         // The branches are wrong now; new ones grow once the cursor rests.
         clearBranches()
         branchTimer.restart()
@@ -435,6 +439,7 @@ FocusScope {
         placeColumns()
         layoutBranches(false)
         placeStrip()
+        currentEntry = selectedItem()
     }
 
     function openFolder() {

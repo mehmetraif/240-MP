@@ -117,6 +117,10 @@ bool WebPlayerBackend::launch(const QString &url) {
         m_lastError = error;
         return false;
     }
+    if (!m_opened) {
+        m_opened = true;
+        emit openedChanged();
+    }
     return true;
 }
 

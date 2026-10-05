@@ -91,6 +91,10 @@ private:
     void    fetchPage(const QString &path);
     void    search(const QString &path, const QString &words);
     QVariantMap titleEntry(const QVariantMap &result, const QString &type) const;
+    // The service's page for a title, from Wikidata by its TMDB or IMDb id;
+    // titleUrlReady(path, …) with fallback when Wikidata doesn't know it.
+    void    findOnWikidata(const QString &path, const QString &fallback,
+                           const QString &type, int tmdbId, const QString &imdbId);
 
     QString m_dataRoot;
     Service m_service;

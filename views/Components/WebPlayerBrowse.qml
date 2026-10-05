@@ -85,7 +85,13 @@ FocusScope {
 
     HintBar {
         visible: !osk.visible
-        text: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE " + root.hints.select + ":SELECT"
+        // What select does with the entry under the cursor: a title plays.
+        readonly property var entry: tree.currentEntry
+        text: root.hints.back + ":BACK " + root.hints.arrows + ":NAVIGATE " + root.hints.select
+              + (!entry || entry.isFolder ? ":OPEN"
+                 : entry.kind === "title" ? ":PLAY"
+                 : entry.kind === "search" ? ":SEARCH"
+                 : entry.kind === "more" ? ":MORE" : ":OPEN")
         anchors.bottom: parent.bottom
         anchors.left: parent.left
         anchors.bottomMargin: root.sh * 0.1041667 //50
