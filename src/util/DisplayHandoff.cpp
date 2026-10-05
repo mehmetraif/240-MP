@@ -372,6 +372,11 @@ void DisplayHandoff::restoreDrmCrtcState(int fd) {
                m_savedDrm.mode.hdisplay, m_savedDrm.mode.vdisplay,
                m_savedDrm.mode.vrefresh);
 
+    // A child that drew a mouse pointer (cage does, when there is a mouse) can
+    // leave it on the CRTC's cursor plane, over the menus. The app draws none.
+    if (drmModeSetCursor(fd, m_savedDrm.crtcId, 0, 0, 0) < 0)
+        qDebug("[DisplayHandoff] Clearing the cursor failed: %s", strerror(errno));
+
     m_savedDrm.valid = false;
 }
 #endif

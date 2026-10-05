@@ -76,6 +76,13 @@ static volatile std::sig_atomic_t g_termSignal = 0;
 extern "C" void mp240HandleTerm(int sig) { g_termSignal = sig; }
 
 int main(int argc, char *argv[]) {
+    // On a headless screen (EGLFS) Qt draws the mouse pointer itself, as a
+    // hardware cursor, and the BlankCursor below doesn't always keep it hidden:
+    // it came back over the menus after a web player session. The app has no
+    // use for one.
+    if (qEnvironmentVariableIsEmpty("QT_QPA_EGLFS_HIDECURSOR"))
+        qputenv("QT_QPA_EGLFS_HIDECURSOR", "1");
+
     QGuiApplication app(argc, argv);
     app.setApplicationName("240-MP");
     app.setApplicationVersion(QStringLiteral(APP_VERSION));
