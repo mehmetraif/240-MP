@@ -23,6 +23,9 @@ class WebPlayerBackend : public QObject {
     // the processes it left behind are still exiting.
     Q_PROPERTY(bool running READ running NOTIFY runningChanged)
     Q_PROPERTY(QObject *catalog READ catalog CONSTANT)
+    // The player has been opened since the app started: the way back has been
+    // shown once, and later titles open without stopping to show it again.
+    Q_PROPERTY(bool opened READ opened NOTIFY openedChanged)
 
 public:
     struct Service {
@@ -37,6 +40,7 @@ public:
 
     bool running() const;
     QObject *catalog() const { return m_catalog; }
+    bool opened() const { return m_opened; }
 
     // Opens the service at url, or at its home page. Returns false, with
     // lastError() saying why, when nothing was started: no browser, or no
@@ -63,6 +67,7 @@ public slots:
 
 signals:
     void runningChanged();
+    void openedChanged();
     // Once per launch. reason: "ok" (the browser was closed), "failed",
     // "stopped" (close() ended it) or "failed_to_start".
     void finished(int exitCode, const QString &reason);
@@ -79,4 +84,5 @@ private:
     QString         m_dataRoot;
     QString         m_lastError;
     ScriptLauncher *m_launcher = nullptr;
+    bool            m_opened   = false;
 };

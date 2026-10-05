@@ -6,6 +6,7 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QLocale>
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QProcess>
@@ -161,7 +162,7 @@ static bool parseRssFeed(const QByteArray &data, const QString &channelId,
     static const QLatin1String kAtomNs("http://www.w3.org/2005/Atom");
     QXmlStreamReader xml(data);
     bool inEntry = false;
-    QString videoId, title, altLink;
+    QString videoId, title, altLink, description;
     QDateTime published;
     while (!xml.atEnd()) {
         xml.readNext();
@@ -172,6 +173,7 @@ static bool parseRssFeed(const QByteArray &data, const QString &channelId,
                 videoId.clear();
                 title.clear();
                 altLink.clear();
+                description.clear();
                 published = QDateTime();
             } else if (!inEntry && name == QLatin1String("title") && channelName->isEmpty()) {
                 *channelName = xml.readElementText();
@@ -181,6 +183,9 @@ static bool parseRssFeed(const QByteArray &data, const QString &channelId,
                        && xml.namespaceUri() == kAtomNs) {
                 // namespace check keeps <media:title> (inside media:group) out
                 title = xml.readElementText();
+            } else if (inEntry && name == QLatin1String("description")) {
+                // media:description, inside media:group
+                description = xml.readElementText();
             } else if (inEntry && name == QLatin1String("published")) {
                 published = QDateTime::fromString(xml.readElementText(), Qt::ISODate);
             } else if (inEntry && name == QLatin1String("link")
@@ -202,6 +207,7 @@ static bool parseRssFeed(const QByteArray &data, const QString &channelId,
             v["publishedMs"] = published.isValid() ? published.toMSecsSinceEpoch() : qint64(0);
             v["url"]         = watchUrlFor(videoId);
             v["isShort"]     = altLink.contains(QLatin1String("/shorts/"));
+            v["description"] = description;
             videos->append(v);
         }
     }
@@ -1006,4 +1012,108 @@ void YouTubeBackend::setProblem(const QString &problem) {
         return;
     m_problem = problem;
     emit problemChanged();
+}
+
+// ---------------------------------------------------------------------------
+// A video's info screen: what the list knows at once, then what yt-dlp adds.
+// ---------------------------------------------------------------------------
+
+QVariantMap YouTubeBackend::detailsOf(const QVariantMap &video, bool complete) const {
+    const QVariantMap extra = m_details.value(video.value("videoId").toString());
+    const auto pick = [&video, &extra](const char *key) {
+        const QString value = extra.value(QLatin1String(key)).toString();
+        return value.isEmpty() ? video.value(QLatin1String(key)).toString() : value;
+    };
+    // YYYYMMDD from yt-dlp, an ISO date from the feed.
+    QString date = extra.value("upload_date").toString();
+    if (date.size() == 8)
+        date = date.left(4) + QLatin1Char('-') + date.mid(4, 2) + QLatin1Char('-') + date.mid(6, 2);
+    if (date.isEmpty())
+        date = video.value("publishedAt").toString().left(10);
+    QString channel = pick("channel");
+    if (channel.isEmpty())
+        channel = video.value("channelName").toString();
+
+    QVariantMap details;
+    details["title"] = pick("title");
+    QStringList facts;
+    if (!channel.isEmpty())
+        facts << channel;
+    if (!date.isEmpty())
+        facts << date;
+    details["facts"] = facts.join(QStringLiteral(" - "));
+    details["summary"] = pick("description");
+
+    QVariantList rows;
+    const auto row = [&rows](const QString &label, const QString &value) {
+        if (!value.isEmpty())
+            rows << QVariantMap{ { "label", label }, { "value", value } };
+    };
+    row(QStringLiteral("Channel"), channel);
+    row(QStringLiteral("Date"), date);
+    row(QStringLiteral("Length"), extra.value("duration_string").toString());
+    const qint64 views = extra.value("view_count").toLongLong();
+    if (views > 0)
+        row(QStringLiteral("Views"), QLocale(QLocale::English).toString(views));
+    details["rows"] = rows;
+    details["complete"] = complete;
+    return details;
+}
+
+void YouTubeBackend::loadDetails(const QVariantMap &video) {
+    const QString path = video.value("path").toString();
+    const QString videoId = video.value("videoId").toString();
+    const bool known = m_details.contains(videoId);
+    const QVariantMap now = detailsOf(video, known || ytdlp::locate(m_dataRoot).isEmpty());
+    // Never from inside the call: the view showing them is still opening.
+    QTimer::singleShot(0, this, [this, path, now]() { emit detailsReady(path, now); });
+    if (!known && !now.value("complete").toBool())
+        fetchDetails(video);
+}
+
+// One video's metadata from yt-dlp, a few seconds' work on a Pi: one fetch at
+// a time, and only the last video asked for while one runs.
+void YouTubeBackend::fetchDetails(const QVariantMap &video) {
+    if (m_fetchingDetails) {
+        m_detailsNext = video;
+        return;
+    }
+    m_fetchingDetails = true;
+    auto *proc = new QProcess(this);
+    const QStringList args{
+        QStringLiteral("--skip-download"),
+        QStringLiteral("--no-warnings"),
+        QStringLiteral("--no-playlist"),
+        QStringLiteral("--print"),
+        QStringLiteral("%(.{title,channel,uploader,upload_date,duration_string,view_count,description})j"),
+        QStringLiteral("--"),
+        video.value("url").toString(),
+    };
+    auto finish = [this, proc, video]() {
+        proc->deleteLater();
+        m_fetchingDetails = false;
+        const QJsonObject obj = QJsonDocument::fromJson(
+            proc->readAllStandardOutput().trimmed().split('\n').value(0)).object();
+        QVariantMap extra = obj.toVariantMap();
+        if (extra.value("channel").toString().isEmpty())
+            extra["channel"] = extra.value("uploader");
+        const QString videoId = video.value("videoId").toString();
+        if (!obj.isEmpty())
+            m_details.insert(videoId, extra);
+        // Complete either way: what yt-dlp couldn't say, the screen does without.
+        emit detailsReady(video.value("path").toString(), detailsOf(video, true));
+        if (!m_detailsNext.isEmpty()) {
+            const QVariantMap next = std::exchange(m_detailsNext, {});
+            if (!m_details.contains(next.value("videoId").toString()))
+                fetchDetails(next);
+        }
+    };
+    connect(proc, &QProcess::finished, this, finish);
+    connect(proc, &QProcess::errorOccurred, this,
+            [finish](QProcess::ProcessError processError) {
+                if (processError == QProcess::FailedToStart)
+                    finish();
+            });
+    QTimer::singleShot(kPlaylistFetchTimeoutMs, proc, [proc]() { proc->kill(); });
+    proc->start(ytdlp::locate(m_dataRoot), args);
 }

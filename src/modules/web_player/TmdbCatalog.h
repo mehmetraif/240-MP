@@ -61,12 +61,17 @@ public:
     // Works out where a title entry opens on the service; titleUrlReady follows,
     // with the entry's path.
     Q_INVOKABLE void resolveTitleUrl(const QVariantMap &title);
+    // What a title's info screen shows: detailsReady(path, { title, facts,
+    // summary, rows: [{ label, value }] }) follows, at once when it has been
+    // loaded before.
+    Q_INVOKABLE void loadDetails(const QVariantMap &title);
 
     QString problem() const { return m_problem; }
 
 signals:
     void listingReady(const QString &path);
     void titleUrlReady(const QString &path, const QString &url);
+    void detailsReady(const QString &path, const QVariantMap &details);
     void problemChanged();
 
 private:
@@ -91,6 +96,11 @@ private:
     void    fetchPage(const QString &path);
     void    search(const QString &path, const QString &words);
     QVariantMap titleEntry(const QVariantMap &result, const QString &type) const;
+    QVariantMap detailsFrom(const QVariantMap &json, const QString &type) const;
+    // The service's page for a title, from Wikidata by its TMDB or IMDb id;
+    // titleUrlReady(path, …) with fallback when Wikidata doesn't know it.
+    void    findOnWikidata(const QString &path, const QString &fallback,
+                           const QString &type, int tmdbId, const QString &imdbId);
 
     QString m_dataRoot;
     Service m_service;
@@ -113,4 +123,5 @@ private:
     QHash<QString, QVariantList> m_searches; // path -> titles on the service
     QStringList m_searching;
     QHash<QString, qint64> m_failedAt;       // path -> when it last failed
+    QHash<QString, QVariantMap> m_details;   // title path -> its info screen
 };

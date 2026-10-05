@@ -68,12 +68,14 @@ FocusScope {
         }
     }
 
-    // Long enough to read how to come back, and for a first frame to be on
-    // screen before a headless Pi saves it for the hand-off. A title still
-    // being looked up opens once it is found.
+    // Select on a title opens it straight away: one frame of this view first,
+    // so it is on screen before a headless Pi hands the screen over. The first
+    // time this run, long enough to read how to come back, since the screen is
+    // dark while the browser starts. A title still being looked up opens once
+    // it is found.
     Timer {
         id: launchTimer
-        interval: 1200
+        interval: launchRoot.backend && launchRoot.backend.opened ? 50 : 1200
         running: true
         onTriggered: if (launchRoot.urlKnown) launchRoot.launch()
     }

@@ -87,6 +87,11 @@ public:
     Q_INVOKABLE QVariant listing(const QString &path, bool preview = false);
     // Loads the next matches of a search onto its end.
     Q_INVOKABLE void     loadMore(const QString &path);
+    // What a video's info screen shows: detailsReady(path, { title, facts,
+    // summary, rows, complete }) follows at once with what the list knows,
+    // and again, complete, with what yt-dlp adds (length, views, the whole
+    // description).
+    Q_INVOKABLE void     loadDetails(const QVariantMap &video);
     QString problem() const { return m_problem; }
 
 signals:
@@ -97,6 +102,7 @@ signals:
     void playlistVideosLoaded(const QString &playlistId, const QVariant &videos);
     void errorOccurred(const QString &message);
     void listingReady(const QString &path);
+    void detailsReady(const QString &path, const QVariantMap &details);
     void problemChanged();
 
 private:
@@ -151,6 +157,8 @@ private:
     void         searchPage(const QString &path);
     QVariantList videoEntries(const QVariantList &videos) const;
     void         answerLater(const QStringList &paths);
+    QVariantMap  detailsOf(const QVariantMap &video, bool complete) const;
+    void         fetchDetails(const QVariantMap &video);
     void         setProblem(const QString &problem);
 
     QList<PlaylistFileRef> readPlaylistEntries(QString *error = nullptr) const;
@@ -193,6 +201,9 @@ private:
     qint64      m_playlistsFailedMs = 0;
     QStringList m_playlistWaits;
     QHash<QString, Search> m_searches;        // search/<words> -> matches
+    QHash<QString, QVariantMap> m_details;    // videoId -> what yt-dlp told of it
+    bool        m_fetchingDetails = false;
+    QVariantMap m_detailsNext;                // asked for while a fetch ran
     QString     m_problem;
 
     static constexpr qint64 kCacheTtlMs      = 15 * 60 * 1000;

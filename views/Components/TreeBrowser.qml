@@ -10,9 +10,11 @@ import QtQuick
 //
 // Up/down move within the current folder, right (or select) opens a folder,
 // left (or back) returns to its parent. Select on anything else is the host's
-// to handle (activated), right on it too (optionsRequested), and so is back
-// at the top (leaveRequested). It draws only the tree, in the area between a
-// view's title bar and its footer.
+// to handle (activated), right on it too (previewRequested with preview on,
+// for its info: the tree's last layer; optionsRequested otherwise), and so is
+// back at the top (leaveRequested). With previewDelay set, resting the cursor
+// on it that long asks for its info too. It draws only the tree, in the area
+// between a view's title bar and its footer.
 //
 // The entries come from fetch(path, preview): [{ name, path, isFolder, ... }],
 // or null while they are still on their way, shown as "loading…" until the
@@ -31,7 +33,14 @@ FocusScope {
 
     signal activated(var item)
     signal optionsRequested(var item)
+    signal previewRequested(var item)
     signal leaveRequested()
+
+    // An entry's info (the host shows it): with right, or the info key, on
+    // anything that isn't a folder, and on its own after the cursor has rested
+    // on one previewDelay ms (0: only when asked).
+    property bool preview: false
+    property int previewDelay: 0
 
     // The open folders, root first, with the cursor's row in each: to hand
     // back as savedTrail when the view comes back.
@@ -71,6 +80,9 @@ FocusScope {
 
     // Under the cursor, or null.
     function currentItem() { return selectedItem() }
+    // The same, as a property that follows the cursor: for a footer that says
+    // what select will do with it.
+    property var currentEntry: null
 
     // --- Layout ---
     readonly property real fontSize: root.sh * 0.0375 //18
@@ -423,6 +435,8 @@ FocusScope {
         var sel = (col.sel + delta + n) % n
         trail.setProperty(active, "sel", sel)
         remembered[col.path] = sel
+        currentEntry = selectedItem()
+        armPreview()
         // The branches are wrong now; new ones grow once the cursor rests.
         clearBranches()
         branchTimer.restart()
@@ -435,6 +449,8 @@ FocusScope {
         placeColumns()
         layoutBranches(false)
         placeStrip()
+        currentEntry = selectedItem()
+        armPreview()
     }
 
     function openFolder() {
@@ -485,6 +501,21 @@ FocusScope {
         onTriggered: tree.layoutBranches(true)
     }
 
+    // Once per resting place: the info comes up after the cursor stops on an
+    // entry, not again after it has been closed there.
+    function armPreview() {
+        previewTimer.stop()
+        if (preview && previewDelay > 0 && currentEntry && !currentEntry.isFolder)
+            previewTimer.start()
+    }
+    Timer {
+        id: previewTimer
+        interval: Math.max(1, tree.previewDelay)
+        // Not over the host's keyboard or a dialog it has open.
+        onTriggered: if (tree.activeFocus && tree.currentEntry && !tree.currentEntry.isFolder)
+                         tree.previewRequested(tree.currentEntry)
+    }
+
     // A key already held as the tree appears (BACK held to close a player,
     // say) goes on repeating into it. Only presses that begin here count, or
     // the repeat would climb out of every folder, and out of the module.
@@ -504,8 +535,18 @@ FocusScope {
             move(1)
             break
         case Qt.Key_Right:
-            if (!openFolder() && selectedItem())
-                optionsRequested(selectedItem())
+            if (!openFolder() && selectedItem()) {
+                if (preview) previewRequested(selectedItem())
+                else optionsRequested(selectedItem())
+            }
+            break
+        // A remote's INFO key, or the play/pause button, which has nothing
+        // to play or pause here.
+        case Qt.Key_Info:
+        case Qt.Key_I:
+        case Qt.Key_Space:
+            if (preview && selectedItem() && !selectedItem().isFolder)
+                previewRequested(selectedItem())
             break
         case Qt.Key_Left:
             closeFolder()

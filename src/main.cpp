@@ -31,6 +31,7 @@
 #include "boot/BootProgress.h"
 #include "util/ExecPath.h"
 #include "util/DisplayHandoff.h"
+#include "util/OsdIconProvider.h"
 #ifdef Q_OS_MAC
 #include "util/MacosUtils.h"
 #endif
@@ -231,6 +232,9 @@ int main(int argc, char *argv[]) {
 #endif
 
     engine.addImportPath(appRoot + "/views");
+    // The title bar's logos, in the theme's colour on the art-pixel grid
+    // (image://osdicon/…). The engine owns it.
+    engine.addImageProvider(QStringLiteral("osdicon"), new OsdIconProvider);
 
     engine.load(QUrl::fromLocalFile(appRoot + "/Main.qml"));
     if (engine.rootObjects().isEmpty()) {

@@ -1,10 +1,11 @@
 import QtQuick
-import QtQuick.Effects
 
 // The title bar every view starts with, the way a deck's on-screen menu does:
-// the module's icon, its name and where you are in it, in the background colour
-// on a solid bar.
-Rectangle {
+// the module's logo, then a solid bar with its name and where you are in it in
+// the background colour. The logo is in the bar's colour, a fifth taller than
+// the bar so it stands out of it above and below, with an art pixel of space
+// either side of it.
+Item {
     id: appBar
 
     // Custom Properties
@@ -12,69 +13,79 @@ Rectangle {
     property string title: "240-MP"
     property string subtitle: ""
 
+    readonly property bool hasLogo: iconSource.toString() !== "" && logo.status === Image.Ready
+    // A fifth taller than the bar, in whole art pixels.
+    readonly property real logoHeight: Math.round(height * 1.2 / root.px) * root.px
+
     // Fits the standard screen gutter — 80px (root.sw * 0.125) on each side.
     // The subtitle elides when it would overflow this width.
     width: root.sw * 0.75 //480
     height: content.height + 2 * root.px
-    color: root.primaryColor
-    antialiasing: false
 
-    Row {
-        id: content
-        x: root.sw * 0.0125 //8
-        width: appBar.width - 2 * x
-        anchors.verticalCenter: parent.verticalCenter
-        spacing: root.sw * 0.025 //16
+    Image {
+        id: logo
+        visible: appBar.hasLogo
+        x: root.px
+        y: Math.round((appBar.height - height) / 2)
+        height: appBar.logoHeight
+        width: implicitWidth
+        sourceSize.height: appBar.logoHeight
+        smooth: false
+        // Drawn by OsdIconProvider in the bar's colour, on the art-pixel grid.
+        // Resolved here, so a path relative to this file works as it always has.
+        source: appBar.iconSource.toString() !== "" && appBar.logoHeight > 0
+                ? "image://osdicon/" + root.primaryColor.toString().replace("#", "") + "/" + root.px
+                  + "/" + Qt.resolvedUrl(appBar.iconSource)
+                : ""
+    }
 
-        Item {
-            visible: appBar.iconSource !== ""
-            width: iconImg.width
+    Rectangle {
+        id: bar
+        x: appBar.hasLogo ? logo.x + logo.width + root.px : 0
+        width: appBar.width - x
+        height: appBar.height
+        color: root.primaryColor
+        antialiasing: false
+
+        Row {
+            id: content
+            x: root.sw * 0.0125 //8
+            width: bar.width - 2 * x
+            // A line of title text, subtitle or not.
+            height: Math.max(implicitHeight, root.sh * 0.05) //24
             anchors.verticalCenter: parent.verticalCenter
-            height: root.sh * 0.05 //24
-            Image {
-                visible: false
-                id: iconImg
-                height: parent.height
-                sourceSize.height: height
-                source: appBar.iconSource
+            spacing: root.sw * 0.025 //16
+
+            Text {
+                text: appBar.title
+                color: root.surfaceColor
+                font.family: root.globalFont
+                font.capitalization: Font.AllUppercase
+                anchors.verticalCenter: parent.verticalCenter
+                font.pixelSize: root.sh * 0.05 //24
             }
-            MultiEffect {
-                anchors.fill: iconImg
-                source: iconImg
-                colorization: 1.0
-                colorizationColor: root.surfaceColor
+
+            Rectangle {
+                visible: appBar.subtitle !== ""
+                color: root.surfaceColor
+                anchors.verticalCenter: parent.verticalCenter
+                width: root.px
+                height: root.sh * 0.05 //24
+                antialiasing: false
             }
-        }
 
-        Text {
-            text: appBar.title
-            color: root.surfaceColor
-            font.family: root.globalFont
-            font.capitalization: Font.AllUppercase
-            anchors.verticalCenter: parent.verticalCenter
-            font.pixelSize: root.sh * 0.05 //24
-        }
-
-        Rectangle {
-            visible: appBar.subtitle !== ""
-            color: root.surfaceColor
-            anchors.verticalCenter: parent.verticalCenter
-            width: root.px
-            height: root.sh * 0.05 //24
-            antialiasing: false
-        }
-
-        Text {
-            text: appBar.subtitle
-            color: root.surfaceColor
-            font.family: root.globalFont
-            font.capitalization: Font.AllUppercase
-            anchors.verticalCenter: parent.verticalCenter
-            font.pixelSize: root.sh * 0.0333333 //16
-            // x is this Text's Row position, i.e. everything before it (icon,
-            // title, separator, spacings) — cap to the bar's remaining space.
-            elide: Text.ElideRight
-            width: Math.max(0, Math.min(implicitWidth, content.width - x))
+            Text {
+                text: appBar.subtitle
+                color: root.surfaceColor
+                font.family: root.globalFont
+                font.capitalization: Font.AllUppercase
+                anchors.verticalCenter: parent.verticalCenter
+                font.pixelSize: root.sh * 0.0333333 //16
+                // x is this Text's Row position, i.e. everything before it
+                // (title, separator, spacings) — cap to the bar's remaining space.
+                elide: Text.ElideRight
+                width: Math.max(0, Math.min(implicitWidth, content.width - x))
+            }
         }
     }
 }

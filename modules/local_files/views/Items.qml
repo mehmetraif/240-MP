@@ -83,7 +83,9 @@ FocusScope {
     // Footer
     HintBar {
         id: footer
-        text: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE " + root.hints.select + ":SELECT"
+        // Select opens a folder and plays anything else.
+        text: root.hints.back + ":BACK " + root.hints.arrows + ":NAVIGATE " + root.hints.select
+              + (tree.currentEntry && !tree.currentEntry.isFolder ? ":PLAY" : ":OPEN")
         anchors.bottom: parent.bottom
         anchors.left: parent.left
         anchors.bottomMargin: root.sh * 0.1041667 //50
