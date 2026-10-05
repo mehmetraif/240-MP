@@ -141,6 +141,24 @@ FocusScope {
             moduleId: ""
         })
 
+        // INFO SCREEN — a film's details in the trees (Netflix, Prime Video,
+        // YouTube): with right on it always, and with a number also on its own
+        // once the cursor has rested on it that many seconds. One control, like
+        // the screen saver's.
+        var infoVals = ["off", "key", "1", "2", "3", "5"]
+        var infoOpts = ["Off", "Key", "1 sec", "2 sec", "3 sec", "5 sec"]
+        var infoIdx = infoVals.indexOf(appSettings["info_screen"] || "3")
+        items.push({
+            type: "list_single",
+            key: "info_screen",
+            label: "Info Screen",
+            options: infoOpts,
+            values: infoVals,
+            value: infoOpts[infoIdx < 0 ? infoVals.indexOf("3") : infoIdx],
+            description: "A film's details in Netflix, Prime Video and YouTube\n[KEY] With right on a film  [SEC] Also on its own once the cursor rests on it",
+            moduleId: ""
+        })
+
         // MODULES section — only show modules with has_settings
         var hasModuleSettings = false
         for (var i = 0; i < installedModules.length; i++) {

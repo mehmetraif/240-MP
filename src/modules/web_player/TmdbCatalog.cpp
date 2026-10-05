@@ -6,6 +6,7 @@
 #include <QJsonObject>
 #include <QNetworkReply>
 #include <QNetworkRequest>
+#include <QTimer>
 #include <QUrl>
 #include <QDebug>
 #include <memory>
@@ -70,6 +71,7 @@ void TmdbCatalog::forget() {
     m_searches.clear();
     m_searching.clear();
     m_failedAt.clear();
+    m_details.clear();
 }
 
 QString TmdbCatalog::apiKey() const {
@@ -402,4 +404,100 @@ void TmdbCatalog::findOnWikidata(const QString &path, const QString &fallback,
                   .value(QStringLiteral("value")).toString();
         emit titleUrlReady(path, serviceId.isEmpty() ? fallback : m_service.titleUrl.arg(serviceId));
     });
+}
+
+void TmdbCatalog::loadDetails(const QVariantMap &title) {
+    const QString path = title.value(QStringLiteral("path")).toString();
+    if (m_details.contains(path)) {
+        const QVariantMap details = m_details.value(path);
+        // Never from inside the call: the view showing them is still opening.
+        QTimer::singleShot(0, this, [this, path, details]() { emit detailsReady(path, details); });
+        return;
+    }
+    const QString type = title.value(QStringLiteral("mediaType")).toString();
+    const int id = title.value(QStringLiteral("tmdbId")).toInt();
+    if (id <= 0)
+        return;
+    const QString endpoint = QStringLiteral("/%1/%2").arg(type).arg(id);
+    get(endpoint, { { QStringLiteral("language"), m_language },
+                    { QStringLiteral("append_to_response"), QStringLiteral("credits") } },
+        [this, path, type, endpoint](const QVariantMap &json) {
+            QVariantMap details = detailsFrom(json, type);
+            if (json.isEmpty()) {
+                emit detailsReady(path, details);   // not kept: asked again next time
+                return;
+            }
+            // A story TMDB has no translation of is told in English.
+            if (details.value(QStringLiteral("summary")).toString().isEmpty()
+                && m_language != QLatin1String("en-US")) {
+                get(endpoint, { { QStringLiteral("language"), QStringLiteral("en-US") } },
+                    [this, path, details](const QVariantMap &english) mutable {
+                        details[QStringLiteral("summary")] = english.value(QStringLiteral("overview"));
+                        m_details.insert(path, details);
+                        emit detailsReady(path, details);
+                    });
+                return;
+            }
+            m_details.insert(path, details);
+            emit detailsReady(path, details);
+        });
+}
+
+QVariantMap TmdbCatalog::detailsFrom(const QVariantMap &json, const QString &type) const {
+    const bool movie = type == QLatin1String("movie");
+    QVariantMap details;
+    details[QStringLiteral("title")] = json.value(movie ? QStringLiteral("title") : QStringLiteral("name"));
+    // The facts line the way Plex's detail page has it: 1997 - 2HR:29MIN.
+    QStringList facts;
+    const QString year = json.value(movie ? QStringLiteral("release_date")
+                                          : QStringLiteral("first_air_date")).toString().left(4);
+    if (!year.isEmpty())
+        facts << year;
+    if (movie) {
+        const int minutes = json.value(QStringLiteral("runtime")).toInt();
+        if (minutes >= 60)
+            facts << QStringLiteral("%1HR:%2MIN").arg(minutes / 60).arg(minutes % 60, 2, 10, QLatin1Char('0'));
+        else if (minutes > 0)
+            facts << QStringLiteral("%1MIN").arg(minutes);
+    } else {
+        const int seasons = json.value(QStringLiteral("number_of_seasons")).toInt();
+        if (seasons > 0)
+            facts << QStringLiteral("%1 %2").arg(seasons)
+                         .arg(seasons == 1 ? QStringLiteral("SEASON") : QStringLiteral("SEASONS"));
+    }
+    details[QStringLiteral("facts")] = facts.join(QStringLiteral(" - "));
+    details[QStringLiteral("summary")] = json.value(QStringLiteral("overview"));
+
+    QVariantList rows;
+    const auto row = [&rows](const QString &label, const QStringList &values) {
+        if (!values.isEmpty())
+            rows << QVariantMap{ { "label", label }, { "value", values.join(QStringLiteral(", ")) } };
+    };
+    QStringList genres;
+    for (const QVariant &g : json.value(QStringLiteral("genres")).toList())
+        genres << g.toMap().value(QStringLiteral("name")).toString();
+    row(QStringLiteral("Genre"), genres.mid(0, 2));
+    const QVariantMap credits = json.value(QStringLiteral("credits")).toMap();
+    QStringList makers;
+    if (movie) {
+        for (const QVariant &c : credits.value(QStringLiteral("crew")).toList()) {
+            const QVariantMap person = c.toMap();
+            if (person.value(QStringLiteral("job")).toString() == QLatin1String("Director"))
+                makers << person.value(QStringLiteral("name")).toString();
+        }
+    } else {
+        for (const QVariant &c : json.value(QStringLiteral("created_by")).toList())
+            makers << c.toMap().value(QStringLiteral("name")).toString();
+    }
+    row(movie ? QStringLiteral("Director") : QStringLiteral("Creator"), makers.mid(0, 2));
+    QStringList cast;
+    // Two names fit a line.
+    for (const QVariant &c : credits.value(QStringLiteral("cast")).toList().mid(0, 2))
+        cast << c.toMap().value(QStringLiteral("name")).toString();
+    row(QStringLiteral("Cast"), cast);
+    const double vote = json.value(QStringLiteral("vote_average")).toDouble();
+    if (vote > 0)
+        row(QStringLiteral("Rating"), { QString::number(vote, 'f', 1) + QStringLiteral("/10") });
+    details[QStringLiteral("rows")] = rows;
+    return details;
 }
