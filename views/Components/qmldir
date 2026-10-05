@@ -11,3 +11,4 @@ OsdTapeBar OsdTapeBar.qml
 OsdTicks OsdTicks.qml
 PixelIcon PixelIcon.qml
 Dither Dither.qml
+MenuRow MenuRow.qml

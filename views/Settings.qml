@@ -16,6 +16,17 @@ FocusScope {
     // Flat model: mix of section headers and rows
     property var settingsItems: []
 
+    // Every value starts in one column, two cells past the longest label that
+    // has one, the way a camcorder's menu lines them up.
+    readonly property int valueColumn: {
+        var cells = 0
+        for (var i = 0; i < settingsItems.length; i++) {
+            if (settingsItems[i].type === "list_single")
+                cells = Math.max(cells, (settingsItems[i].label || "").length)
+        }
+        return cells + 2
+    }
+
     property bool quitOverlayVisible: false
     property int quitChoiceIndex: 0
 
@@ -348,68 +359,14 @@ FocusScope {
                 font.pixelSize: root.sh * 0.0291667 //14
             }
 
-            // --- SELECTABLE ROW ---
-            Rectangle {
+            // --- SELECTABLE ROW --- laid out like a camcorder's menu: "DISPLAY······ON".
+            MenuRow {
                 visible: modelData.type !== "section"
                 anchors.fill: parent
-                color: settingsList.currentIndex === index ? root.accentColor : "transparent"
-
-                // Label
-                Text {
-                    text: modelData.label || ""
-                    color: settingsList.currentIndex === index ? root.surfaceColor : root.primaryColor
-                    font.family: root.globalFont
-                    font.capitalization: Font.AllUppercase
-                    anchors.verticalCenter: parent.verticalCenter
-                    x: 0
-                    topPadding: root.sh * 0.0041667 //2
-                    leftPadding: root.sw * 0.009375 //6
-                    rightPadding: root.sw * 0.009375 //6
-                    bottomPadding: root.sh * 0.00625 //3
-                    font.pixelSize: root.sh * 0.05 //24
-                }
-
-                // Value / arrow indicator
-                Row {
-                    anchors.verticalCenter: parent.verticalCenter
-                    anchors.right: parent.right
-                    anchors.rightMargin: root.sw * 0.009375 //6
-                    spacing: root.sw * 0.00625 //4
-
-                    Text {
-                        visible: modelData.type === "list_single"
-                        text: "\u25C4"
-                        color: settingsList.currentIndex === index ? root.surfaceColor : root.tertiaryColor
-                        font.family: root.globalFont
-                        anchors.verticalCenter: parent.verticalCenter
-                        topPadding: root.sh * 0.0041667 //2
-                        bottomPadding: root.sh * 0.00625 //3
-                        font.pixelSize: root.sh * 0.0375 //18
-                    }
-                    Text {
-                        visible: modelData.type === "list_single"
-                        text: modelData.value || ""
-                        color: settingsList.currentIndex === index ? root.surfaceColor : root.primaryColor
-                        font.family: root.globalFont
-                        font.capitalization: Font.AllUppercase
-                        anchors.verticalCenter: parent.verticalCenter
-                        topPadding: root.sh * 0.0041667 //2
-                        leftPadding: root.sw * 0.009375 //6
-                        rightPadding: root.sw * 0.009375 //6
-                        bottomPadding: root.sh * 0.00625 //3
-                        font.pixelSize:root.sh * 0.05 //24
-                    }
-                    Text {
-                        visible: modelData.type === "submenu" || modelData.type === "list_single"
-                        text: "\u25BA"
-                        color: settingsList.currentIndex === index ? root.surfaceColor : root.tertiaryColor
-                        font.family: root.globalFont
-                        anchors.verticalCenter: parent.verticalCenter
-                        topPadding: root.sh * 0.0041667 //2
-                        bottomPadding: root.sh * 0.00625 //3
-                        font.pixelSize: root.sh * 0.0375 //18
-                    }
-                }
+                label: modelData.label || ""
+                value: modelData.type === "list_single" ? (modelData.value || "") : ""
+                valueColumn: settingsRoot.valueColumn
+                selected: settingsList.currentIndex === index
             }
         }
     }

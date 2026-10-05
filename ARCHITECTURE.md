@@ -46,7 +46,7 @@ The guiding idea: **browse structured content, then hand off to the right tool f
     ModuleList.qml
     Settings.qml
     ...
-    Components/                     # shared QML components (AppBar, HintBar, the Osd* elements, ChoiceOverlay, qmldir)
+    Components/                     # shared QML components (AppBar, HintBar, MenuRow, the Osd* elements, ChoiceOverlay, qmldir)
     BootScreen.qml                  # boot screen of the 240-MP OS image (see os/README.md)
   Main.qml                          # app root
   CMakeLists.txt
@@ -571,6 +571,7 @@ Pixel-drawn pieces of a deck's on-screen menu, built on `root.px` (one pixel of 
 | Component | What it draws |
 |---|---|
 | `HintBar` | The footer hint line on a solid bar. It is a `Text`, so a view sets `text` and anchors exactly as on one. It owns its font size, steps it down only as far as a long hint needs to fit the safe width, and every view's footer uses it. |
+| `MenuRow` | A settings line the way a camcorder's menu lays one out, `DISPLAY······ON`: `label`, a dot per character cell, then `value` (none for a submenu), with `selected` as a solid bar. A menu sets the same `valueColumn` on all its lines, two cells past its longest label, so the values line up. Settings and every module's settings use it. |
 | `Dither` | A checkerboard of background-colour art pixels laid over an area: the two-colour way to dim it. |
 | `PixelIcon` | A symbol from a small bitmap: `play`, `left`, `up`, `down`, `ff`, `rew`, `pause`, `stop`, `rec`, `eject`, plus the `ok` key and `tape` badges. |
 | `OsdTicks` | The segment bar, `||||----`: a tick per filled step and a dash per empty one. The boot screen's progress bar. |

@@ -15,17 +15,20 @@ Text {
     color: root.surfaceColor
     font.family: root.globalFont
     font.pixelSize: Math.max(smallest, Math.min(largest,
-        Math.floor(largest * (width - leftPadding - rightPadding) / Math.max(1, probe.advanceWidth(text)))))
+        Math.floor(largest * (width - leftPadding - rightPadding) / Math.max(1, probe.advanceWidth))))
     elide: Text.ElideRight
     leftPadding: root.sw * 0.0125 //8
     rightPadding: root.sw * 0.0125 //8
     topPadding: root.px
     bottomPadding: root.px
 
-    FontMetrics {
+    // The hint line's width at the largest size. TextMetrics rather than
+    // FontMetrics.advanceWidth(), so the size follows the font once it is set.
+    TextMetrics {
         id: probe
         font.family: root.globalFont
         font.pixelSize: hint.largest
+        text: hint.text
     }
 
     Rectangle {

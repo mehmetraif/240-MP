@@ -21,11 +21,13 @@ FocusScope {
     readonly property int unit: cassette.pixelSize
 
     // The text runs as wide as the cassette: the longest service line sets its
-    // size, kept within what a CRT reads comfortably.
-    FontMetrics {
+    // size, kept within what a CRT reads comfortably. TextMetrics rather than
+    // FontMetrics.advanceWidth(), so the size follows the font once it is set.
+    TextMetrics {
         id: probe
         font.family: root.globalFont
         font.pixelSize: 100
+        text: bootRoot.longestLine
     }
     readonly property string longestLine: {
         var line = "[ OK ] READY"
@@ -37,7 +39,7 @@ FocusScope {
         return line.toUpperCase()
     }
     readonly property real textSize: Math.max(root.sh * 0.0375, Math.min(root.sh * 0.0583333,
-        Math.floor(100 * cassette.width / probe.advanceWidth(longestLine))))
+        Math.floor(100 * cassette.width / Math.max(1, probe.advanceWidth))))
 
     // Cycles 0..3 for the "..." after whatever is starting.
     property int dots: 0
