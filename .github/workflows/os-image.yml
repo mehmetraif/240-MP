@@ -1,0 +1,126 @@
+name: OS image
+
+# Builds the 240-MP OS image (os/README.md): the app from this branch as an
+# arm64 tarball, then Raspberry Pi OS Lite plus os/stage-240mp through pi-gen.
+# Both jobs run on GitHub's native arm64 runner, so pi-gen needs no emulation.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'os/**'
+      - 'src/boot/**'
+      - 'views/BootScreen.qml'
+      - 'views/Components/VhsCassette.qml'
+      - 'scripts/install.sh'
+      - '.github/workflows/os-image.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: os-image-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  app:
+    name: 240-MP (linux arm64)
+    runs-on: ubuntu-24.04-arm
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+
+      # Same toolchain as the release workflow's Linux arm64 job.
+      - name: Install build dependencies
+        run: |
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.* /etc/apt/sources.list.d/azure-cli.*
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            qt6-base-dev \
+            qt6-declarative-dev \
+            libqt6svg6 \
+            qt6-svg-dev \
+            qml6-module-qtquick \
+            qml6-module-qtquick-controls \
+            qml6-module-qtquick-window \
+            libdrm-dev \
+            libssl-dev \
+            libsdl2-dev \
+            libpcsclite-dev
+
+      # APP_VERSION stays "dev": a branch build has no release to update to,
+      # and "dev" turns the in-app updater's download off.
+      - name: Configure
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX="${GITHUB_WORKSPACE}/install/usr/local"
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Install
+        run: cmake --install build
+
+      - name: Create tarball
+        run: |
+          cd "${GITHUB_WORKSPACE}/install"
+          tar -czf "${GITHUB_WORKSPACE}/240-MP-dev-linux-arm64.tar.gz" .
+
+      - name: Upload tarball
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: tarball-linux-arm64
+          path: 240-MP-dev-linux-arm64.tar.gz
+          if-no-files-found: error
+
+  image:
+    name: Image
+    needs: app
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 180
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+
+      - name: Download tarball
+        uses: actions/download-artifact@v4.3.0
+        with:
+          name: tarball-linux-arm64
+
+      # pi-gen keeps a root filesystem per stage plus the image itself; make
+      # room by dropping toolchains this job never uses.
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+            /opt/hostedtoolcache /usr/local/share/boost || true
+          df -h /
+
+      - name: Build image
+        env:
+          # Optional: without it the first user's password is locked.
+          FIRST_USER_PASS: ${{ secrets.OS_FIRST_USER_PASS }}
+        run: os/build.sh 240-MP-dev-linux-arm64.tar.gz
+
+      - name: Upload image
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: 240mp-os-image
+          path: |
+            os/work/pi-gen/deploy/*.img.xz
+            os/work/pi-gen/deploy/*.info
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+
+      - name: Upload build logs
+        if: failure()
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: pi-gen-logs
+          path: os/work/pi-gen/deploy/*.log
+          if-no-files-found: ignore

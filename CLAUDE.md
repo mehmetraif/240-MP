@@ -33,6 +33,7 @@ This file stays intentionally lean. The detailed documentation is single-sourced
 | How to contribute, project principles, best-practices checklist, adding/changing a module, testing, coding style | **[CONTRIBUTING.md](CONTRIBUTING.md)** |
 | Building & running on macOS / Raspberry Pi, CI/release workflow, per-OS config/data directory paths | **[BUILDING.md](BUILDING.md)** |
 | End-user install (Raspberry Pi imaging, `config.txt`, macOS DMG) | **[INSTALL.md](INSTALL.md)** |
+| The 240-MP OS image (pi-gen stage, app-first boot order, boot screen) | **[os/README.md](os/README.md)** |
 
 ---
 

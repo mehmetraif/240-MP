@@ -1,0 +1,3 @@
+# Lets the tty group open /dev/tty0, which 240-MP needs to switch VTs around
+# mpv and takeover scripts. Same rule scripts/install.sh writes.
+KERNEL=="tty0", GROUP="tty", MODE="0620"
