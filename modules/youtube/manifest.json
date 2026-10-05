@@ -108,6 +108,20 @@
       "label": "Delete Recently Watched",
       "type": "action",
       "action_slot": "delete_history"
+    },
+    {
+      "key": "sign_in",
+      "label": "Sign in",
+      "type": "module_view",
+      "params": { "signIn": true },
+      "description": "Opens Google's sign-in page full screen, to sign in with a keyboard: YouTube then searches and plays as that account, with fewer bot checks\nYouTube can block an account used through yt-dlp: sign in with a spare one\nNeeds Chromium, or Google Chrome on a Mac"
+    },
+    {
+      "key": "sign_out",
+      "label": "Sign out",
+      "type": "action",
+      "action_slot": "signOut",
+      "description": "Forgets the YouTube sign-in on this player"
     }
   ]
 }

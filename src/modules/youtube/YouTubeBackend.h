@@ -9,7 +9,10 @@
 #include <QVariantMap>
 #include <QNetworkAccessManager>
 
-// Backend for the YouTube module (V1 "feed" approach — no auth).
+class DisplayHandoff;
+class WebPlayerBackend;
+
+// Backend for the YouTube module (V1 "feed" approach — no account needed).
 //
 // The user lists channel IDs (one per line) in <dataRoot>/youtube_subscriptions.txt.
 // Video lists come from each channel's official RSS feed (titles, exact publish
@@ -28,13 +31,27 @@
 //
 // The module browses all of it, and YouTube's search (yt-dlp ytsearch), as one
 // tree (TreeBrowser) through listing().
+//
+// An account is optional. SIGN IN (the module's settings) opens Google's
+// sign-in in Chromium, in a profile of its own (browser, a WebPlayerBackend);
+// from then on every yt-dlp run here and in mpv reads the sign-in from that
+// profile (--cookies-from-browser), so YouTube sees the account: fewer bot
+// checks, and age-restricted videos play. SIGN OUT deletes the profile.
 class YouTubeBackend : public QObject {
     Q_OBJECT
     // What stands in the way of browsing, when anything does; "" otherwise.
     Q_PROPERTY(QString problem READ problem NOTIFY problemChanged)
+    // SIGN IN's browser (SignIn.qml opens Google's sign-in with it).
+    Q_PROPERTY(QObject *browser READ browser CONSTANT)
 public:
     explicit YouTubeBackend(const QString &appRoot, const QString &dataRoot,
-                            QObject *parent = nullptr);
+                            DisplayHandoff *handoff, QObject *parent = nullptr);
+
+    QObject *browser() const;
+
+    // manifest: sign_out (action). Deletes SIGN IN's browser profile, and with
+    // it the sign-in yt-dlp reads.
+    Q_INVOKABLE void signOut();
 
     // Synchronous subscriptions-file check for the menu view:
     // { ok: bool, error: QString, fileExists: bool, channelCount: int }
@@ -64,7 +81,8 @@ public:
     // { resolution, codec, maxFrameRate, audioLanguage, subtitles,
     // subtitleLanguage, speed }: the format above, the subtitles yt-dlp is to
     // fetch ("On", or "With Auto" for the automatic captions too) and the
-    // speed ("1.25x"). Player.qml selects the subtitles (--slang).
+    // speed ("1.25x"), and the account once signed in. Player.qml selects the
+    // subtitles (--slang).
     Q_INVOKABLE QStringList playbackArgs(const QVariantMap &settings) const;
 
     // ADVANCED's language lists (options_slot), by yt-dlp's language codes.
@@ -179,6 +197,12 @@ private:
     QVariantMap  detailsOf(const QVariantMap &video, bool complete) const;
     void         fetchDetails(const QVariantMap &video);
     void         setProblem(const QString &problem);
+    // What makes yt-dlp read SIGN IN's sign-in from its browser profile, as
+    // the browser left it, on each run: --cookies-from-browser's value, and
+    // the option with it. Empty while that browser has kept nothing (never
+    // opened, or signed out).
+    QString      cookiesFromBrowser() const;
+    QStringList  cookieArgs() const;
 
     QList<PlaylistFileRef> readPlaylistEntries(QString *error = nullptr) const;
     void         ensurePlaylistsFresh(bool forceRefresh);
@@ -189,6 +213,7 @@ private:
     QString m_appRoot;
     QString m_dataRoot;
     QNetworkAccessManager m_nam;
+    WebPlayerBackend *m_browser = nullptr;
 
     QHash<QString, ChannelEntry> m_channels;  // in-memory session cache
     QStringList m_channelOrder;               // channel IDs in file order (deduped)

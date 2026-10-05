@@ -6,7 +6,10 @@
 #include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QProcess>
+#include <QProcessEnvironment>
 #include <QStandardPaths>
+#include <QTimer>
 #include <QDebug>
 
 namespace {
@@ -14,6 +17,10 @@ namespace {
 // The browsers web-player.sh looks for, in its order. Keep the two in step.
 const char *const kBrowsers[] = { "chromium", "chromium-browser",
                                   "google-chrome-stable", "google-chrome" };
+
+// How long close() gives the browser to close before stopping it: a page may
+// ask to stay, and nothing here can answer.
+constexpr int kCloseGraceMs = 5000;
 
 bool haveBrowser() {
 #ifdef Q_OS_MACOS
@@ -34,14 +41,16 @@ WebPlayerBackend::WebPlayerBackend(const Service &service,
                                    const QString &appRoot, const QString &dataRoot,
                                    DisplayHandoff *handoff, QObject *parent)
     : QObject(parent), m_service(service.id), m_url(service.homeUrl),
+      m_signInUrl(service.signInUrl), m_needsChromium(service.needsChromium),
       m_appRoot(appRoot), m_dataRoot(dataRoot)
 {
-    m_catalog = new TmdbCatalog(m_dataRoot, service.catalog, this);
+    if (!service.catalog.providerName.isEmpty())
+        m_catalog = new TmdbCatalog(m_dataRoot, service.catalog, this);
     // The catalogue's settings as they stand: AppCore isn't available to
     // backends at construction time, so straight from config.json, as the
     // other backends do.
     QFile f(m_dataRoot + QStringLiteral("/config.json"));
-    if (f.open(QIODevice::ReadOnly)) {
+    if (m_catalog && f.open(QIODevice::ReadOnly)) {
         const QJsonObject settings = QJsonDocument::fromJson(f.readAll()).object()
             .value(QStringLiteral("modules")).toObject().value(moduleId()).toObject();
         for (const QString &key : { QStringLiteral("region"), QStringLiteral("catalog_language") })
@@ -54,6 +63,16 @@ WebPlayerBackend::WebPlayerBackend(const Service &service,
             this, &WebPlayerBackend::runningChanged);
     connect(m_launcher, &ScriptLauncher::finished,
             this, &WebPlayerBackend::finished);
+
+    m_closeTimer = new QTimer(this);
+    m_closeTimer->setSingleShot(true);
+    m_closeTimer->setInterval(kCloseGraceMs);
+    connect(m_closeTimer, &QTimer::timeout, this, &WebPlayerBackend::stop);
+    connect(m_launcher, &ScriptLauncher::finished, m_closeTimer, &QTimer::stop);
+}
+
+QString WebPlayerBackend::script() const {
+    return m_appRoot + QStringLiteral("/scripts/web-player.sh");
 }
 
 bool WebPlayerBackend::running() const {
@@ -61,7 +80,7 @@ bool WebPlayerBackend::running() const {
 }
 
 QString WebPlayerBackend::browserProfile() const {
-    // Where web-player.sh keeps the browser's profile, and so the sign-in.
+    // web-player.sh's PROFILE: keep the two in step.
     return m_dataRoot + QLatin1Char('/') + m_service + QStringLiteral("/browser");
 }
 
@@ -72,6 +91,8 @@ void WebPlayerBackend::onSettingChanged(const QString &moduleId, const QString &
 }
 
 void WebPlayerBackend::applySetting(const QString &key, const QVariant &value) {
+    if (!m_catalog)
+        return;
     if (key == QLatin1String("region")) {
         m_catalog->setRegion(value.toString());
     } else if (key == QLatin1String("catalog_language")) {
@@ -85,7 +106,7 @@ void WebPlayerBackend::applySetting(const QString &key, const QVariant &value) {
 bool WebPlayerBackend::launch(const QString &url) {
     m_lastError.clear();
 
-    const QString script = m_appRoot + QStringLiteral("/scripts/web-player.sh");
+    const QString script = this->script();
     if (!QFileInfo::exists(script)) {
         m_lastError = QStringLiteral("web-player.sh is missing from the app");
         return false;
@@ -94,6 +115,13 @@ bool WebPlayerBackend::launch(const QString &url) {
         m_lastError = QStringLiteral("Chromium is not installed");
         return false;
     }
+#ifdef Q_OS_MACOS
+    // web-player.sh's Safari fallback keeps its sign-in where nothing reads it.
+    if (m_needsChromium && !QFileInfo::exists(QStringLiteral("/Applications/Google Chrome.app"))) {
+        m_lastError = QStringLiteral("Google Chrome is not installed");
+        return false;
+    }
+#endif
     // Without a desktop there is nothing for a browser to open a window on;
     // cage gives it a screen of its own.
     if (DisplayHandoff::isHeadless()
@@ -154,6 +182,35 @@ QString WebPlayerBackend::output() const {
 }
 
 void WebPlayerBackend::close() {
+    if (!m_launcher->isBusy() || m_closeTimer->isActive())
+        return;
+    // The way Ctrl+W closes it, the browser saves what it holds first:
+    // Chromium writes new cookies, a sign-in among them, only every half
+    // minute, and stopping it outright loses them. web-player.sh --close
+    // fails where it can't ask that (no wtype, a cage too old, a desktop).
+    m_closeTimer->start();
+    auto *closer = new QProcess(this);
+    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+    env.insert(QStringLiteral("DATA_ROOT"), m_dataRoot);
+    closer->setProcessEnvironment(env);
+    connect(closer, &QProcess::finished, this,
+            [this, closer](int exitCode, QProcess::ExitStatus status) {
+                closer->deleteLater();
+                if (status != QProcess::NormalExit || exitCode != 0)
+                    stop();
+            });
+    connect(closer, &QProcess::errorOccurred, this,
+            [this, closer](QProcess::ProcessError error) {
+                if (error != QProcess::FailedToStart)
+                    return;
+                closer->deleteLater();
+                stop();
+            });
+    closer->start(QStringLiteral("/bin/sh"), { script(), QStringLiteral("--close"), m_service });
+}
+
+void WebPlayerBackend::stop() {
+    m_closeTimer->stop();
     if (m_launcher->isBusy())
         m_launcher->requestStop();
 }

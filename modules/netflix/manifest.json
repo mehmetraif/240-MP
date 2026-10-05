@@ -50,6 +50,13 @@
       "description": "How a 16:9 picture fills the 4:3 screen in this module\n[DEFAULT] As Settings' Scaling says"
     },
     {
+      "key": "sign_in",
+      "label": "Sign in",
+      "type": "module_view",
+      "params": { "signIn": true },
+      "description": "Opens Netflix's sign-in page full screen, to sign in with a keyboard\nThis player stays signed in until Sign out"
+    },
+    {
       "key": "sign_out",
       "label": "Sign out",
       "type": "action",

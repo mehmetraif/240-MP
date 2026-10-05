@@ -258,6 +258,13 @@ FocusScope {
                     moduleId: moduleSettingsRoot.moduleId,
                     submenu: item.key
                 }, { currentIndex: settingsList.currentIndex })
+            } else if (item.type === "module_view") {
+                // The module itself, which its Root.qml opens on one of its
+                // own views by these params, e.g. Netflix's sign-in page; back
+                // from it comes back here. Enabled or not.
+                moduleSettingsRoot.navigateTo(appCore.module_entry_point(moduleSettingsRoot.moduleId),
+                                              item.params || {},
+                                              { currentIndex: settingsList.currentIndex })
             } else if (item.type === "action") {
                 appCore.invoke_module_action(moduleSettingsRoot.moduleId, item.action_slot)
             } else if (item.type === "directory_browser") {

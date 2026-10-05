@@ -1,8 +1,10 @@
 #include "YouTubeBackend.h"
+#include "../web_player/WebPlayerBackend.h"
 #include "../../util/YtDlpLocator.h"
 
 #include <QDateTime>
 #include <QFile>
+#include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -33,9 +35,52 @@ static QString watchUrlFor(const QString &videoId) {
     return QStringLiteral("https://www.youtube.com/watch?v=") + videoId;
 }
 
-YouTubeBackend::YouTubeBackend(const QString &appRoot, const QString &dataRoot, QObject *parent)
+YouTubeBackend::YouTubeBackend(const QString &appRoot, const QString &dataRoot,
+                               DisplayHandoff *handoff, QObject *parent)
     : QObject(parent), m_appRoot(appRoot), m_dataRoot(dataRoot)
 {
+    // Google's sign-in as YouTube's own SIGN IN button opens it, back to
+    // YouTube once signed in. Nothing to browse, so no catalogue.
+    WebPlayerBackend::Service service{};
+    service.id            = QStringLiteral("youtube");
+    service.homeUrl       = QStringLiteral("https://www.youtube.com");
+    service.signInUrl     = QStringLiteral(
+        "https://accounts.google.com/ServiceLogin?service=youtube&passive=true"
+        "&continue=https%3A%2F%2Fwww.youtube.com%2Fsignin%3Faction_handle_signin%3Dtrue"
+        "%26app%3Ddesktop%26next%3Dhttps%253A%252F%252Fwww.youtube.com%252F");
+    service.needsChromium = true;
+    m_browser = new WebPlayerBackend(service, appRoot, dataRoot, handoff, this);
+}
+
+QObject *YouTubeBackend::browser() const {
+    return m_browser;
+}
+
+void YouTubeBackend::signOut() {
+    m_browser->signOut();
+}
+
+QString YouTubeBackend::cookiesFromBrowser() const {
+    const QString profile = m_browser->browserProfile();
+    // Chromium's cookie store: in Network/ since Chromium 96, beside it before.
+    if (!QFileInfo::exists(profile + QStringLiteral("/Default/Network/Cookies"))
+        && !QFileInfo::exists(profile + QStringLiteral("/Default/Cookies")))
+        return {};
+#ifdef Q_OS_MACOS
+    // Google Chrome, whose key to them is in the login keychain.
+    return QStringLiteral("chrome:") + profile;
+#else
+    // web-player.sh runs the browser with --password-store=basic: Chromium's
+    // fixed key, not a keyring's.
+    return QStringLiteral("chromium+basictext:") + profile;
+#endif
+}
+
+QStringList YouTubeBackend::cookieArgs() const {
+    const QString cookies = cookiesFromBrowser();
+    if (cookies.isEmpty())
+        return {};
+    return { QStringLiteral("--cookies-from-browser"), cookies };
 }
 
 // ---------------------------------------------------------------------------
@@ -458,7 +503,7 @@ void YouTubeBackend::spawnNextPlaylistFetch() {
         ++m_activePlaylistFetches;
 
         auto *proc = new QProcess(this);
-        const QStringList args{
+        const QStringList args = cookieArgs() + QStringList{
             QStringLiteral("--flat-playlist"),
             QStringLiteral("-I"), QStringLiteral("1:%1").arg(kMaxPlaylistItems),
             QStringLiteral("--no-warnings"),
@@ -661,17 +706,27 @@ QStringList YouTubeBackend::playbackArgs(const QVariantMap &settings) const {
                          settings.value(QStringLiteral("maxFrameRate")).toString(),
                          settings.value(QStringLiteral("audioLanguage")).toString())};
 
+    // yt-dlp's own options, which mpv's hook passes on: all in one list, since
+    // a second --ytdl-raw-options would replace the first.
+    QStringList raw;
     // Without these mpv has yt-dlp list every subtitle the video has, none shown.
     const QString subtitles = settings.value(QStringLiteral("subtitles")).toString();
     if (subtitles == QLatin1String("On") || subtitles == QLatin1String("With Auto")) {
         QString language = settings.value(QStringLiteral("subtitleLanguage")).toString().trimmed().toLower();
         if (language.isEmpty())
             language = QStringLiteral("en");
-        QString raw = QStringLiteral("write-subs=,sub-langs=%1.*").arg(language);
+        raw << QStringLiteral("write-subs=") << QStringLiteral("sub-langs=%1.*").arg(language);
         if (subtitles == QLatin1String("With Auto"))
-            raw += QStringLiteral(",write-auto-subs=");
-        args << QStringLiteral("--ytdl-raw-options=") + raw;
+            raw << QStringLiteral("write-auto-subs=");
     }
+    // The account, as the app's own yt-dlp runs have it. A path may hold a
+    // comma, so the value goes in mpv's length-prefixed quoting: %bytes%value.
+    const QString cookies = cookiesFromBrowser();
+    if (!cookies.isEmpty())
+        raw << QStringLiteral("cookies-from-browser=%") + QString::number(cookies.toUtf8().size())
+                   + QLatin1Char('%') + cookies;
+    if (!raw.isEmpty())
+        args << QStringLiteral("--ytdl-raw-options=") + raw.join(QLatin1Char(','));
 
     bool ok = false;
     const double speed = settings.value(QStringLiteral("speed")).toString()
@@ -995,7 +1050,7 @@ void YouTubeBackend::searchPage(const QString &path) {
     search.loading = true;
     const int first = search.requested + 1;
     const int last  = search.requested + kSearchPageSize;
-    const QStringList args{
+    const QStringList args = cookieArgs() + QStringList{
         QStringLiteral("--flat-playlist"),
         QStringLiteral("--no-warnings"),
         QStringLiteral("-I"), QStringLiteral("%1:%2").arg(first).arg(last),
@@ -1156,7 +1211,7 @@ void YouTubeBackend::fetchDetails(const QVariantMap &video) {
     }
     m_fetchingDetails = true;
     auto *proc = new QProcess(this);
-    const QStringList args{
+    const QStringList args = cookieArgs() + QStringList{
         QStringLiteral("--skip-download"),
         QStringLiteral("--no-warnings"),
         QStringLiteral("--no-playlist"),
