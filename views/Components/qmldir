@@ -16,3 +16,4 @@ HelpLine HelpLine.qml
 ScrollMarks ScrollMarks.qml
 WebPlayerLaunch WebPlayerLaunch.qml
 TreeBrowser TreeBrowser.qml
+OnScreenKeyboard OnScreenKeyboard.qml
