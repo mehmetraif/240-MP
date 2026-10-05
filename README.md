@@ -2,23 +2,185 @@
 
 # 240-MP
 
-240-MP is a retro VCR style frontend to play content on [Raspberry Pi](https://github.com/anthonycaccese/240-MP/wiki/Hardware-Testing) (preferably hooked up to a CRT TV), Steam OS (and other Linux x86_64 distros) or MacOS (ARM).
+240-MP is a retro VCR style frontend to play content on [Raspberry Pi](https://github.com/anthonycaccese/240-MP/wiki/Hardware-Testing) (preferably hooked up to a CRT TV), Steam OS (and other Linux x86_64 distros) or MacOS (ARM). Every screen is drawn like a VCR's on-screen display, in two colours and large type, with menus laid out like a camcorder's. Everything works with the arrows, select and back, on a remote, a keyboard or a gamepad.
 
-Playback experiences are handled via modules to enable new integrations without requiring major changes to the overall frontend. Try to think of each module as a different input on a VHS deck. There are 10 included modules currently: [Local Files](https://github.com/anthonycaccese/240-MP/wiki/Module:-Local-Files), [Plex](https://github.com/anthonycaccese/240-MP/wiki/Module:-Plex), [Jellyfin](https://github.com/anthonycaccese/240-MP/wiki/Module:-Jellyfin), Emby, Netflix, Prime Video, [YouTube](https://github.com/anthonycaccese/240-MP/wiki/Module:-YouTube), [NFC Reader](https://github.com/anthonycaccese/240-MP/wiki/Module:-NFC-Reader), [Weather](https://github.com/anthonycaccese/240-MP/wiki/Module:-Weather) and a module similar to art/wallpaper modes on modern tvs called [Ambient:Mode](https://github.com/anthonycaccese/240-MP/wiki/Module:-Ambient-Mode).
+Playback experiences are handled via modules to enable new integrations without requiring major changes to the overall frontend. Try to think of each module as a different input on a VHS deck. There are 11 included modules currently: [Local Files](https://github.com/anthonycaccese/240-MP/wiki/Module:-Local-Files), [Plex](https://github.com/anthonycaccese/240-MP/wiki/Module:-Plex), [Jellyfin](https://github.com/anthonycaccese/240-MP/wiki/Module:-Jellyfin), Emby, Netflix, Prime Video, [YouTube](https://github.com/anthonycaccese/240-MP/wiki/Module:-YouTube), [NFC Reader](https://github.com/anthonycaccese/240-MP/wiki/Module:-NFC-Reader), [Weather](https://github.com/anthonycaccese/240-MP/wiki/Module:-Weather), [Scripts](https://github.com/anthonycaccese/240-MP/wiki/Module:-Scripts) and a module similar to art/wallpaper modes on modern tvs called [Ambient:Mode](https://github.com/anthonycaccese/240-MP/wiki/Module:-Ambient-Mode).
 
-It's built to work in conjuction with [MPV](https://github.com/anthonycaccese/240-MP/wiki/MPV) which will be installed (or updated) as a dependency during the [install](#Install) steps.  Some modules (like YouTube and NFC Reader) have additional dependencies which are covered on their associated wiki pages under the "To Enable" sections.
+It's built to work in conjunction with [MPV](https://github.com/anthonycaccese/240-MP/wiki/MPV) which will be installed (or updated) as a dependency during the [install](#install) steps.  Some modules (like YouTube and NFC Reader) have additional dependencies which are covered on their associated wiki pages under the "To Enable" sections.
 
-On a 4:3 screen a 16:9 picture is letterboxed; Settings → **Scaling** picks **14:9**, **Pan & Scan** or **Anamorphic** instead, for every module or, in a module's own settings, for that one.
+On a Raspberry Pi, 240-MP can also be the whole system. The **240-MP OS** image ([os/README.md](os/README.md)) boots straight into it, with no desktop, display server or window manager in between.
 
-With Settings → **Transparent Background**, back from a video returns to the menus and leaves it playing behind them, like a deck's menu over the tape. Its slider, the deck's tape bar, sets how much of the picture shows through them: ◄ ► move it from TRANSPARENT (all of it) toward SOLID (none, which turns the setting off). Choose it again to watch it full screen where it is; play/pause on the main menu stops it. It plays the video inside 240-MP's own window through libmpv (`libmpv2` on Raspberry Pi OS, part of Homebrew's mpv on macOS).
+## Highlights
 
-A favourite can start the show: right on it, **Options** → **Play at Startup** plays it straight after the boot screen (Settings → Play at Startup turns it off).
+- **One way to browse.** Local Files, Netflix, Prime Video and YouTube open as a horizontal tree. The folders you open run along a line across the screen, and every folder branches out to a few of its entries. Each starts with **Recently Watched**, **Favorites** and **Search**.
+- **Search with the remote**, typed on an on-screen keyboard.
+- **Info screens** for films and videos: the story, genre, director, cast and rating. One comes up when the cursor rests on a title (3 seconds by default), or straight away with ►.
+- **Options** on any entry, with ►: add it to **Favorites**, or have it **Play at Startup**, straight after the boot screen.
+- **Transparent Background.** Back from a video returns to the menus while the video keeps playing behind them, like a deck's menu over the tape. A slider from TRANSPARENT to SOLID sets how much of it shows through. It needs libmpv (`libmpv2` on Raspberry Pi OS, part of Homebrew's mpv on macOS).
+- **Scaling** for 16:9 pictures on a 4:3 screen: Letterbox, 14:9, Pan & Scan or Anamorphic. Set it for every module, or for one module in its own settings.
+- **Netflix and Prime Video** catalogues from TMDB in the same tree. A title plays in the service's own player.
+- **240-MP OS**, a Raspberry Pi OS Lite image that boots straight into 240-MP and shows a VHS boot screen while its services come up.
+
+## How it works
+
+### Nothing between the app and the screen
+
+<img src="docs/images/display-path.svg" width="100%" alt="How the picture reaches the TV on a desktop, in a kiosk, on 240-MP OS, and on 240-MP OS with Transparent Background" />
+
+On a desktop, 240-MP and mpv are windows. They hand their frames to a compositor (labwc on Raspberry Pi OS), and the compositor holds the screen. A kiosk setup replaces the desktop with one full-screen window, but Xorg or cage still sits in between.
+
+240-MP OS has no display server at all. 240-MP draws through Qt's EGLFS platform straight to the kernel's KMS/DRM driver, the way Kodi does on LibreELEC. Only one program draws at a time (it holds the *DRM master*), so there are no windows to manage. `DisplayHandoff` gives the screen to whatever takes over and takes it back when that exits:
+
+- mpv (`--vo=drm`) when a video plays
+- a takeover script from the Scripts module
+- Chromium, in `cage`, for Netflix and Prime Video
+
+With **Transparent Background**, mpv runs inside 240-MP instead, as libmpv. 240-MP then keeps the screen the whole time, draws the video as part of its own picture and lays its menus over it.
+
+### On screen first at boot
+
+<img src="docs/images/boot-order.svg" width="100%" alt="Boot order in a manual install and on 240-MP OS" />
+
+A manual install starts 240-MP last, once every service is up. 240-MP OS turns that around: 240-MP starts as soon as systemd reaches `basic.target`. Wi-Fi, Bluetooth, the local network and SSH (when enabled) wait for its first frame, then start one after another. The boot screen follows them until the network is online. The details are in [os/README.md](os/README.md).
+
+### Inside the app
+
+- At startup the shell (`AppCore`) finds the modules from their `modules/*/manifest.json`. Each module is a set of QML views, plus a C++ backend when it needs one.
+- Keyboards, remotes and gamepads (through SDL2) all arrive as the same key events, so every screen works with the arrows, select and back.
+- Playback goes through `MpvController`. mpv plays full screen on its own, or inside the app with Transparent Background.
+- Settings are kept in `config.json`.
+
+[ARCHITECTURE.md](ARCHITECTURE.md) has the rest.
+
+## Tour
+
+Every screen below is the app itself, running at 640×480. The film and YouTube entries are sample data; the weather is real.
+
+### Starting and stopping
+
+<table>
+<tr><th width="33%">Boot screen</th><th width="33%">Main menu</th><th width="33%">Quit</th></tr>
+<tr><td><img src="docs/screenshots/boot.png" width="100%" alt="Boot screen" /></td><td><img src="docs/screenshots/main-menu.png" width="100%" alt="Main menu" /></td><td><img src="docs/screenshots/quit.png" width="100%" alt="Quit" /></td></tr>
+<tr><td>On 240-MP OS, a cassette winds its tape from reel to reel while the services start, <code>[ OK ]</code> once each is up. It closes by itself when the last one has settled.</td><td>The modules, like the inputs on a deck. Select opens one; back opens Settings.</td><td>Settings → Quit. When 240-MP starts with the system, it offers Power Off or Exit to Terminal instead.</td></tr>
+</table>
+
+### Local Files
+
+<table>
+<tr><th width="50%">Recently Watched</th><th width="50%">Favorites</th></tr>
+<tr><td><img src="docs/screenshots/local-files.png" width="100%" alt="Recently Watched" /></td><td><img src="docs/screenshots/favorites.png" width="100%" alt="Favorites" /></td></tr>
+<tr><td>The tree opens on what you played last, then Favorites, Search and your folders. The entry under the cursor branches out to its first few items.</td><td>Files, folders and playlists you marked from their options.</td></tr>
+</table>
+
+<table>
+<tr><th width="50%">Folders</th><th width="50%">Search</th></tr>
+<tr><td><img src="docs/screenshots/tree.png" width="100%" alt="Folders" /></td><td><img src="docs/screenshots/keyboard.png" width="100%" alt="Search" /></td></tr>
+<tr><td>The open folders run along the line through the middle. The folder under the cursor branches out once more: TV Shows › Twin Peaks › its seasons › their episodes.</td><td>An on-screen keyboard: the arrows move, select types.</td></tr>
+</table>
+
+<table>
+<tr><th width="50%">Search results</th><th width="50%">Options</th></tr>
+<tr><td><img src="docs/screenshots/search-results.png" width="100%" alt="Search results" /></td><td><img src="docs/screenshots/options.png" width="100%" alt="Options" /></td></tr>
+<tr><td>Names that match anywhere under the media folder.</td><td>► on any entry: Add to Favorites (or Remove), and Play at Startup.</td></tr>
+</table>
+
+### Playing
+
+<table>
+<tr><th width="50%">Resume</th><th width="50%">Playback menu</th></tr>
+<tr><td><img src="docs/screenshots/resume.png" width="100%" alt="Resume" /></td><td><img src="docs/screenshots/playback-menu.png" width="100%" alt="Playback menu" /></td></tr>
+<tr><td>Pick up where you left off, or start from the beginning.</td><td>▲ or ▼ during playback opens the deck's menu: the position bar, audio and subtitle tracks, crop and stop.</td></tr>
+</table>
+
+<table>
+<tr><th width="50%">Back to the menus</th><th width="50%">Main menu</th></tr>
+<tr><td><img src="docs/screenshots/menus-over-video.png" width="100%" alt="Back to the menus" /></td><td><img src="docs/screenshots/main-menu-over-video.png" width="100%" alt="Main menu" /></td></tr>
+<tr><td>With Transparent Background, back returns to the menus and the video plays on behind them, here at 40% solid. Choose it again to watch it full screen from where it is.</td><td>Play/pause on the main menu stops it (<code>[SPACE]:STOP</code>). Playing anything else replaces it.</td></tr>
+</table>
+
+### Netflix, Prime Video and YouTube
+
+<table>
+<tr><th width="50%">Netflix</th><th width="50%">Movies › Popular</th></tr>
+<tr><td><img src="docs/screenshots/netflix.png" width="100%" alt="Netflix" /></td><td><img src="docs/screenshots/netflix-movies.png" width="100%" alt="Movies › Popular" /></td></tr>
+<tr><td>Recently Watched, Favorites, Search, then Movies and Series, and the service's own home page.</td><td>Popular, then each genre, a page of titles at a time.</td></tr>
+</table>
+
+<table>
+<tr><th width="50%">Info screen</th><th width="50%">Playing on Netflix</th></tr>
+<tr><td><img src="docs/screenshots/info-screen.png" width="100%" alt="Info screen" /></td><td><img src="docs/screenshots/netflix-player.png" width="100%" alt="Playing on Netflix" /></td></tr>
+<tr><td>Story, genre, director, cast and rating, from TMDB. Select plays the title; ► offers its options.</td><td>The service's own player, in Chromium, has the screen. Hold back for two seconds to come back.</td></tr>
+</table>
+
+<table>
+<tr><th width="50%">Prime Video</th><th width="50%">YouTube</th></tr>
+<tr><td><img src="docs/screenshots/prime-video.png" width="100%" alt="Prime Video" /></td><td><img src="docs/screenshots/youtube.png" width="100%" alt="YouTube" /></td></tr>
+<tr><td>The same tree, for Prime Video.</td><td>Recently Watched, Favorites, Search, Subscriptions, Channels, Playlists and Watch Later.</td></tr>
+</table>
+
+<table>
+<tr><th width="50%">Subscriptions</th><th width="50%">A video's info screen</th></tr>
+<tr><td><img src="docs/screenshots/youtube-subscriptions.png" width="100%" alt="Subscriptions" /></td><td><img src="docs/screenshots/youtube-info.png" width="100%" alt="A video's info screen" /></td></tr>
+<tr><td>The latest videos from your channels, newest first.</td><td>Channel, date, length, views and description.</td></tr>
+</table>
+
+### Plex, Jellyfin and Emby
+
+<table>
+<tr><th width="33%">Plex</th><th width="33%">Jellyfin</th><th width="33%">Emby</th></tr>
+<tr><td><img src="docs/screenshots/plex-sign-in.png" width="100%" alt="Plex" /></td><td><img src="docs/screenshots/jellyfin.png" width="100%" alt="Jellyfin" /></td><td><img src="docs/screenshots/emby.png" width="100%" alt="Emby" /></td></tr>
+<tr><td>Sign in with a code at plex.tv/link.</td><td>Connect to a server with Quick Connect.</td><td>A server on your network, or Emby Connect.</td></tr>
+</table>
+
+Once signed in, each opens on the server's Continue Watching and its libraries. See [Modules](#modules) for everything they do.
+
+### Weather, Ambient:Mode, NFC Reader and Scripts
+
+<table>
+<tr><th width="50%">Weather</th><th width="50%">Extended forecast</th></tr>
+<tr><td><img src="docs/screenshots/weather.png" width="100%" alt="Weather" /></td><td><img src="docs/screenshots/weather-forecast.png" width="100%" alt="Extended forecast" /></td></tr>
+<tr><td>In the style of WeatherStar 3000+: current conditions…</td><td>…the extended forecast and an almanac, in turn.</td></tr>
+</table>
+
+<table>
+<tr><th width="50%">Ambient:Mode</th><th width="50%">NFC Reader</th></tr>
+<tr><td><img src="docs/screenshots/ambient-mode.png" width="100%" alt="Ambient:Mode" /></td><td><img src="docs/screenshots/nfc-reader.png" width="100%" alt="NFC Reader" /></td></tr>
+<tr><td>A video, with music of your choice, on a loop.</td><td>Tap a card to play the video it is mapped to.</td></tr>
+</table>
+
+<table>
+<tr><th width="50%">Scripts</th><th width="50%">A console script</th></tr>
+<tr><td><img src="docs/screenshots/scripts.png" width="100%" alt="Scripts" /></td><td><img src="docs/screenshots/scripts-console.png" width="100%" alt="A console script" /></td></tr>
+<tr><td>Your own shell scripts. ► puts one on the main menu.</td><td>A console script shows its output. A takeover script gets the whole screen until it exits.</td></tr>
+</table>
+
+### Settings
+
+<table>
+<tr><th width="50%">Settings</th><th width="50%">Modules</th></tr>
+<tr><td><img src="docs/screenshots/settings.png" width="100%" alt="Settings" /></td><td><img src="docs/screenshots/settings-modules.png" width="100%" alt="Modules" /></td></tr>
+<tr><td>Laid out like a camcorder's menu. Transparent Background is a slider, the deck's tape bar, from TRANSPARENT to SOLID.</td><td>Each module is turned on and set up from here.</td></tr>
+</table>
+
+<table>
+<tr><th width="50%">A module's settings</th><th width="50%">Picking a folder</th></tr>
+<tr><td><img src="docs/screenshots/module-settings.png" width="100%" alt="A module's settings" /></td><td><img src="docs/screenshots/folder-picker.png" width="100%" alt="Picking a folder" /></td></tr>
+<tr><td>Local Files: its folder, looping, shuffle, resume, subtitles, and its own Scaling.</td><td>Folders are picked by browsing to them.</td></tr>
+</table>
+
+<table>
+<tr><th width="50%">Controls</th><th width="50%">Update</th></tr>
+<tr><td><img src="docs/screenshots/controls.png" width="100%" alt="Controls" /></td><td><img src="docs/screenshots/update.png" width="100%" alt="Update" /></td></tr>
+<tr><td>One more button for each action, from any keyboard, remote or gamepad.</td><td>Checks for a newer release and installs it.</td></tr>
+</table>
 
 ## Video Overview
 
 Watch on YouTube: https://youtu.be/r-gylGDoELY
 
 ## Photos
+
+Photos of an earlier version, before the menus above, on a CRT.
 
 | Module Selection | Item Detail |
 | --- | --- |

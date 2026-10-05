@@ -53,6 +53,7 @@ The guiding idea: **browse structured content, then hand off to the right tool f
   Main.qml                          # app root
   CMakeLists.txt
   os/                               # 240-MP OS image: a pi-gen stage on Raspberry Pi OS Lite
+  docs/                             # the README's screenshots (docs/screenshots/, 640×480) and diagrams (docs/images/)
 ```
 
 There are three modules today: `local_files`, `plex`, and `ambient_mode`. `plex` is a helpful reference when building something new as it covers a more complex use case (connecting to a 3rd party API with auth)
