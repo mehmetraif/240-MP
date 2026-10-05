@@ -19,17 +19,29 @@ Compared with flashing Raspberry Pi OS Lite and running `scripts/install.sh` ([I
 
   cloud-init applies Raspberry Pi Imager's settings on the first boot and is then switched off, because otherwise its stages delay every boot.
 - **The streaming modules' browser is included.** Chromium with Widevine and the `cage` kiosk compositor, for the Netflix and Prime Video modules, which open each service's own player full screen, and for YouTube's sign-in; `wtype` closes the browser cleanly when BACK is held. They add about 400 MB; build with `MP240_STREAMING=0` to leave them out.
+- **Films go on the card.** On the first boot the system keeps 8 GiB of the card, and the rest becomes a partition of its own in exFAT, labelled **240-MP**, which Windows and macOS open too. Local Files opens it. See [Films on the card](#films-on-the-card).
 - **Stopping isn't powering off.** `systemctl stop` and `systemctl restart` leave the Pi on. Quit in the app still powers it off, and Exit to Terminal still drops to a login shell, as with `install.sh`.
 
 Everything else (the launcher, in-app updates, Exit to Terminal, the data directory in `~/.local/share/240-MP`) is the same as a manual install. The launcher, stop helper and terminal unit are taken from `scripts/install.sh` at build time.
 
 ## Flashing
 
-1. In Raspberry Pi Imager, choose **Use custom** and pick the `.img.xz`.
-2. Use Imager's OS customisation to set up Wi-Fi, a user, SSH, the locale and the keyboard. It is applied on the first boot.
+1. In Raspberry Pi Imager, choose **Use custom** and pick the `.img.xz` (take it out of the zip GitHub's artifact comes in first).
+2. Raspberry Pi Imager 2 skips OS customisation for an image chosen with **Use custom**: it can't tell which kind the image takes. For Wi-Fi, a user, SSH, the locale and the keyboard, open the image through a local manifest instead, one that gives it `"init_format": "cloudinit-rpi"` ([Imager's notes on it](https://github.com/raspberrypi/rpi-imager/tree/main/doc/local_json)). Imager 1 seems to apply it, but on Trixie its settings never take effect. Without one, Wi-Fi can be set up by hand: before the first boot, add it to `network-config` on the boot partition, following the example in that file. With Ethernet there is nothing to do.
 3. The image's own user is `pi` (or whatever `FIRST_USER_NAME` was at build time), and the app runs as that user. Logging in is only needed for Exit to Terminal or SSH:
    - If the image was built with a password (`FIRST_USER_PASS`), you can log in as `pi`.
    - If it was built without one, the `pi` account is locked. Log in as the user Imager's customisation creates.
+
+### Films on the card
+
+The first boot splits the card: the system keeps 8 GiB (`MP240_ROOT_SIZE`), and the rest becomes a partition of its own in exFAT, labelled **240-MP**. Windows and macOS open exFAT, so:
+
+1. Quit 240-MP (it powers the Pi off) and take the card out.
+2. In the computer's card reader the card shows up as two drives, **bootfs** and **240-MP**. Copy films onto **240-MP**, in folders if you like.
+3. Windows also offers to format the system's partition, which it can't read. Always say no (**Cancel**): formatting it erases the system.
+4. Put the card back in the Pi. Local Files opens **240-MP** (`/media/240-MP`, read-only on the Pi) until its Media Directory setting names another folder.
+
+A card with less than 2 GiB to spare past the system gets no film partition, and the system takes all of it, as Raspberry Pi OS does. The split replaces Raspberry Pi OS's first-boot resize (`raspberrypi-sys-mods`' `resize_early`, overridden in `/etc/initramfs-tools/scripts`), so it happens once, on a freshly flashed card.
 
 ### HDMI or a CRT
 
@@ -70,6 +82,7 @@ The image lands in `os/work/pi-gen/deploy/`. `os/build.sh` fetches pi-gen at a p
 | `FIRST_USER_NAME` | `pi` | The first user; the app runs as this user. |
 | `MP240_DISPLAY` | `hdmi` | Initial display preset: `hdmi`, `crt-ntsc` or `crt-pal`. |
 | `MP240_STREAMING` | `1` | `0` leaves out the Netflix and Prime Video modules' browser (Chromium, Widevine, cage, wtype), which YouTube's sign-in uses too. |
+| `MP240_ROOT_SIZE` | `8` | GiB the system keeps of the card; the rest becomes the film partition on the first boot. `0`: no film partition, the system takes the whole card. |
 | `ENABLE_SSH` | `0` | `1` enables SSH (it then also waits for the app, after mDNS). |
 | `TARGET_HOSTNAME` | `240mp` | |
 | `IMG_NAME` | `240mp-os` | |

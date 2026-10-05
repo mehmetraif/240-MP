@@ -48,6 +48,11 @@ public slots:
     void onSettingChanged(const QString &moduleId, const QString &key, const QVariant &value);
 
 private:
+    // The folder when the setting names none: MP240_MEDIA_DIR when the system
+    // says where films go (240-MP OS: the card's film partition), else a
+    // folder in the data folder.
+    QString defaultMediaRoot() const;
+
     QString m_appRoot;
     QString m_dataRoot;
     QString m_mediaRoot;
