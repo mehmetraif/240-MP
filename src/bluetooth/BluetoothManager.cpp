@@ -14,6 +14,11 @@
 #include <algorithm>
 #endif
 
+#include <QDir>
+#include <QFile>
+#include <QProcess>
+#include <QRegularExpression>
+
 namespace {
 // How long the search mode looks for devices before it stops by itself.
 constexpr int kSearchMs = 60 * 1000;
@@ -237,13 +242,17 @@ void BluetoothManager::setPowered(bool on) {
 #ifdef MP240_BLUETOOTH
     if (m_adapterPath.isEmpty())
         return;
-    if (!on)
-        stopSearch();
+    clearMessage();
+    if (on) {
+        powerOn({});
+        return;
+    }
+    stopSearch();
     call(m_adapterPath, kProperties, QStringLiteral("Set"),
-         { kAdapter, QStringLiteral("Powered"), QVariant::fromValue(QDBusVariant(on)) }, kCallTimeoutMs,
+         { kAdapter, QStringLiteral("Powered"), QVariant::fromValue(QDBusVariant(false)) }, kCallTimeoutMs,
          [this](const QDBusMessage &reply) {
              if (reply.type() == QDBusMessage::ErrorMessage)
-                 setMessage(QStringLiteral("Couldn't turn Bluetooth on: ") + describe(reply));
+                 setMessage(QStringLiteral("Couldn't turn Bluetooth off: ") + describe(reply));
          });
 #else
     Q_UNUSED(on)
@@ -271,14 +280,7 @@ void BluetoothManager::startSearch() {
         return;
     }
     // Off: on first, then the search.
-    call(adapter, kProperties, QStringLiteral("Set"),
-         { kAdapter, QStringLiteral("Powered"), QVariant::fromValue(QDBusVariant(true)) }, kCallTimeoutMs,
-         [this, discover](const QDBusMessage &reply) {
-             if (reply.type() == QDBusMessage::ErrorMessage)
-                 setMessage(QStringLiteral("Couldn't turn Bluetooth on: ") + describe(reply));
-             else
-                 discover();
-         });
+    powerOn(discover);
 #endif
 }
 
@@ -394,6 +396,70 @@ void BluetoothManager::clearMessage() {
     emit messageChanged();
 }
 
+void BluetoothManager::collectDetails() {
+    QStringList lines;
+#ifdef MP240_BLUETOOTH
+    if (m_adapterPath.isEmpty()) {
+        lines << QStringLiteral("BlueZ: no adapter");
+    } else {
+        const QVariantMap adapter = m_adapters.value(m_adapterPath);
+        lines << QStringLiteral("%1 %2: powered %3, %4")
+                     .arg(m_adapterPath.section(QLatin1Char('/'), -1),
+                          adapter.value(QStringLiteral("Address")).toString(),
+                          adapter.value(QStringLiteral("Powered")).toBool() ? QStringLiteral("yes")
+                                                                             : QStringLiteral("no"),
+                          adapter.value(QStringLiteral("PowerState"), QStringLiteral("?")).toString());
+    }
+#endif
+    // A switch that keeps the radio off: rfkill's, in sysfs, readable by all.
+    const QDir rfkill(QStringLiteral("/sys/class/rfkill"));
+    for (const QString &entry : rfkill.entryList(QDir::Dirs | QDir::NoDotAndDotDot)) {
+        auto read = [&](const char *name) {
+            QFile file(rfkill.filePath(entry + QLatin1Char('/') + QLatin1String(name)));
+            return file.open(QIODevice::ReadOnly) ? QString::fromUtf8(file.readAll()).trimmed() : QString();
+        };
+        if (read("type") != QLatin1String("bluetooth"))
+            continue;
+        lines << QStringLiteral("rfkill %1: soft %2, hard %3")
+                     .arg(read("name"),
+                          read("soft") == QLatin1String("1") ? QStringLiteral("blocked") : QStringLiteral("no"),
+                          read("hard") == QLatin1String("1") ? QStringLiteral("blocked") : QStringLiteral("no"));
+    }
+    m_details = lines.join(QLatin1Char('\n'));
+    emit detailsChanged();
+
+    // The system log's last Bluetooth lines: the kernel's, bthelper's and
+    // bluetoothd's. The app's user reads it as a member of adm.
+    auto *journal = new QProcess(this);
+    auto finish = [this, journal, lines](bool ran) {
+        journal->deleteLater();
+        static const QRegularExpression relevant(
+            QStringLiteral("bluetooth|hci\\d|bthelper|bcm|brcm"), QRegularExpression::CaseInsensitiveOption);
+        QStringList found;
+        if (ran) {
+            for (const QString &line : QString::fromUtf8(journal->readAllStandardOutput()).split(QLatin1Char('\n')))
+                if (relevant.match(line).hasMatch())
+                    found << line.trimmed();
+        }
+        QStringList out = lines;
+        if (found.isEmpty())
+            out << QStringLiteral("(no Bluetooth lines in the system log)");
+        else
+            out << found.mid(qMax(0, int(found.size()) - 16));
+        m_details = out.join(QLatin1Char('\n'));
+        emit detailsChanged();
+    };
+    connect(journal, &QProcess::finished, this, [finish]() { finish(true); });
+    connect(journal, &QProcess::errorOccurred, this, [finish](QProcess::ProcessError error) {
+        if (error == QProcess::FailedToStart)
+            finish(false);
+    });
+    journal->start(QStringLiteral("journalctl"),
+                   { QStringLiteral("-b"), QStringLiteral("--no-pager"), QStringLiteral("--no-hostname"),
+                     QStringLiteral("-o"), QStringLiteral("short-monotonic"), QStringLiteral("-n"),
+                     QStringLiteral("600") });
+}
+
 #ifdef MP240_BLUETOOTH
 
 // --- What BlueZ asks of the agent ---
@@ -465,6 +531,7 @@ void BluetoothManager::onServiceUnregistered() {
     m_pendingCall = QDBusMessage();
     m_agentRegistered = false;
     m_adapterPath.clear();
+    m_powerFailed = false;
     setPrompt({});
     if (had) {
         emit adapterChanged();
@@ -650,6 +717,40 @@ void BluetoothManager::replyToPending(bool accept) {
     bus().send(accept ? m_pendingCall.createReply()
                       : m_pendingCall.createErrorReply(kRejected, QStringLiteral("Declined")));
     m_pendingCall = QDBusMessage();
+}
+
+// Turns the adapter on, then then(). A refusal is tried once more a moment
+// later (bluetoothd may still be setting the adapter up); a second one is
+// said, and the page then offers the details.
+void BluetoothManager::powerOn(std::function<void()> then, bool retry) {
+    const QString adapter = m_adapterPath;
+    call(adapter, kProperties, QStringLiteral("Set"),
+         { kAdapter, QStringLiteral("Powered"), QVariant::fromValue(QDBusVariant(true)) }, kCallTimeoutMs,
+         [this, then, retry, adapter](const QDBusMessage &reply) {
+             if (reply.type() != QDBusMessage::ErrorMessage) {
+                 if (m_powerFailed) {
+                     m_powerFailed = false;
+                     emit adapterChanged();
+                 }
+                 if (then)
+                     then();
+                 return;
+             }
+             qWarning("[Bluetooth] Powering %s on failed: %s %s", qPrintable(adapter),
+                      qPrintable(reply.errorName()), qPrintable(reply.errorMessage()));
+             if (retry && adapter == m_adapterPath) {
+                 QTimer::singleShot(2000, this, [this, then, adapter]() {
+                     if (adapter == m_adapterPath)
+                         powerOn(then, false);
+                 });
+                 return;
+             }
+             setMessage(QStringLiteral("Couldn't turn Bluetooth on: ") + describe(reply));
+             if (!m_powerFailed) {
+                 m_powerFailed = true;
+                 emit adapterChanged();
+             }
+         });
 }
 
 void BluetoothManager::setDeviceProperty(const QString &path, const QString &name, const QVariant &value) {

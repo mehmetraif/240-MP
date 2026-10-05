@@ -55,6 +55,12 @@ class BluetoothManager : public QObject {
     Q_PROPERTY(QVariantMap prompt READ prompt NOTIFY promptChanged)
     // How the last pairing or connection went, in a line, for the screen.
     Q_PROPERTY(QString message READ message NOTIFY messageChanged)
+    // Turning the adapter on failed, twice: the page offers its details.
+    Q_PROPERTY(bool powerFailed READ powerFailed NOTIFY adapterChanged)
+    // What the system says about Bluetooth, for when it won't turn on
+    // (collectDetails()): the adapter as BlueZ has it, rfkill, and the
+    // system log's last Bluetooth lines. A line each.
+    Q_PROPERTY(QString details READ details NOTIFY detailsChanged)
 public:
     explicit BluetoothManager(QObject *parent = nullptr);
     ~BluetoothManager() override;
@@ -67,6 +73,8 @@ public:
     QVariantList devices() const;
     QVariantMap prompt() const { return m_prompt; }
     QString message() const { return m_message; }
+    bool powerFailed() const { return m_powerFailed; }
+    QString details() const { return m_details; }
 
     Q_INVOKABLE void setPowered(bool on);
     Q_INVOKABLE void startSearch();
@@ -81,6 +89,7 @@ public:
     // Gives up the pairing under way.
     Q_INVOKABLE void cancelPairing();
     Q_INVOKABLE void clearMessage();
+    Q_INVOKABLE void collectDetails();
 
 #ifdef MP240_BLUETOOTH
     // BluetoothAgent's calls: what BlueZ asks of the agent.
@@ -98,6 +107,7 @@ signals:
     void devicesChanged();
     void promptChanged();
     void messageChanged();
+    void detailsChanged();
 
 #ifdef MP240_BLUETOOTH
 private slots:
@@ -117,6 +127,7 @@ private:
     void setPrompt(const QVariantMap &prompt);
     void replyToPending(bool accept);
     void setDeviceProperty(const QString &path, const QString &name, const QVariant &value);
+    void powerOn(std::function<void()> then, bool retry = true);
     QString nameOf(const QString &path) const;
     void call(const QString &path, const QString &interface, const QString &method,
               const QVariantList &args, int timeoutMs,
@@ -137,5 +148,7 @@ private:
     QString m_adapterPath;
     QVariantMap m_prompt;
     QString m_message;
+    bool m_powerFailed = false;
+    QString m_details;
     QTimer m_searchTimer;
 };

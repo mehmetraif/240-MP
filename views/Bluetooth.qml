@@ -24,8 +24,9 @@ FocusScope {
     readonly property var devices: bluetoothManager ? bluetoothManager.devices : []
     readonly property var prompt: bluetoothManager ? bluetoothManager.prompt : ({})
     readonly property string message: bluetoothManager ? bluetoothManager.message : ""
+    readonly property bool powerFailed: bluetoothManager ? bluetoothManager.powerFailed : false
 
-    // The lines: { type: "power" | "search" | "section" | "note" | "device", … }.
+    // The lines: { type: "power" | "details" | "search" | "section" | "note" | "device", … }.
     property var rows: []
     // A device whose options are open.
     property var optionsDevice: null
@@ -35,6 +36,7 @@ FocusScope {
     onAvailableChanged: buildRows()
     onPoweredChanged: buildRows()
     onSearchingChanged: buildRows()
+    onPowerFailedChanged: buildRows()
     onDevicesChanged: buildRows()
     Component.onCompleted: buildRows()
 
@@ -68,6 +70,10 @@ FocusScope {
         } else {
             items.push({ type: "power", label: "Bluetooth", value: powered ? "On" : "Off",
                          description: "Turns Bluetooth on or off" })
+            // It wouldn't turn on: what the system says about it.
+            if (powerFailed && !powered)
+                items.push({ type: "details", label: "Details",
+                             description: "What the system says about Bluetooth. A photo of it helps find what is wrong" })
             items.push({ type: "search", label: "Search",
                          value: searching ? "Searching" : "", busy: searching,
                          description: searching
@@ -127,6 +133,9 @@ FocusScope {
             return
         if (row.type === "power") {
             bluetoothManager.setPowered(!powered)
+        } else if (row.type === "details") {
+            bluetoothManager.collectDetails()
+            details.open()
         } else if (row.type === "search") {
             if (searching)
                 bluetoothManager.stopSearch()
@@ -271,6 +280,94 @@ FocusScope {
                 bluetoothManager.forget(device.path)
         }
         onClosed: list.forceActiveFocus()
+    }
+
+    // What the system says about Bluetooth, for a photo: ▲ ▼ scroll it.
+    FocusScope {
+        id: details
+        anchors.fill: parent
+        visible: false
+        // Hidden, it lets go of the keys: an item only hidden would keep them.
+        enabled: visible
+
+        function open() {
+            visible = true
+            detailsText.contentY = 0
+            forceActiveFocus()
+        }
+        function close() {
+            visible = false
+            list.forceActiveFocus()
+        }
+
+        Keys.onPressed: function(event) {
+            event.accepted = true
+            if (event.key === Qt.Key_Escape || event.key === Qt.Key_Backspace || event.key === Qt.Key_Back
+                    || event.key === Qt.Key_Return || event.key === Qt.Key_Enter)
+                close()
+            else if (event.key === Qt.Key_Up)
+                detailsText.scrollBy(-1)
+            else if (event.key === Qt.Key_Down)
+                detailsText.scrollBy(1)
+        }
+
+        Rectangle {
+            anchors.fill: parent
+            color: root.surfaceColor
+        }
+
+        AppBar {
+            iconSource: "../../assets/images/bluetooth.svg"
+            title: "Bluetooth"
+            subtitle: "Details"
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.topMargin: root.sh * 0.125 //60
+            anchors.leftMargin: root.sw * 0.125 //80
+        }
+
+        Flickable {
+            id: detailsText
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.topMargin: root.sh * 0.2166667 //104
+            anchors.leftMargin: root.sw * 0.125 //80
+            width: root.sw * 0.75 //480
+            height: root.sh * 0.5 //240
+            clip: true
+            contentHeight: body.implicitHeight
+            boundsBehavior: Flickable.StopAtBounds
+
+            // A line's worth at a time.
+            function scrollBy(step) {
+                var line = body.font.pixelSize * 1.2
+                contentY = Math.max(0, Math.min(contentHeight - height, contentY + step * line * 3))
+            }
+
+            Text {
+                id: body
+                width: detailsText.width
+                text: (bluetoothManager && bluetoothManager.details) || "…"
+                color: root.primaryColor
+                font.family: root.globalFont
+                font.pixelSize: root.sh * 0.0291667 //14
+                wrapMode: Text.WrapAnywhere
+                lineHeight: 1.2
+            }
+        }
+
+        ScrollMarks {
+            anchors.fill: detailsText
+            list: detailsText
+        }
+
+        HintBar {
+            text: root.hints.back + ":BACK " + root.hints.navigate + ":SCROLL"
+            anchors.bottom: parent.bottom
+            anchors.left: parent.left
+            anchors.bottomMargin: root.sh * 0.1041667 //50
+            anchors.leftMargin: root.sw * 0.125 //80
+        }
     }
 
     // What pairing needs: a code to type on the device, or to compare.
