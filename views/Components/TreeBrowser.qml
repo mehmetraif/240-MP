@@ -1,0 +1,727 @@
+import QtQuick
+
+// A browser laid out as a horizontal tree, for anything shaped like folders:
+// Local Files' folders, or a streaming catalogue's categories. The folders on
+// the way to the current one run left to right along a line through the middle
+// of the screen (the spine). Each folder's contents are stacked above and below
+// the item that leads on. Every folder in the current one branches off to the
+// right, on a dotted line to a few of its own entries, and the folder under the
+// cursor branches once more, from each folder in it.
+//
+// Up/down move within the current folder, right (or select) opens a folder,
+// left (or back) returns to its parent. Select on anything else is the host's
+// to handle (activated), and so is back at the top (leaveRequested). It draws
+// only the tree, in the area between a view's title bar and its footer.
+//
+// The entries come from fetch(path, preview): [{ name, path, isFolder, ... }],
+// or null while they are still on their way, shown as "loading…" until the
+// host calls refresh(path). preview is true when only a branch wants them, so a
+// slow source can return null then without fetching. Entries can carry
+// anything else the host needs back in activated(item).
+FocusScope {
+    id: tree
+
+    // The folder the tree starts at.
+    property string rootPath: ""
+    property var fetch: null
+    property var labelOf: function(item) { return item.name }
+    // A trail saved by trailState(), to reopen on creation.
+    property var savedTrail: []
+
+    signal activated(var item)
+    signal leaveRequested()
+
+    // The open folders, root first, with the cursor's row in each: to hand
+    // back as savedTrail when the view comes back.
+    function trailState() {
+        var saved = []
+        for (var i = 0; i < trail.count; ++i) {
+            var c = trail.get(i)
+            saved.push({ path: c.path, sel: c.sel, name: c.name, pushed: c.pushed })
+        }
+        return saved
+    }
+
+    // Opens a folder that isn't an entry of the current one, like a search's
+    // results: { name, path }.
+    function openItem(item) {
+        trail.append({ path: item.path, sel: remembered[item.path] || 0, name: item.name, pushed: true })
+        relayout()
+    }
+
+    // A folder's entries changed, or came in after fetch() returned null.
+    function refresh(path) {
+        delete listings[path]
+        revision++
+        if (!ready) return
+        for (var i = 0; i < trail.count; ++i) {
+            if (trail.get(i).path === path) {
+                var n = listing(path).items.length
+                if (trail.get(i).sel >= n)
+                    trail.setProperty(i, "sel", Math.max(0, n - 1))
+                relayout()
+                return
+            }
+        }
+        if (branched)
+            layoutBranches()
+    }
+
+    // Under the cursor, or null.
+    function currentItem() { return selectedItem() }
+
+    // --- Layout ---
+    readonly property real fontSize: root.sh * 0.0375 //18
+    readonly property real rowHeight: root.sh * 0.05 //24
+    // Never a single line: on an interlaced CRT that sits on one field and flickers.
+    readonly property int lineWidth: Math.max(2, Math.round(root.sh * 0.0041667)) //2
+    readonly property real gap: root.sw * 0.046875 //30
+    readonly property real pad: root.sw * 0.009375 //6
+    readonly property real maxColumnWidth: root.sw * 0.34375 //220
+    readonly property real leftEdge: root.sw * 0.125 //80
+    readonly property real rightEdge: root.sw * 0.875 //560
+    readonly property real treeTop: root.sh * 0.2083333 //100
+    readonly property real treeBottom: root.sh * 0.8333333 //400
+    // The spine, in tree-area coordinates.
+    readonly property real spine: Math.round((treeBottom - treeTop) / 2)
+    // Branches: the gap before each level leaves room for the lanes their
+    // lines turn in, one a line's width apart from the next.
+    readonly property real branchGap: root.sw * 0.0625 //40
+    readonly property real laneStep: 2 * lineWidth
+    readonly property real blockGap: Math.round(rowHeight / 2)
+    // Entries a branch shows: a window around the remembered row for the folder
+    // under the cursor, the first few for the others.
+    readonly property int anchorRows: 5
+    readonly property int branchRows: 3
+
+    // --- Tree state ---
+    // The open folders, root first; the last one holds the cursor.
+    // Roles: path, sel (the row the spine runs through), name (what it is
+    // called), pushed (opened with openItem rather than from its parent).
+    ListModel { id: trail }
+    readonly property int active: trail.count - 1
+    // Each folder is listed once per visit of this view, until refresh().
+    property var listings: ({})
+    // Bumped by refresh(), so the columns list their folders again.
+    property int revision: 0
+    // Last cursor row per folder, so reopening one lands where it was left.
+    property var remembered: ({})
+    // Left edge of each open folder's column.
+    property var columnX: []
+    // The branches off the current folder, in strip coordinates with y from the
+    // spine: blocks of entries { x, top, width, rows: [{ label }] }, the dotted
+    // lines to them { x0, y0, x1, y1, lane }, and how far right they reach.
+    property var blocks: []
+    property var wires: []
+    property real branchLeft: 0
+    property real branchRight: 0
+    property bool branched: false
+    // Open folders left of this one are off to the left: their names are
+    // hidden and the spine runs on through them from the screen's edge.
+    property int firstShown: 0
+    property string folderName: ""
+    // The top folder has nothing in it (once it has come in).
+    readonly property bool rootEmpty: { revision; return !listing(rootPath).pending && listing(rootPath).items.length === 0 }
+    property bool ready: false
+
+    FontMetrics {
+        id: metrics
+        font.family: root.globalFont
+        font.pixelSize: tree.fontSize
+    }
+
+    function displayName(item) {
+        return labelOf(item)
+    }
+
+    // Rows are drawn upper-case, so they are measured that way.
+    function textWidth(text) {
+        return Math.ceil(metrics.advanceWidth(text.toUpperCase()))
+    }
+
+    // { items, width, pending }. A folder only a branch asked for, and that its
+    // source left unfetched, is asked for again once it is opened.
+    function listing(path, preview) {
+        if (!path) return { items: [], width: 0, pending: false }
+        // Bindings can ask before the host has set fetch; nothing is kept then.
+        if (!fetch) return { items: [], width: 0, pending: true }
+        var l = listings[path]
+        if (l && !(l.pending && l.previewOnly && !preview))
+            return l
+        var items = fetch(path, !!preview)
+        if (items === null || items === undefined) {
+            l = { items: [], width: textWidth("loading\u2026"), pending: true, previewOnly: !!preview }
+        } else {
+            var w = items.length > 0 ? 0 : textWidth("(empty)")
+            for (var i = 0; i < items.length; ++i)
+                w = Math.max(w, textWidth(displayName(items[i])))
+            l = { items: items, width: Math.min(maxColumnWidth, w), pending: false }
+        }
+        listings[path] = l
+        return l
+    }
+
+    function selectedItem() {
+        if (active < 0) return null
+        var col = trail.get(active)
+        return listing(col.path).items[col.sel] || null
+    }
+
+    function baseName(path) {
+        var parts = path.split("/")
+        return parts[parts.length - 1] || path
+    }
+
+    // Places the columns side by side.
+    function placeColumns() {
+        var xs = []
+        var x = 0
+        for (var i = 0; i < trail.count; ++i) {
+            xs.push(x)
+            x += listing(trail.get(i).path).width + gap
+        }
+        columnX = xs
+    }
+
+    // Slides the strip so the parent folder starts at the left edge, unless
+    // that would push the branches off the right; then the strip slides left,
+    // but never so far that the column with the cursor leaves the screen. The
+    // branches come before the parent, which the spine still runs in from.
+    // Only opening and closing folders move it.
+    function placeStrip() {
+        var activeLeft = columnX[active]
+        var right = Math.max(activeLeft + listing(trail.get(active).path).width, branchRight)
+        var want = leftEdge - (active > 0 ? columnX[active - 1] : 0)
+        var stripX = Math.max(leftEdge - activeLeft, Math.min(want, rightEdge - right))
+        strip.x = stripX
+        // Only the parent stays named, and only while it is wholly on screen.
+        firstShown = Math.max(0, active - 1)
+        if (active > 0 && columnX[active - 1] + stripX < 0)
+            firstShown = active
+        folderName = active > 0 ? (trail.get(active).name || baseName(trail.get(active).path)) : ""
+    }
+
+    // A block of a folder's entries for a branch: a window of anchorRows
+    // around entry `around`, or with around < 0 its first few, the last of
+    // them "…" when there are more. null for an empty folder off the spine.
+    function blockFor(path, around) {
+        var l = listing(path, true)
+        var items = l.items
+        var rows = []
+        var offset = 0
+        if (items.length === 0) {
+            if (around < 0) return null
+            rows.push({ label: l.pending ? "loading\u2026" : "(empty)" })
+        } else if (around >= 0) {
+            var r = Math.min(around, items.length - 1)
+            var first = Math.max(0, Math.min(r - Math.floor(anchorRows / 2), items.length - anchorRows))
+            for (var i = first; i < Math.min(items.length, first + anchorRows); ++i)
+                rows.push({ label: displayName(items[i]), item: items[i] })
+            offset = r - first
+        } else {
+            var shown = items.length > branchRows ? branchRows - 1 : items.length
+            for (var j = 0; j < shown; ++j)
+                rows.push({ label: displayName(items[j]), item: items[j] })
+            if (items.length > branchRows)
+                rows.push({ label: "\u2026" })
+        }
+        var w = 0
+        for (var k = 0; k < rows.length; ++k)
+            w = Math.max(w, textWidth(rows[k].label))
+        return { path: path, rows: rows, offset: offset, width: Math.min(maxColumnWidth, w) }
+    }
+
+    // One level of branches. parents: the folders it branches from, top to
+    // bottom, { path, y, end } with y the middle of the folder's row and end
+    // where a line can leave it. The one on the spine keeps its remembered
+    // entry on the spine; every other block grows away from the spine from
+    // its folder's row, as near to it as the block before it allows. A line
+    // that has to turn does it in a lane of its own, the farther from the
+    // spine the further left, so no two lines cross.
+    function branchLevel(parents, laneLeft, x) {
+        var level = { blocks: [], wires: [], width: 0, anchor: null }
+        var top = -rowHeight / 2
+        var bottom = rowHeight / 2
+        var above = []
+        var below = []
+        for (var i = 0; i < parents.length; ++i) {
+            var p = parents[i]
+            if (Math.abs(p.y) < 1) {
+                var a = blockFor(p.path, remembered[p.path] || 0)
+                a.top = -(a.offset + 0.5) * rowHeight
+                top = a.top
+                bottom = a.top + a.rows.length * rowHeight
+                level.anchor = a
+                level.blocks.push(a)
+                level.wires.push({ x0: p.end, y0: 0, x1: x - pad, y1: 0, lane: -1 })
+            } else if (p.y < 0) {
+                above.unshift(p)
+            } else {
+                below.push(p)
+            }
+        }
+        var sides = [{ list: above, up: true }, { list: below, up: false }]
+        for (var s = 0; s < sides.length; ++s) {
+            var limit = sides[s].up ? top - blockGap : bottom + blockGap
+            var turning = []
+            for (var j = 0; j < sides[s].list.length; ++j) {
+                var q = sides[s].list[j]
+                var b = blockFor(q.path, -1)
+                if (!b) continue
+                var h = b.rows.length * rowHeight
+                var target
+                if (sides[s].up) {
+                    b.top = Math.min(q.y + rowHeight / 2, limit) - h
+                    target = b.top + h - rowHeight / 2
+                } else {
+                    b.top = Math.max(q.y - rowHeight / 2, limit)
+                    target = b.top + rowHeight / 2
+                }
+                // A line ending on another entry's row would read as that
+                // entry's, so such a block moves half a row further out.
+                var phase = ((target % rowHeight) + rowHeight) % rowHeight
+                if (Math.abs(target - q.y) >= 1 && (phase < 1 || phase > rowHeight - 1)) {
+                    var shift = sides[s].up ? -rowHeight / 2 : rowHeight / 2
+                    b.top += shift
+                    target += shift
+                }
+                limit = sides[s].up ? b.top - blockGap : b.top + h + blockGap
+                level.blocks.push(b)
+                var wire = { x0: q.end, y0: q.y, x1: x - pad, y1: target, lane: -1 }
+                level.wires.push(wire)
+                if (Math.abs(target - q.y) >= 1)
+                    turning.push(wire)
+            }
+            // Nearest first in `turning`, so the farthest gets lane 0. The
+            // lanes stop a step short of the blocks; past that they share one.
+            var lastLane = Math.max(0, Math.floor((x - laneLeft - 2 * pad) / laneStep) - 1)
+            for (var t = 0; t < turning.length; ++t)
+                turning[t].lane = laneLeft + pad + Math.min(turning.length - 1 - t, lastLane) * laneStep
+        }
+        for (var m = 0; m < level.blocks.length; ++m) {
+            level.blocks[m].x = x
+            level.width = Math.max(level.width, level.blocks[m].width)
+        }
+        return level
+    }
+
+    // Lays out the branches off the folder with the cursor: one level from
+    // every folder in it that is near enough to show, and a second from each
+    // folder in the block under the cursor.
+    function layoutBranches() {
+        var col = trail.get(active)
+        var items = listing(col.path).items
+        var colX = columnX[active]
+        var colW = listing(col.path).width
+        var reach = Math.ceil(spine / rowHeight) + 1
+        var parents = []
+        for (var i = Math.max(0, col.sel - reach); i < Math.min(items.length, col.sel + reach + 1); ++i) {
+            if (!items[i].isFolder) continue
+            var name = Math.min(colW, textWidth(displayName(items[i])))
+            parents.push({
+                path: items[i].path,
+                y: (i - col.sel) * rowHeight,
+                // The cursor's box reaches a pad further than a name does.
+                end: colX + name + (i === col.sel ? 2 : 1) * pad
+            })
+        }
+        var x1 = colX + colW + branchGap
+        var first = branchLevel(parents, colX + colW, x1)
+        var all = first.blocks.slice()
+        var lines = first.wires.slice()
+        var right = first.blocks.length > 0 ? x1 + first.width : 0
+        var a = first.anchor
+        if (a) {
+            var x2 = x1 + first.width + branchGap
+            var next = []
+            for (var k = 0; k < a.rows.length; ++k) {
+                var entry = a.rows[k].item
+                if (!entry || !entry.isFolder) continue
+                next.push({
+                    path: entry.path,
+                    y: a.top + (k + 0.5) * rowHeight,
+                    end: x1 + Math.min(a.width, textWidth(a.rows[k].label)) + pad
+                })
+            }
+            var second = branchLevel(next, x1 + first.width, x2)
+            all = all.concat(second.blocks)
+            lines = lines.concat(second.wires)
+            if (second.blocks.length > 0)
+                right = x2 + second.width
+        }
+        branchLeft = colX
+        branchRight = right
+        blocks = all
+        wires = lines
+        branched = true
+    }
+
+    function clearBranches() {
+        branched = false
+        blocks = []
+        wires = []
+    }
+
+    function move(delta) {
+        var col = trail.get(active)
+        var n = listing(col.path).items.length
+        if (n === 0) return
+        var sel = (col.sel + delta + n) % n
+        trail.setProperty(active, "sel", sel)
+        remembered[col.path] = sel
+        // The branches are wrong now; new ones grow once the cursor rests.
+        clearBranches()
+        branchTimer.restart()
+    }
+
+    // After opening or closing a folder: the columns, its branches, and the
+    // strip slid to show them.
+    function relayout() {
+        branchTimer.stop()
+        placeColumns()
+        layoutBranches()
+        placeStrip()
+    }
+
+    function openFolder() {
+        var item = selectedItem()
+        if (!item || !item.isFolder) return false
+        trail.append({ path: item.path, sel: remembered[item.path] || 0, name: displayName(item), pushed: false })
+        relayout()
+        return true
+    }
+
+    function closeFolder() {
+        if (active <= 0) return false
+        trail.remove(active)
+        relayout()
+        return true
+    }
+
+    function activate() {
+        var item = selectedItem()
+        if (item && !item.isFolder)
+            activated(item)
+    }
+
+    // Reopens the folders saved by trailState(), as far as they still exist.
+    // A folder still on its way is taken on trust; refresh() puts its cursor
+    // back in range once it is in.
+    function restore(saved) {
+        trail.append({ path: rootPath, sel: 0, name: "", pushed: false })
+        for (var i = 0; i < saved.length; ++i) {
+            if (saved[i].path !== trail.get(i).path) break
+            var l = listing(trail.get(i).path)
+            var sel = l.pending ? saved[i].sel : Math.max(0, Math.min(saved[i].sel, l.items.length - 1))
+            trail.setProperty(i, "sel", sel)
+            remembered[trail.get(i).path] = sel
+            var next = saved[i + 1]
+            if (!next) break
+            var item = l.items[sel]
+            var leadsOn = next.pushed || l.pending
+                || (item && item.isFolder && item.path === next.path)
+            if (!leadsOn) break
+            trail.append({ path: next.path, sel: 0, name: next.name || "", pushed: !!next.pushed })
+        }
+    }
+
+    Timer {
+        id: branchTimer
+        interval: 180
+        onTriggered: tree.layoutBranches()
+    }
+
+    Keys.onPressed: function(event) {
+        switch (event.key) {
+        case Qt.Key_Up:
+            move(-1)
+            break
+        case Qt.Key_Down:
+            move(1)
+            break
+        case Qt.Key_Right:
+            openFolder()
+            break
+        case Qt.Key_Left:
+            closeFolder()
+            break
+        case Qt.Key_Return:
+        case Qt.Key_Enter:
+            if (!openFolder()) activate()
+            break
+        case Qt.Key_Escape:
+        case Qt.Key_Backspace:
+        case Qt.Key_Back:
+            if (!closeFolder()) leaveRequested()
+            break
+        default:
+            return
+        }
+        event.accepted = true
+    }
+
+    // One folder's column. Only the rows that fit on screen exist; they show
+    // whichever entries sit around the cursor, and slide a row when it moves.
+    component TreeColumn: Item {
+        id: col
+
+        property string folderPath: ""
+        property int cursorIndex: 0
+        // "path" (an open folder left of the cursor) or "active".
+        property string role: "path"
+        // Whether a line runs on from the cursor row to the next column.
+        property bool leadsOn: false
+        // An open folder off to the left: no names, just the spine through it.
+        property bool collapsed: false
+        // The next column is collapsed too, so the line runs into it unbroken.
+        property bool joinsNext: false
+
+        readonly property var entries: { tree.revision; return tree.listing(folderPath) }
+        readonly property var items: entries.items
+        readonly property string cursorLabel: items[cursorIndex] ? tree.displayName(items[cursorIndex]) : ""
+        readonly property int reach: Math.ceil(tree.spine / tree.rowHeight) + 1
+        property real slide: 0
+        property int lastIndex: 0
+
+        width: entries.width
+        height: parent ? parent.height : 0
+
+        onCursorIndexChanged: {
+            var delta = cursorIndex - lastIndex
+            lastIndex = cursorIndex
+            slideAnim.stop()
+            // One row at a time slides; a wrap-around just jumps.
+            slide = Math.abs(delta) === 1 ? delta : 0
+            if (slide !== 0) slideAnim.start()
+        }
+        onFolderPathChanged: {
+            slideAnim.stop()
+            slide = 0
+            lastIndex = cursorIndex
+        }
+        Component.onCompleted: lastIndex = cursorIndex
+
+        NumberAnimation {
+            id: slideAnim
+            target: col
+            property: "slide"
+            to: 0
+            duration: 140
+            easing.type: Easing.OutCubic
+        }
+
+        Repeater {
+            model: col.reach * 2 + 1
+
+            Item {
+                id: row
+                required property int index
+                opacity: col.collapsed ? 0 : 1
+                Behavior on opacity { NumberAnimation { duration: 120 } }
+                readonly property int entryIndex: col.cursorIndex + index - col.reach
+                readonly property var entry: col.items[entryIndex]
+                readonly property bool current: index === col.reach
+                readonly property bool cursor: current && col.role === "active"
+                readonly property string label: entry ? tree.displayName(entry) : ""
+
+                visible: entry !== undefined
+                width: col.width
+                height: tree.rowHeight
+                y: tree.spine - height / 2 + (index - col.reach + col.slide) * height
+
+                // The cursor: the row in a solid box, its name in the
+                // background colour, as a deck's menu marks what is selected.
+                Rectangle {
+                    visible: row.cursor
+                    x: -tree.pad
+                    width: Math.min(labelText.implicitWidth, row.width) + 2 * tree.pad
+                    height: row.height
+                    color: root.primaryColor
+                    antialiasing: false
+                }
+
+                Item {
+                    width: row.width
+                    height: row.height
+                    clip: row.cursor
+
+                    Item {
+                        id: slider
+                        height: parent.height
+                        Text {
+                            id: labelText
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: row.cursor ? implicitWidth : row.width
+                            text: row.label
+                            elide: row.cursor ? Text.ElideNone : Text.ElideRight
+                            color: row.cursor ? root.surfaceColor : root.primaryColor
+                            font.family: root.globalFont
+                            font.capitalization: Font.AllUppercase
+                            font.pixelSize: tree.fontSize
+                        }
+                    }
+                }
+
+                // A cursor row too long for its column scrolls through.
+                SequentialAnimation {
+                    running: row.cursor && labelText.implicitWidth > row.width
+                    loops: Animation.Infinite
+                    onRunningChanged: if (!running) slider.x = 0
+                    PauseAnimation { duration: 1500 }
+                    NumberAnimation {
+                        target: slider
+                        property: "x"
+                        to: row.width - labelText.implicitWidth
+                        duration: Math.abs(to) * 20
+                    }
+                    PauseAnimation { duration: 2000 }
+                    PropertyAction { target: slider; property: "x"; value: 0 }
+                }
+            }
+        }
+
+        Text {
+            visible: col.folderPath !== "" && col.items.length === 0
+            y: tree.spine - height / 2
+            text: col.entries.pending ? "loading\u2026" : "(empty)"
+            color: root.primaryColor
+            font.family: root.globalFont
+            font.capitalization: Font.AllUppercase
+            font.pixelSize: tree.fontSize
+        }
+
+        // The spine on from the cursor row to the next open folder.
+        Rectangle {
+            readonly property real start: col.collapsed ? 0
+                : Math.min(col.width, tree.textWidth(col.cursorLabel)) + tree.pad
+            visible: col.leadsOn && col.items.length > 0
+            x: start
+            y: tree.spine - height / 2
+            width: Math.max(0, col.width + tree.gap - (col.joinsNext ? 0 : tree.pad) - start)
+            height: tree.lineWidth
+            color: root.primaryColor
+        }
+    }
+
+    // The tree
+    Item {
+        y: tree.treeTop
+        width: parent.width
+        height: tree.treeBottom - tree.treeTop
+        clip: true
+
+        Item {
+            id: strip
+            height: parent.height
+            Behavior on x {
+                enabled: tree.ready
+                NumberAnimation { duration: 160; easing.type: Easing.OutCubic }
+            }
+
+            Repeater {
+                model: trail
+                TreeColumn {
+                    required property int index
+                    required property string path
+                    required property int sel
+                    x: tree.columnX[index] !== undefined ? tree.columnX[index] : 0
+                    folderPath: path
+                    cursorIndex: sel
+                    role: index === tree.active ? "active" : "path"
+                    leadsOn: index < tree.active
+                    collapsed: index < tree.firstShown
+                    joinsNext: index + 1 < tree.firstShown
+                }
+            }
+
+            // The branches off the current folder, grown in once the cursor rests.
+            Item {
+                id: branches
+                width: parent.width
+                height: parent.height
+                opacity: tree.branched ? 1 : 0
+                Behavior on opacity {
+                    enabled: tree.branched
+                    NumberAnimation { duration: 120 }
+                }
+
+                // Dotted lines, on a checkerboard of the line's width so every
+                // segment and corner falls on the same dots.
+                Canvas {
+                    id: wiresCanvas
+                    readonly property real cell: tree.lineWidth
+                    x: Math.floor(tree.branchLeft / cell) * cell
+                    width: Math.max(1, tree.branchRight - x)
+                    height: parent.height
+                    onPaint: {
+                        var ctx = getContext("2d")
+                        ctx.reset()
+                        ctx.fillStyle = root.primaryColor
+                        var c = cell
+                        var ox = x
+                        // Cell row 0 is the spine's own line.
+                        var oy = tree.spine - c / 2
+                        function dots(gx0, gx1, gy0, gy1) {
+                            for (var gx = Math.min(gx0, gx1); gx <= Math.max(gx0, gx1); ++gx)
+                                for (var gy = Math.min(gy0, gy1); gy <= Math.max(gy0, gy1); ++gy)
+                                    if ((gx + gy) % 2 === 0)
+                                        ctx.fillRect(gx * c - ox, gy * c + oy, c, c)
+                        }
+                        var ws = tree.wires
+                        for (var i = 0; i < ws.length; ++i) {
+                            var w = ws[i]
+                            var gy0 = Math.round(w.y0 / c)
+                            var gy1 = Math.round(w.y1 / c)
+                            var gx0 = Math.ceil(w.x0 / c)
+                            var gx1 = Math.floor(w.x1 / c) - 1
+                            if (w.lane < 0) {
+                                dots(gx0, gx1, gy0, gy0)
+                            } else {
+                                // On a dot where it leaves the folder's row.
+                                var gl = Math.round(w.lane / c)
+                                if ((gl + gy0) % 2 !== 0) gl += 1
+                                dots(gx0, gl, gy0, gy0)
+                                dots(gl, gl, gy0, gy1)
+                                dots(gl, gx1, gy1, gy1)
+                            }
+                        }
+                    }
+                    Connections {
+                        target: tree
+                        function onWiresChanged() { wiresCanvas.requestPaint() }
+                    }
+                }
+
+                Repeater {
+                    model: tree.blocks
+                    Column {
+                        required property var modelData
+                        x: modelData.x
+                        y: tree.spine + modelData.top
+                        Repeater {
+                            model: parent.modelData.rows
+                            Text {
+                                required property var modelData
+                                width: Math.min(implicitWidth, tree.maxColumnWidth)
+                                height: tree.rowHeight
+                                verticalAlignment: Text.AlignVCenter
+                                text: modelData.label
+                                elide: Text.ElideRight
+                                color: root.primaryColor
+                                font.family: root.globalFont
+                                font.capitalization: Font.AllUppercase
+                                font.pixelSize: tree.fontSize
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Component.onCompleted: {
+        restore(savedTrail || [])
+        relayout()
+        ready = true
+    }
+}
