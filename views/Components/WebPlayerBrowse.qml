@@ -42,6 +42,7 @@ FocusScope {
         anchors.fill: parent
         focus: true
         rootPath: "home"
+        reservedBottom: problemLine.visible ? treeBottom - problemLine.y : 0
         savedTrail: browse.navListState.trail || []
         fetch: function(path, preview) {
             return browse.catalog ? browse.catalog.listing(path, preview) : []
@@ -73,6 +74,7 @@ FocusScope {
     // What stands in the way of browsing, when anything does: no TMDB key, or
     // no network.
     HelpLine {
+        id: problemLine
         visible: !osk.visible && text !== ""
         text: browse.catalog ? browse.catalog.problem : ""
         anchors.bottom: parent.bottom

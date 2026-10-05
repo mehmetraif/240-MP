@@ -98,6 +98,9 @@ bool TmdbCatalog::failedRecently(const QString &path) const {
 QVariant TmdbCatalog::listing(const QString &path, bool preview) {
     Q_UNUSED(preview)
     if (path == QLatin1String("home")) {
+        // A visit starts clean: what still stands in the way says so again
+        // when the entries under it are asked for.
+        setProblem(QString());
         return QVariantList{
             action(QStringLiteral("Search"), QStringLiteral("search"), QStringLiteral("home/search")),
             folder(QStringLiteral("Movies"), QStringLiteral("movie")),
@@ -110,8 +113,10 @@ QVariant TmdbCatalog::listing(const QString &path, bool preview) {
                                   " (free from themoviedb.org, Settings, API)"));
         return QVariantList();
     }
-    if (failedRecently(path))
+    if (failedRecently(path)) {
+        setProblem(m_failure);
         return QVariantList();
+    }
 
     const QString head = path.section(QLatin1Char('/'), 0, 0);
     if (path == QLatin1String("movie") || path == QLatin1String("tv")) {
@@ -168,14 +173,16 @@ void TmdbCatalog::get(const QString &endpoint, QList<QPair<QString, QString>> qu
             return;
         const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
         if (status == 401) {
-            setProblem(QStringLiteral("TMDB turned the API key down: check tmdb_api_key.txt"));
+            m_failure = QStringLiteral("TMDB turned the API key down: check tmdb_api_key.txt");
+            setProblem(m_failure);
             done({});
             return;
         }
         if (reply->error() != QNetworkReply::NoError) {
             qWarning("[TMDB] %s: %s", qPrintable(reply->url().path()),
                      qPrintable(reply->errorString()));
-            setProblem(QStringLiteral("Could not reach TMDB: check the network"));
+            m_failure = QStringLiteral("Could not reach TMDB: check the network");
+            setProblem(m_failure);
             done({});
             return;
         }

@@ -99,6 +99,7 @@ private:
     QString m_tmdbUrl;
     QString m_wikidataUrl;
     QString m_problem;
+    QString m_failure;   // what the last failed request was turned down for
     QNetworkAccessManager m_nam;
 
     // Bumped by forget(): answers to what was asked before are dropped.

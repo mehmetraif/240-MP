@@ -10,14 +10,15 @@ import QtQuick
 //
 // Up/down move within the current folder, right (or select) opens a folder,
 // left (or back) returns to its parent. Select on anything else is the host's
-// to handle (activated), and so is back at the top (leaveRequested). It draws
-// only the tree, in the area between a view's title bar and its footer.
+// to handle (activated), right on it too (optionsRequested), and so is back
+// at the top (leaveRequested). It draws only the tree, in the area between a
+// view's title bar and its footer.
 //
 // The entries come from fetch(path, preview): [{ name, path, isFolder, ... }],
 // or null while they are still on their way, shown as "loading…" until the
 // host calls refresh(path). preview is true when only a branch wants them, so a
-// slow source can return null then without fetching. Entries can carry
-// anything else the host needs back in activated(item).
+// slow source can return null then without fetching; the branch shows "…".
+// Entries can carry anything else the host needs back in activated(item).
 FocusScope {
     id: tree
 
@@ -29,6 +30,7 @@ FocusScope {
     property var savedTrail: []
 
     signal activated(var item)
+    signal optionsRequested(var item)
     signal leaveRequested()
 
     // The open folders, root first, with the cursor's row in each: to hand
@@ -84,10 +86,14 @@ FocusScope {
     readonly property real treeBottom: root.sh * 0.8333333 //400
     // The spine, in tree-area coordinates.
     readonly property real spine: Math.round((treeBottom - treeTop) / 2)
+    // Room a host keeps under the tree for a line of its own (a HelpLine
+    // while it shows): the area stops short of it, the spine stays put.
+    property real reservedBottom: 0
     // How far the area reaches above and below the spine: only rows wholly
     // inside it are drawn, so none is cut in half by its edge.
     readonly property real bandTop: -spine
-    readonly property real bandBottom: treeBottom - treeTop - spine
+    readonly property real bandBottom: treeBottom - treeTop - reservedBottom - spine
+    onBandBottomChanged: if (ready && branched) layoutBranches(true)
     // Branches: the gap before each level leaves room for the lanes their
     // lines turn in, one a line's width apart from the next.
     readonly property real branchGap: root.sw * 0.0625 //40
@@ -212,20 +218,21 @@ FocusScope {
     }
 
     // Slides the strip so the parent folder starts at the left edge, unless
-    // that would push the branches off the right; then the strip slides left,
-    // but never so far that the column with the cursor leaves the screen. The
-    // branches come before the parent, which the spine still runs in from.
-    // Only opening and closing folders move it.
+    // that would push the branches off the right; then the folder with the
+    // cursor starts there instead, and the spine runs in to it from off to
+    // the left. Nothing named is ever left of the edge: on a CRT that is
+    // where the picture starts to go under the bezel. Only opening and
+    // closing folders move it.
     function placeStrip() {
         var activeLeft = columnX[active]
         var right = Math.max(activeLeft + columnW[active], branchRight)
-        var want = leftEdge - (active > 0 ? columnX[active - 1] : 0)
-        var stripX = Math.max(leftEdge - activeLeft, Math.min(want, rightEdge - right))
+        var parentAtEdge = leftEdge - (active > 0 ? columnX[active - 1] : 0)
+        var stripX = right + parentAtEdge <= rightEdge ? parentAtEdge : leftEdge - activeLeft
         stripTarget = stripX
         strip.x = stripX
-        // Only the parent stays named, and only while it is wholly on screen.
+        // Only the parent stays named, and only while it is at the edge.
         firstShown = Math.max(0, active - 1)
-        if (active > 0 && columnX[active - 1] + stripX < 0)
+        if (active > 0 && stripX !== parentAtEdge)
             firstShown = active
         folderName = active > 0 ? (trail.get(active).name || baseName(trail.get(active).path)) : ""
     }
@@ -240,7 +247,9 @@ FocusScope {
         var offset = 0
         if (items.length === 0) {
             if (around < 0) return null
-            rows.push({ label: l.pending ? "loading\u2026" : "(empty)" })
+            // A branch's glance its source wouldn't fetch: there is more,
+            // to be seen once it is opened.
+            rows.push({ label: !l.pending ? "(empty)" : l.previewOnly ? "\u2026" : "loading\u2026" })
         } else if (around >= 0) {
             var r = Math.min(around, items.length - 1)
             var first = Math.max(0, Math.min(r - Math.floor(anchorRows / 2), items.length - anchorRows))
@@ -495,7 +504,8 @@ FocusScope {
             move(1)
             break
         case Qt.Key_Right:
-            openFolder()
+            if (!openFolder() && selectedItem())
+                optionsRequested(selectedItem())
             break
         case Qt.Key_Left:
             closeFolder()
@@ -667,7 +677,7 @@ FocusScope {
     Item {
         y: tree.treeTop
         width: parent.width
-        height: tree.treeBottom - tree.treeTop
+        height: tree.treeBottom - tree.treeTop - tree.reservedBottom
         clip: true
 
         Item {
