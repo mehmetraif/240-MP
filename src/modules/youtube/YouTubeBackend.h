@@ -9,7 +9,10 @@
 #include <QVariantMap>
 #include <QNetworkAccessManager>
 
-// Backend for the YouTube module (V1 "feed" approach — no auth).
+class DisplayHandoff;
+class WebPlayerBackend;
+
+// Backend for the YouTube module (V1 "feed" approach — no account needed).
 //
 // The user lists channel IDs (one per line) in <dataRoot>/youtube_subscriptions.txt.
 // Video lists come from each channel's official RSS feed (titles, exact publish
@@ -28,13 +31,27 @@
 //
 // The module browses all of it, and YouTube's search (yt-dlp ytsearch), as one
 // tree (TreeBrowser) through listing().
+//
+// An account is optional. SIGN IN (the module's settings) opens Google's
+// sign-in in Chromium, in a profile of its own (browser, a WebPlayerBackend);
+// from then on every yt-dlp run here and in mpv reads the sign-in from that
+// profile (--cookies-from-browser), so YouTube sees the account: fewer bot
+// checks, and age-restricted videos play. SIGN OUT deletes the profile.
 class YouTubeBackend : public QObject {
     Q_OBJECT
     // What stands in the way of browsing, when anything does; "" otherwise.
     Q_PROPERTY(QString problem READ problem NOTIFY problemChanged)
+    // SIGN IN's browser (SignIn.qml opens Google's sign-in with it).
+    Q_PROPERTY(QObject *browser READ browser CONSTANT)
 public:
     explicit YouTubeBackend(const QString &appRoot, const QString &dataRoot,
-                            QObject *parent = nullptr);
+                            DisplayHandoff *handoff, QObject *parent = nullptr);
+
+    QObject *browser() const;
+
+    // manifest: sign_out (action). Deletes SIGN IN's browser profile, and with
+    // it the sign-in yt-dlp reads.
+    Q_INVOKABLE void signOut();
 
     // Synchronous subscriptions-file check for the menu view:
     // { ok: bool, error: QString, fileExists: bool, channelCount: int }
@@ -51,9 +68,26 @@ public:
     Q_INVOKABLE void load_playlists(bool forceRefresh = false);
     Q_INVOKABLE void load_playlist_videos(const QString &playlistId, bool forceRefresh = false);
 
-    // Maps the playback_resolution setting ("480p"/"720p"/"1080p", unknown → 480p)
-    // to a yt-dlp format string. H.264 is preferred first for RPi hardware decode.
-    Q_INVOKABLE QString ytdlFormatForResolution(const QString &resolution) const;
+    // The yt-dlp format the ADVANCED settings ask for: at most the
+    // playback_resolution's height (240p to 2160p, unknown → 480p) and, with
+    // max_frame_rate "30", 30 fps; H.264 first (video_codec "H.264", which the
+    // Pi decodes in hardware) or whatever looks best ("Any"); the audio track
+    // in audio_language ("original": the one the video was made in). Each
+    // falls back to what the video has, down to its best single file.
+    Q_INVOKABLE QString ytdlFormat(const QString &resolution, const QString &codec,
+                                   const QString &maxFrameRate, const QString &audioLanguage) const;
+
+    // mpv's arguments for a video from the ADVANCED settings, given as
+    // { resolution, codec, maxFrameRate, audioLanguage, subtitles,
+    // subtitleLanguage, speed }: the format above, the subtitles yt-dlp is to
+    // fetch ("On", or "With Auto" for the automatic captions too) and the
+    // speed ("1.25x"), and the account once signed in. Player.qml selects the
+    // subtitles (--slang).
+    Q_INVOKABLE QStringList playbackArgs(const QVariantMap &settings) const;
+
+    // ADVANCED's language lists (options_slot), by yt-dlp's language codes.
+    Q_INVOKABLE void get_audio_languages();
+    Q_INVOKABLE void get_subtitle_languages();
 
     // Watch history (youtube_history.json). A finished video stays in history
     // with pos 0 (so it lists under RECENTLY WATCHED but never prompts to resume);
@@ -97,6 +131,7 @@ public:
     QString problem() const { return m_problem; }
 
 signals:
+    void dynamicOptionsReady(const QString &key, const QVariant &options);
     void subscriptionsFeedLoaded(const QVariant &videos);
     void channelsLoaded(const QVariant &channels);
     void channelVideosLoaded(const QString &channelId, const QVariant &videos);
@@ -162,6 +197,12 @@ private:
     QVariantMap  detailsOf(const QVariantMap &video, bool complete) const;
     void         fetchDetails(const QVariantMap &video);
     void         setProblem(const QString &problem);
+    // What makes yt-dlp read SIGN IN's sign-in from its browser profile, as
+    // the browser left it, on each run: --cookies-from-browser's value, and
+    // the option with it. Empty while that browser has kept nothing (never
+    // opened, or signed out).
+    QString      cookiesFromBrowser() const;
+    QStringList  cookieArgs() const;
 
     QList<PlaylistFileRef> readPlaylistEntries(QString *error = nullptr) const;
     void         ensurePlaylistsFresh(bool forceRefresh);
@@ -172,6 +213,7 @@ private:
     QString m_appRoot;
     QString m_dataRoot;
     QNetworkAccessManager m_nam;
+    WebPlayerBackend *m_browser = nullptr;
 
     QHash<QString, ChannelEntry> m_channels;  // in-memory session cache
     QStringList m_channelOrder;               // channel IDs in file order (deduped)

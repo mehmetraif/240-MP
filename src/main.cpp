@@ -163,21 +163,25 @@ int main(int argc, char *argv[]) {
     EmbyBackend         embyBackend(appRoot, dataRoot);
     AmbientModeBackend  ambientMode(dataRoot);
     NfcReaderBackend    nfcReader(appRoot, dataRoot, &appCore);
-    YouTubeBackend      youtubeBackend(appRoot, dataRoot);
-    WeatherBackend      weatherBackend(appRoot, dataRoot);
+    // Ahead of everything that takes the screen through it, so that all of
+    // them are destroyed before it is.
     DisplayHandoff      displayHandoff;
+    YouTubeBackend      youtubeBackend(appRoot, dataRoot, &displayHandoff);
+    WeatherBackend      weatherBackend(appRoot, dataRoot);
     ScriptsBackend      scriptsBackend(appRoot, dataRoot, &displayHandoff);
     // The streaming services opened as their own web players. TMDB's
     // provider ids are fallbacks for when its name lookup misses; the
     // Wikidata properties hold each service's id for a title.
     WebPlayerBackend    netflixBackend({
         QStringLiteral("netflix"), QStringLiteral("https://www.netflix.com/browse"),
+        QStringLiteral("https://www.netflix.com/login"),
         { QStringLiteral("Netflix"), 8, QStringLiteral("Netflix Home"),
           QStringLiteral("https://www.netflix.com/watch/%1"),
           QStringLiteral("https://www.netflix.com/search?q=%1"), QStringLiteral("P1874") } },
         appRoot, dataRoot, &displayHandoff);
     WebPlayerBackend    primeVideoBackend({
         QStringLiteral("prime_video"), QStringLiteral("https://www.primevideo.com"),
+        QStringLiteral("https://www.primevideo.com/auth-redirect?signin=1&returnUrl=%2F"),
         { QStringLiteral("Amazon Prime Video"), 119, QStringLiteral("Prime Video Home"),
           QStringLiteral("https://www.primevideo.com/detail/%1"),
           QStringLiteral("https://www.primevideo.com/search/ref=atv_nb_sr?phrase=%1"),

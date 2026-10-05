@@ -33,7 +33,7 @@ On a desktop, 240-MP and mpv are windows. They hand their frames to a compositor
 
 - mpv (`--vo=drm`) when a video plays
 - a takeover script from the Scripts module
-- Chromium, in `cage`, for Netflix and Prime Video
+- Chromium, in `cage`, for Netflix and Prime Video, and for signing in to YouTube
 
 With **Transparent Background**, mpv runs inside 240-MP instead, as libmpv. 240-MP then keeps the screen the whole time, draws the video as part of its own picture and lays its menus over it.
 
@@ -241,8 +241,8 @@ Photos of an earlier version, before the menus above, on a CRT.
 - A title's info screen (story, genre, director or creator, cast, rating) comes up when the cursor has rested on it for 3 seconds, or at once with right; Settings → **Info Screen** sets the seconds, or **Key** for right only, or **Off**
 - Right on the info screen (or on the title, with the info screen off) offers its options: **Add to Favorites** or **Remove from Favorites**
 - Come back by holding back (`[ESC]` / `[B]`) for two seconds, or by closing the browser (`Ctrl+W`)
-- Each keeps its sign-in between visits; **Sign out** in its settings forgets it
-- Needs `chromium`, `libwidevinecdm0` and, without a desktop, `cage` (on Raspberry Pi OS: `sudo apt install chromium libwidevinecdm0 cage`); the 240-MP OS image has them
+- **Sign in** in its settings opens the service's sign-in page full screen, to sign in with a keyboard before you browse (a title you open asks too, while you aren't). Each keeps its sign-in between visits; **Sign out** forgets it
+- Needs `chromium`, `libwidevinecdm0` and, without a desktop, `cage` and `wtype` (on Raspberry Pi OS: `sudo apt install chromium libwidevinecdm0 cage wtype`); the 240-MP OS image has them. With `wtype`, holding back closes the browser the way `Ctrl+W` does, which keeps a sign-in made moments before: Chromium saves new cookies only every half minute, and stopping it outright loses them
 - Off by default; enable them in Settings
 - This product uses the TMDB API but is not endorsed or certified by TMDB. Which service carries a title where comes from [JustWatch](https://www.justwatch.com), through TMDB
 
@@ -291,7 +291,7 @@ Photos of an earlier version, before the menus above, on a CRT.
 - Supports background music, US/Metric Units and 12-hour/24-hour time display
 
 ### YouTube ([Wiki](https://github.com/anthonycaccese/240-MP/wiki/Module:-YouTube))
-- List content from YouTube RSS feeds and playback via mpv + yt-dl (no auth required)
+- List content from YouTube RSS feeds and playback via mpv + yt-dl (no account needed)
 - Browse it all in the same tree as Local Files: **Recently Watched**, **Favorites**, **Search**, **Subscriptions**, **Channels**, **Playlists** and **Watch Later**
 - Search YouTube on an on-screen keyboard (through yt-dlp), twenty matches at a time with **More…** at the end
 - View Subscriptions: Browse the latest videos from your configured channels as a reverse chronological list
@@ -299,8 +299,18 @@ Photos of an earlier version, before the menus above, on a CRT.
 - A video's info screen (channel, date, length, views, description), like the streaming catalogues'; right on it (or, with the info screen off, on the video) offers its options: add it to **Favorites**, or save it to a local **Watch Later** list
 - **Recently Watched** is your local watch history
 - Resume Playback
-- Set Playback Resolution: 480p (default and good for the RaspberryPi), 720p and 1080p
-- Choose to Display Shorts or not (default is On)
+- **Advanced** in its settings holds the details:
+    - **Playback Resolution**: 240p to 2160p. 480p, the default, suits a CRT and a Pi.
+    - **Video Codec**: H.264 first, which a Pi decodes in hardware, or **Any** for whatever looks best (VP9 or AV1, needed above 1080p).
+    - **Max Frame Rate**: Any, or 30 where a video also has 60.
+    - **Scaling**.
+    - **Audio Language**: the original track, or a dub where a video has one.
+    - **Subtitles** in a **Subtitle Language**: Off, On, or With Auto for YouTube's automatic captions too.
+    - **Playback Speed**: 0.75x to 2x.
+    - **Resume Playback**, and whether to **Display Shorts** (on by default).
+- **Sign in** in its settings, if you want to, opens Google's sign-in page full screen in Chromium, to sign in with a keyboard. yt-dlp then searches and plays as that account, which YouTube asks for fewer bot checks and lets play age-restricted videos. **Sign out** forgets it
+    - YouTube can block an account used through yt-dlp, as [yt-dlp's wiki](https://github.com/yt-dlp/yt-dlp/wiki/Extractors#youtube) warns, so sign in with a spare one
+    - Needs Chromium, with `cage` and `wtype` without a desktop (see Netflix and Prime Video), or Google Chrome on a Mac
 
 ## Install
 - [On a Raspberry Pi](INSTALL.md#on-a-raspberry-pi)

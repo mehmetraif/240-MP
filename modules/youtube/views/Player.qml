@@ -18,6 +18,9 @@ FocusScope {
     property int    choiceIndex:      0
     property string errorMessage:     ""
     property var    ytdlArgs:         []
+    // Subtitles, from ADVANCED: -2 none, 0 the Subtitle Language's (subLangs).
+    property int    subTrack:         -2
+    property var    subLangs:         []
     property int    lastStartMs:      0   // what the last attempt started from, for retry
 
     // Track last non-null values during playback for robust save on exit
@@ -29,7 +32,7 @@ FocusScope {
     function doPlay(startMs) {
         overlayVisible = false
         lastStartMs = startMs
-        mpvController.loadAndPlay(videoUrl, startMs / 1000.0, 0, -2, [], [], false, -1, 0.0, "", false, "", false, [], 0.0, false, ytdlArgs)
+        mpvController.loadAndPlay(videoUrl, startMs / 1000.0, 0, subTrack, [], subLangs, false, -1, 0.0, "", false, "", false, [], 0.0, false, ytdlArgs)
     }
 
     // Starting mpv runs synchronously and, on the Pi, immediately switches VT
@@ -139,10 +142,28 @@ FocusScope {
             goBack()
             return
         }
-        var resolution = appCore.get_setting(moduleRoot.moduleId, "playback_resolution") || "480p"
-        ytdlArgs = ["--ytdl=yes", "--ytdl-format=" + youtubeBackend.ytdlFormatForResolution(resolution)]
+        // The ADVANCED settings, each at its manifest default until set.
+        var setting = function(key, fallback) {
+            var value = appCore.get_setting(moduleRoot.moduleId, key)
+            return (value === undefined || value === null || value === "") ? fallback : value
+        }
+        var subtitles = setting("subtitles", "Off")
+        var subtitleLanguage = setting("subtitle_language", "en")
+        ytdlArgs = youtubeBackend.playbackArgs({
+            resolution: setting("playback_resolution", "480p"),
+            codec: setting("video_codec", "H.264"),
+            maxFrameRate: setting("max_frame_rate", "Any"),
+            audioLanguage: setting("audio_language", "original"),
+            subtitles: subtitles,
+            subtitleLanguage: subtitleLanguage,
+            speed: setting("playback_speed", "1x")
+        })
+        if (subtitles !== "Off") {
+            subTrack = 0
+            subLangs = [subtitleLanguage]
+        }
 
-        var resumeSetting = appCore.get_setting(moduleRoot.moduleId, "resume_playback") || "Ask"
+        var resumeSetting = setting("resume_playback", "Ask")
         var saved = youtubeBackend.getSavedPosition(videoId)
         var savedPos = saved.pos || 0
 

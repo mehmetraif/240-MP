@@ -48,13 +48,18 @@ FocusScope {
     Component.onCompleted: {
         // Request the options list from the backend
         // Find the options_slot for this setting key
-        var schema = appCore.get_module_settings_schema(moduleId)
-        for (var i = 0; i < schema.length; i++) {
-            if (schema[i].key === settingKey && schema[i].options_slot) {
-                appCore.invoke_module_action(moduleId, schema[i].options_slot)
-                break
+        // The setting may sit in a submenu ("type": "submenu").
+        var find = function(list) {
+            for (var i = 0; i < list.length; i++) {
+                if (list[i].key === settingKey && list[i].options_slot) return list[i]
+                var inner = list[i].type === "submenu" ? find(list[i].settings || []) : null
+                if (inner) return inner
             }
+            return null
         }
+        var setting = find(appCore.get_module_settings_schema(moduleId))
+        if (setting)
+            appCore.invoke_module_action(moduleId, setting.options_slot)
     }
 
     // Header

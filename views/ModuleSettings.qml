@@ -11,6 +11,10 @@ FocusScope {
     property var navListState: ({})
     property string moduleId: navParams.moduleId || ""
     property string moduleName: ""
+    // A submenu row (manifest "type": "submenu", its own rows in "settings")
+    // opens this view again on just those rows, e.g. YouTube's ADVANCED.
+    property string submenuKey: navParams.submenu || ""
+    property string submenuLabel: ""
 
     property var schemaItems: []    // filtered schema entries from JSON
     property var currentValues: ({}) // config.modules[moduleId]
@@ -29,8 +33,24 @@ FocusScope {
         buildModel()
     }
 
+    // The submenu row with this key, at any depth.
+    function findSubmenu(list, key) {
+        for (var i = 0; i < list.length; i++) {
+            if (list[i].type !== "submenu") continue
+            if (list[i].key === key) return list[i]
+            var inner = findSubmenu(list[i].settings || [], key)
+            if (inner) return inner
+        }
+        return null
+    }
+
     function buildModel() {
         var schema = appCore.get_module_settings_schema(moduleId)
+        if (submenuKey !== "") {
+            var submenu = findSubmenu(schema, submenuKey)
+            submenuLabel = submenu ? (submenu.label || "") : ""
+            schema = submenu ? (submenu.settings || []) : []
+        }
         var needsAuthState = false
         for (var n = 0; n < schema.length; n++) {
             if (schema[n].requires_auth) {
@@ -125,7 +145,8 @@ FocusScope {
             } else {
                 opts = item.options || []
                 if (opts.length === 0) return
-                var curVal = currentValues[item.key] || opts[0]
+                // From the value shown: an unset one shows its default.
+                var curVal = currentValues[item.key] || item.default || opts[0]
                 var ci = opts.indexOf(curVal)
                 if (ci < 0) ci = 0
                 var ni = (ci + direction + opts.length) % opts.length
@@ -180,7 +201,8 @@ FocusScope {
     AppBar {
         iconSource: "../../assets/images/settings.svg"
         title: "Settings"
-        subtitle: moduleName
+        subtitle: moduleSettingsRoot.submenuLabel !== ""
+                  ? moduleName + " / " + moduleSettingsRoot.submenuLabel : moduleName
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.topMargin: root.sh * 0.125 //60
@@ -231,6 +253,18 @@ FocusScope {
                     settingKey: item.key,
                     settingLabel: item.label
                 }, { currentIndex: settingsList.currentIndex })
+            } else if (item.type === "submenu") {
+                moduleSettingsRoot.navigateTo("views/ModuleSettings.qml", {
+                    moduleId: moduleSettingsRoot.moduleId,
+                    submenu: item.key
+                }, { currentIndex: settingsList.currentIndex })
+            } else if (item.type === "module_view") {
+                // The module itself, which its Root.qml opens on one of its
+                // own views by these params, e.g. Netflix's sign-in page; back
+                // from it comes back here. Enabled or not.
+                moduleSettingsRoot.navigateTo(appCore.module_entry_point(moduleSettingsRoot.moduleId),
+                                              item.params || {},
+                                              { currentIndex: settingsList.currentIndex })
             } else if (item.type === "action") {
                 appCore.invoke_module_action(moduleSettingsRoot.moduleId, item.action_slot)
             } else if (item.type === "directory_browser") {

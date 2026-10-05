@@ -53,6 +53,12 @@ FocusScope {
         }
     }
 
-    // The startup favourite, when the app opens on one (Main.qml).
-    Component.onCompleted: navigateTo("Items.qml", { startupPlay: navParams.startupPlay })
+    // The startup favourite, when the app opens on one (Main.qml), or the
+    // sign-in page (SIGN IN in the module's settings), whose back returns there.
+    Component.onCompleted: {
+        if (navParams.signIn)
+            navigateTo("SignIn.qml", navParams)
+        else
+            navigateTo("Items.qml", { startupPlay: navParams.startupPlay })
+    }
 }

@@ -1,17 +1,26 @@
 #!/bin/sh
 # Opens a streaming service's own web player full screen, for 240-MP's Netflix
-# and Prime Video modules (src/modules/web_player/WebPlayerBackend.h):
+# and Prime Video modules, and Google's sign-in for its YouTube module
+# (src/modules/web_player/WebPlayerBackend.h):
 #
 #   web-player.sh <service> <url> [letterbox|14:9|panscan|anamorphic]
+#   web-player.sh --close <service>
 #
 # The module runs this as a takeover: on a headless Pi the app has handed the
 # screen over before this starts, and takes it back once everything this
 # starts has exited. Closing the browser (Ctrl+W or Alt+F4), or holding BACK in
 # 240-MP, ends the run.
 #
+# Holding BACK runs --close, which closes the browser the way Ctrl+W does, so
+# that it saves what it holds first: Chromium writes new cookies, a sign-in
+# among them, only every half minute, and stopping it outright loses them. It
+# types Ctrl+W into cage (0.1.5 or later, for its virtual keyboard) with wtype,
+# and exits non-zero where it can't, for the app to stop the run instead.
+#
 # Needs a Chromium-based browser with Widevine, which these players require.
 # On Raspberry Pi OS: `sudo apt install chromium libwidevinecdm0`, and `cage`
-# to give the browser a screen when there is no desktop.
+# to give the browser a screen when there is no desktop, with `wtype` for
+# --close.
 #
 # The third argument is the module's Scaling setting: how a 16:9 picture fills
 # a 4:3 screen (letterbox by default). Chromium only; Safari and Google Chrome
@@ -21,14 +30,26 @@
 #   MP240_WEB_PLAYER_UA  the browser's user agent (default: see below)
 set -u
 
+DATA=${DATA_ROOT:-${XDG_DATA_HOME:-$HOME/.local/share}/240-MP}
+
+if [ "${1:-}" = "--close" ] && [ $# -eq 2 ]; then
+    # Where the run's cage is (see the end), and wtype to type into it. A
+    # moment first, for the browser to take the new keyboard's keymap: keys
+    # typed straight away are sometimes lost.
+    WAYLAND_FILE=$DATA/$2/wayland
+    { [ -r "$WAYLAND_FILE" ] && command -v wtype >/dev/null 2>&1; } || exit 1
+    { read -r RUNTIME_DIR && read -r SOCKET; } < "$WAYLAND_FILE" || exit 1
+    XDG_RUNTIME_DIR=$RUNTIME_DIR WAYLAND_DISPLAY=$SOCKET exec wtype -s 300 -M ctrl -k w -m ctrl
+fi
+
 if [ $# -lt 2 ] || [ $# -gt 3 ]; then
     echo "usage: $0 <service> <url> [letterbox|14:9|panscan|anamorphic]"
+    echo "       $0 --close <service>"
     exit 2
 fi
 SERVICE=$1
 URL=$2
 SCALING=${3:-letterbox}
-DATA=${DATA_ROOT:-${XDG_DATA_HOME:-$HOME/.local/share}/240-MP}
 # The browser's own profile for this service, so its sign-in survives between
 # runs. WebPlayerBackend::signOut() deletes it.
 PROFILE=$DATA/$SERVICE/browser
@@ -52,7 +73,7 @@ for candidate in chromium chromium-browser google-chrome-stable google-chrome; d
     fi
 done
 if [ -z "$BROWSER" ]; then
-    echo "No Chromium found. On Raspberry Pi OS: sudo apt install chromium libwidevinecdm0 cage"
+    echo "No Chromium found. On Raspberry Pi OS: sudo apt install chromium libwidevinecdm0 cage wtype"
     exit 127
 fi
 
@@ -137,6 +158,10 @@ if [ -z "${XDG_RUNTIME_DIR:-}" ] || [ ! -w "${XDG_RUNTIME_DIR:-/nonexistent}" ];
     RUNTIME=$(mktemp -d "${TMPDIR:-/tmp}/240mp-$SERVICE.XXXXXX") || exit 1
     export XDG_RUNTIME_DIR="$RUNTIME"
 fi
-trap '[ -n "$RUNTIME" ] && rm -rf "$RUNTIME"' EXIT
+# Where cage's socket is, for --close: written from inside cage, which names
+# it only to the browser.
+WAYLAND_FILE=$DATA/$SERVICE/wayland
+trap '[ -n "$RUNTIME" ] && rm -rf "$RUNTIME"; rm -f "$WAYLAND_FILE"' EXIT
 trap 'exit 143' TERM INT HUP
-cage -- "$BROWSER" "$@" --ozone-platform=wayland "$URL"
+cage -- sh -c 'printf "%s\n%s\n" "$XDG_RUNTIME_DIR" "$WAYLAND_DISPLAY" > "$1"; shift; exec "$@"' \
+    web-player "$WAYLAND_FILE" "$BROWSER" "$@" --ozone-platform=wayland "$URL"
