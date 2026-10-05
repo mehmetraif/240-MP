@@ -62,19 +62,19 @@ cat > "${ETC}/systemd/system/NetworkManager-wait-online.service.d/240mp.conf" <<
 Environment=NM_ONLINE_TIMEOUT=20
 EOF
 
-# The Pi's own Bluetooth. bthelper@hciN (pi-bluetooth, started by udev before
-# bluetooth.service) brings the adapter up with hciconfig to set it up, which
-# skips the kernel's power-on initialisation, and relied on bluetoothd running
-# 5 s later to power it off and on again. Here bluetoothd waits for the app
-# (above), so the adapter was left half set up and BlueZ couldn't turn it on.
-# Leave it down instead, as pi-bluetooth itself now does
-# (RPi-Distro/pi-bluetooth#39): bluetoothd powers it on when it starts. With
-# bluetoothd running already (an adapter plugged in later), the kludge works.
-install -d "${ETC}/systemd/system/bthelper@.service.d"
-cat > "${ETC}/systemd/system/bthelper@.service.d/240mp.conf" << 'EOF'
-# 240-MP OS: leave the adapter down, for bluetoothd to power on (AutoEnable).
+# Bluetooth is switched on and off in Settings → Bluetooth, through BlueZ, and
+# rfkill has no business keeping it off. Raspberry Pi OS starts every radio
+# blocked (raspberrypi-sys-mods sets rfkill.default_state=0, so Wi-Fi stays off
+# until its country is set), then unblocks Bluetooth only on the adapters
+# pi-gen lists by device path (stage2/02-net-tweaks). The Pi 4 this was found
+# on wasn't one of them: its adapter stayed blocked, and BlueZ couldn't turn
+# it on ("Failed to set mode: Failed (0x03)"). Unblock it as bluetoothd
+# starts; systemd-rfkill then keeps it so from one boot to the next.
+install -d "${ETC}/systemd/system/bluetooth.service.d"
+cat > "${ETC}/systemd/system/bluetooth.service.d/240mp-unblock.conf" << 'EOF'
+# 240-MP OS: Bluetooth is switched in the app, through BlueZ; rfkill never blocks it.
 [Service]
-ExecStartPost=-/bin/sh -c 'pidof bluetoothd > /dev/null || /bin/hciconfig %I down'
+ExecStartPre=+-/usr/sbin/rfkill unblock bluetooth
 EOF
 
 # Built without a password (os/build.sh), the first user can't log in, and Exit

@@ -55,7 +55,8 @@ class BluetoothManager : public QObject {
     Q_PROPERTY(QVariantMap prompt READ prompt NOTIFY promptChanged)
     // How the last pairing or connection went, in a line, for the screen.
     Q_PROPERTY(QString message READ message NOTIFY messageChanged)
-    // Turning the adapter on failed, twice: the page offers its details.
+    // Turning the adapter on failed, twice (once when rfkill blocks it): the
+    // page offers its details.
     Q_PROPERTY(bool powerFailed READ powerFailed NOTIFY adapterChanged)
     // What the system says about Bluetooth, for when it won't turn on
     // (collectDetails()): the adapter as BlueZ has it, rfkill, and the

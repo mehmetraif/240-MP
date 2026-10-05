@@ -26,8 +26,8 @@ Compared with flashing Raspberry Pi OS Lite and running `scripts/install.sh` ([I
 - **Films go on the card.** On the first boot the system keeps 8 GiB of the card, and the rest becomes a partition of its own in exFAT, labelled **240-MP**, which Windows and macOS open too. Local Files opens it. See [Films on the card](#films-on-the-card).
 - **Stopping isn't powering off.** `systemctl stop` and `systemctl restart` leave the Pi on. Quit in the app still powers it off, Restart reboots it, and Exit to Terminal still drops to a login shell, as with `install.sh`.
 - **Bluetooth from the app.** The user the app runs as is in the `bluetooth` group, so Settings → Bluetooth can search for and pair a keyboard, gamepad or remote through BlueZ.
-  - The Pi's own adapter is left powered down once `bthelper` (pi-bluetooth) has set it up, and bluetoothd powers it on when it starts.
-  - That works around a race: `bthelper` brings the adapter up the quick way, which skips part of the kernel's set-up, and relied on bluetoothd to power it off and on again within 5 s. Here bluetoothd starts later, after the app, so the adapter stayed half set up and wouldn't turn on. pi-bluetooth fixes it the same way ([RPi-Distro/pi-bluetooth#39](https://github.com/RPi-Distro/pi-bluetooth/pull/39)).
+  - Bluetooth is unblocked (`rfkill unblock bluetooth`) as bluetoothd starts, so the app's switch is the only one.
+  - Raspberry Pi OS starts every radio blocked, so that Wi-Fi stays off until its country is set (`rfkill.default_state=0`), and then unblocks Bluetooth only on the adapters pi-gen knows by device path. The Pi 4 this was found on wasn't one of them: its adapter stayed blocked, and BlueZ couldn't turn it on.
 
 Everything else (the launcher, in-app updates, Exit to Terminal, the data directory in `~/.local/share/240-MP`) is the same as a manual install. The launcher, stop helper and terminal unit are taken from `scripts/install.sh` at build time.
 
