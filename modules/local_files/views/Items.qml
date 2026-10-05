@@ -27,11 +27,12 @@ FocusScope {
     focus: true
 
     // Plays a file, putting it on RECENTLY WATCHED; trail is where coming back
-    // lands.
-    function play(item, trail) {
+    // lands, and startup says it is the favourite played at startup.
+    function play(item, trail, startup) {
         appCore.add_to_list(moduleRoot.moduleId, "recent",
                             { name: item.name, path: item.path, isFolder: false }, 30)
-        itemsRoot.navigateTo("Player.qml", { filePath: item.path, title: item.name }, { trail: trail })
+        itemsRoot.navigateTo("Player.qml", { filePath: item.path, title: item.name, startup: !!startup },
+                             { trail: trail })
     }
 
     // The startup favourite, played as if chosen in FAVORITES, so coming back
@@ -56,7 +57,7 @@ FocusScope {
         for (var i = 0; i < favorites.length; ++i) {
             if (favorites[i].path === entry.path) {
                 play(favorites[i], [{ path: itemsRoot.rootPath, sel: 1, name: "", pushed: false },
-                                    { path: "favorites", sel: i, name: "Favorites", pushed: false }])
+                                    { path: "favorites", sel: i, name: "Favorites", pushed: false }], true)
                 return
             }
         }

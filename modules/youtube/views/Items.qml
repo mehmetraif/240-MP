@@ -55,7 +55,7 @@ FocusScope {
             favorites = favorites.filter(function(e) { return !e.isShort })
         for (var i = 0; i < favorites.length; ++i) {
             if (favorites[i].path === entry.path) {
-                navigateTo("Player.qml", { item: favorites[i] },
+                navigateTo("Player.qml", { item: favorites[i], startup: true },
                            { trail: [{ path: "home", sel: 1, name: "", pushed: false },
                                      { path: "favorites", sel: i, name: "Favorites", pushed: false }] })
                 return

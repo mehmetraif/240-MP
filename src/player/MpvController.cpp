@@ -301,7 +301,7 @@ QStringList MpvController::sessionArgs(const QString &url, float startSeconds,
     // squeezes the picture to fill the screen, for a TV set to 16:9. The
     // cropping ones need panscan, which the Pi3 overlay (smooth) path blanks
     // video under, so it keeps the whole picture there, matching the 1080p
-    // Playback trade-off. The OSC CROP button still toggles panscan live.
+    // Playback trade-off. The OSC's CROP button steps through all four live.
     const QString scaling = videoScaling();
     if (scaling == QLatin1String("Anamorphic")) {
         args << QStringLiteral("--keepaspect=no");
@@ -898,21 +898,15 @@ bool MpvController::transparentBackground() const {
     if (!m_appCore)
         return false;
     // How solid the menus' ground is over the picture, 0 to 100, Settings'
-    // TRANSPARENT … SOLID slider. SOLID (100, the default) is off. Its first
-    // values were words: On (clear) and Dim (60).
+    // TRANSPARENT … SOLID slider (SOLID hides the picture, which plays on), or
+    // Off, the default when unset. Its first values were words: On (clear)
+    // and Dim (60). Main.qml's backgroundOn() reads it the same way.
     const QString v = m_appCore->get_setting(QString(), "transparent_background").toString().trimmed();
-    int solidity = 100;
-    if (v.compare(QStringLiteral("On"), Qt::CaseInsensitive) == 0) {
-        solidity = 0;
-    } else if (v.compare(QStringLiteral("Dim"), Qt::CaseInsensitive) == 0) {
-        solidity = 60;
-    } else {
-        bool ok = false;
-        const int n = v.toInt(&ok);
-        if (ok)
-            solidity = n;
-    }
-    return solidity < 100 && EmbeddedMpv::available();
+    bool on = v.compare(QStringLiteral("On"), Qt::CaseInsensitive) == 0
+              || v.compare(QStringLiteral("Dim"), Qt::CaseInsensitive) == 0;
+    if (!on)
+        v.toInt(&on);
+    return on && EmbeddedMpv::available();
 }
 
 bool MpvController::videoActive() const {

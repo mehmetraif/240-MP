@@ -101,6 +101,21 @@ FocusScope {
             moduleId: ""
         })
 
+        // Startup From — where that favourite begins. Either way it begins
+        // without asking: a resume prompt is no question to put to a player
+        // switched on to play. Offered while there is one.
+        if (favName !== "") {
+            items.push({
+                type: "list_single",
+                key: "startup_from",
+                label: "Startup From",
+                options: ["Resume", "Beginning"],
+                value: appSettings["startup_from"] === "Beginning" ? "Beginning" : "Resume",
+                description: "Where the favourite played at startup begins, without asking\n[RESUME] Where it was stopped  [BEGINNING] From the start",
+                moduleId: ""
+            })
+        }
+
         // Smooth Playback — only shown on devices whose smooth decode path can't
         // crop/zoom (the Pi 3 overlay path). Default ON; turning it off restores the
         // crop-capable video output. Takes effect on the next video.
@@ -138,18 +153,24 @@ FocusScope {
         // behind them (MpvController). A slider, like the deck's tape bar,
         // from TRANSPARENT to SOLID: how solid the menus' ground is over the
         // picture, in tenths, and seen at once over a video behind them.
-        // SOLID turns it off. It needs libmpv, so it is offered only where
-        // that is installed.
+        // SOLID hides the picture, which plays on, sound and all; select turns
+        // the setting off and on, as it does a module's toggles. It needs
+        // libmpv, so it is offered only where that is installed.
         if (mpvController.embeddedAvailable()) {
+            var backgroundRaw = appSettings["transparent_background"]
+            var backgroundOn = root.backgroundOn(backgroundRaw)
             items.push({
                 type: "slider",
                 key: "transparent_background",
                 label: "Transparent Background",
-                value: root.solidityOf(appSettings["transparent_background"]),
+                on: backgroundOn,
+                offValue: "Off",
+                // Off, the bar waits where turning it on puts it.
+                value: backgroundOn ? root.solidityOf(backgroundRaw) : 40,
                 step: 10,
                 startText: "TRANSPARENT",
                 endText: "SOLID",
-                description: "How much of a video shows through the menus when back returns to them and leaves it playing behind, until you play something else or stop it on the main menu, whose first row takes it back to full screen\n[SOLID] Off: back stops the video, as it always has",
+                description: "How much of a video shows through the menus when back returns to them and leaves it playing behind, until you play something else or stop it on the main menu, whose first row takes it back to full screen\n[SOLID] None of it, but it plays on, sound and all  [ENTER] On or off: off, back stops the video, as it always has",
                 moduleId: ""
             })
         }
@@ -360,13 +381,27 @@ FocusScope {
         }
 
         // A slider's step toward one end (-1 left, 1 right), kept and saved.
+        // One that is off turns on instead, where its bar waits.
         function moveSlider(direction) {
             var row = settingsItems[currentIndex]
+            if (row.on === false) {
+                toggleSlider()
+                return
+            }
             var v = Math.max(0, Math.min(100, row.value + direction * row.step))
             if (v === row.value)
                 return
             replaceCurrentRow(Object.assign({}, row, { value: v }))
             appCore.save_setting(row.moduleId, row.key, v)
+        }
+
+        // A slider that can be off (one with `on`), turned off, saved as its
+        // offValue, or back on at its value.
+        function toggleSlider() {
+            var row = settingsItems[currentIndex]
+            var on = !row.on
+            replaceCurrentRow(Object.assign({}, row, { on: on }))
+            appCore.save_setting(row.moduleId, row.key, on ? row.value : row.offValue)
         }
 
         Keys.onLeftPressed: {
@@ -413,6 +448,8 @@ FocusScope {
             } else if (row && row.type === "quit") {
                 settingsRoot.quitChoiceIndex = 0
                 settingsRoot.quitOverlayVisible = true
+            } else if (row && row.type === "slider" && row.on !== undefined) {
+                toggleSlider()
             }
         }
 
@@ -441,15 +478,17 @@ FocusScope {
                 heading: modelData.type === "section"
                 label: modelData.label || ""
                 value: modelData.type === "list_single" ? (modelData.value || "")
-                     : rowItem.slider ? (modelData.value >= 100 ? "Off" : "On") : ""
+                     : rowItem.slider && modelData.on !== undefined ? (modelData.on ? "On" : "Off") : ""
                 selected: settingsList.currentIndex === index
             }
 
             // A slider's setting, as the deck's tape bar shows how far the
-            // tape is: ◄ ► move the ▼ between the two ends.
+            // tape is: ◄ ► move the ▼ between the two ends. Off, its lines
+            // stay, empty.
             Loader {
                 id: tape
                 active: rowItem.slider
+                visible: modelData.on !== false
                 x: root.sw * 0.009375 //6
                 y: rowItem.lineHeight + Math.round((rowItem.barLines * rowItem.lineHeight - height) / 2)
                 width: parent.width - 2 * x

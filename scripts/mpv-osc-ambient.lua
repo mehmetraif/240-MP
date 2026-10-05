@@ -30,11 +30,36 @@ local function draw_text(ass, x, y, anchor, text, fs, fc, fa)
         anchor, x, y, fs, fc, fa, text))
 end
 
+-- The four Scalings of Settings (MpvController::sessionArgs), which CROP steps
+-- through live: how a 16:9 picture fills the 4:3 tube.
+local SCALINGS = {
+    { name = "LETTERBOX",  panscan = 0,    keepaspect = true  },
+    { name = "14:9",       panscan = 0.43, keepaspect = true  },
+    { name = "PAN & SCAN", panscan = 1,    keepaspect = true  },
+    { name = "ANAMORPHIC", panscan = 0,    keepaspect = false },
+}
+
+-- The one in force, read off mpv, so CROP carries on from the Scaling the
+-- video started with.
+local function current_scaling()
+    if mp.get_property_bool("keepaspect", true) == false then return 4 end
+    local p = mp.get_property_number("panscan", 0) or 0
+    if p > 0.7 then return 3 elseif p > 0.2 then return 2 end
+    return 1
+end
+
+local function next_scaling()
+    local s = SCALINGS[current_scaling() % #SCALINGS + 1]
+    mp.set_property_bool("keepaspect", s.keepaspect)
+    mp.set_property_number("panscan", s.panscan)
+end
+
 -- CROP is omitted when MpvController flags a decode path where --panscan
 -- blanks the video (Pi 3 overlay path with 1080p Playback ON).
+local hide_crop = mp.get_opt("hide-crop") == "1"
 local buttons = {}
-if mp.get_opt("hide-crop") ~= "1" then
-    buttons[#buttons + 1] = { label = "CROP", action = function() mp.command("no-osd cycle-values panscan 0 1") end }
+if not hide_crop then
+    buttons[#buttons + 1] = { label = "CROP", action = next_scaling }
 end
 buttons[#buttons + 1] = { label = "STOP", action = function() mp.command("quit") end }
 
@@ -52,6 +77,11 @@ local function draw_menu()
     local btn_gap = math.floor(bar_w * 0.025)
     local btn_y   = math.floor(wh * 0.8333333)
     local btn_w   = math.floor(bar_w * 0.090625)
+
+    if not hide_crop then
+        draw_text(ass, lm, math.floor(wh * 0.125), 4, "CROP: " .. SCALINGS[current_scaling()].name,
+                  fs, C_WHITE, A_OPAQUE)
+    end
 
     local bx = lm
     for i, btn in ipairs(buttons) do

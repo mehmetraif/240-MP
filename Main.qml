@@ -302,8 +302,14 @@ Window {
     property int backdropSolidity: 100
 
     // "transparent_background": how solid the menus' ground is over a video
-    // behind them, 0 (TRANSPARENT) to 100 (SOLID, which is off: back stops
-    // the video, as it always has). Its first values were words.
+    // behind them, 0 (TRANSPARENT) to 100 (SOLID: none of it shows, but it
+    // plays on, sound and all), or "Off", the default when unset (back stops
+    // the video, as it always has). Its first values were words: On (0) and
+    // Dim (60). Read as MpvController::transparentBackground() reads it.
+    function backgroundOn(raw) {
+        var s = String(raw === undefined || raw === null ? "" : raw).trim().toLowerCase()
+        return s === "on" || s === "dim" || !isNaN(parseInt(s))
+    }
     function solidityOf(raw) {
         var s = String(raw === undefined || raw === null ? "" : raw).toLowerCase()
         if (s === "on") return 0

@@ -175,7 +175,13 @@ FocusScope {
         var behind = note.module === moduleRoot.moduleId && note.params && note.params.item
                      && note.params.item.videoId === videoId
 
-        if (resumeSetting === "Always" || behind) {
+        // The favourite played at startup begins without asking, where
+        // Settings' STARTUP FROM says.
+        var startupFrom = navParams.startup ? (appCore.get_setting("", "startup_from") || "Resume") : ""
+
+        if (startupFrom === "Beginning") {
+            play(0)
+        } else if (resumeSetting === "Always" || behind || startupFrom !== "") {
             play(savedPos)
         } else if (savedPos > 0) {
             savedPositionMs = savedPos

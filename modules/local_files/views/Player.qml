@@ -186,6 +186,17 @@ FocusScope {
             return
         }
 
+        // The favourite played at startup begins without asking, where
+        // Settings' STARTUP FROM says (a playlist in order, unless shuffle is
+        // always on, above).
+        if (navParams.startup) {
+            var held = appCore.get_setting("", "startup_from") === "Beginning"
+                       ? ({}) : localFilesBackend.getSavedPosition(filePath)
+            var heldPos = held.pos || 0
+            play(heldPos, heldPos > 0 && held.plPos !== undefined ? held.plPos : -1, false)
+            return
+        }
+
         var askShuffle = canShuffle && shuffleSetting === "ask"
 
         var savedPos = 0

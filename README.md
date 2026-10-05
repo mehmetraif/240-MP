@@ -15,8 +15,8 @@ On a Raspberry Pi, 240-MP can also be the whole system. The **240-MP OS** image 
 - **One way to browse.** Local Files, Netflix, Prime Video and YouTube open as a horizontal tree. The folders you open run along a line across the screen, and every folder branches out to a few of its entries. Each starts with **Recently Watched**, **Favorites** and **Search**.
 - **Search with the remote**, typed on an on-screen keyboard.
 - **Info screens** for films and videos: the story, genre, director, cast and rating. One comes up when the cursor rests on a title (3 seconds by default), or straight away with ►.
-- **Options** on any entry, with ►: add it to **Favorites**, or have it **Play at Startup**, straight after the boot screen.
-- **Transparent Background.** Back from a video returns to the menus while the video keeps playing behind them, like a deck's menu over the tape, and the first row of the main menu takes it back to full screen. A slider from TRANSPARENT to SOLID sets how much of it shows through. It needs libmpv (`libmpv2` on Raspberry Pi OS, part of Homebrew's mpv on macOS).
+- **Options** on any entry, with ►: add it to **Favorites**, or have it **Play at Startup**, straight after the boot screen, where it was stopped or from the beginning (Settings → Startup From), without asking.
+- **Transparent Background.** Back from a video returns to the menus while the video keeps playing behind them, like a deck's menu over the tape, and the first row of the main menu takes it back to full screen. A slider from TRANSPARENT to SOLID sets how much of it shows through: at SOLID none, while it plays on, sound and all. Select on the setting turns it off. It needs libmpv (`libmpv2` on Raspberry Pi OS, part of Homebrew's mpv on macOS).
 - **Scaling** for 16:9 pictures on a 4:3 screen: Letterbox, 14:9, Pan & Scan or Anamorphic. Set it for every module, or for one module in its own settings.
 - **Netflix and Prime Video** catalogues from TMDB in the same tree. A title plays in the service's own player.
 - **240-MP OS**, a Raspberry Pi OS Lite image that boots straight into 240-MP and shows a VHS boot screen while its services come up.
@@ -89,7 +89,7 @@ Every screen below is the app itself, running at 640×480. The film and YouTube 
 <table>
 <tr><th width="50%">Resume</th><th width="50%">Playback menu</th></tr>
 <tr><td><img src="docs/screenshots/resume.png" width="100%" alt="Resume" /></td><td><img src="docs/screenshots/playback-menu.png" width="100%" alt="Playback menu" /></td></tr>
-<tr><td>Pick up where you left off, or start from the beginning.</td><td>▲ or ▼ during playback opens the deck's menu: the position bar, audio and subtitle tracks, crop and stop.</td></tr>
+<tr><td>Pick up where you left off, or start from the beginning.</td><td>▲ or ▼ during playback opens the deck's menu: the position bar, audio and subtitle tracks, crop (the four Scalings in turn) and stop.</td></tr>
 </table>
 
 <table>

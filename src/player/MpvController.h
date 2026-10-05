@@ -72,7 +72,7 @@ public:
 
     // Transparent Background (app setting "transparent_background": how solid
     // the menus' ground is over the picture, 0 to 100 on Settings' TRANSPARENT
-    // ... SOLID slider, on below SOLID): video is played inside the app's own
+    // ... SOLID slider, or Off, the default): video is played inside the app's own
     // window (EmbeddedMpv) rather than by an mpv process over it, so the menus
     // can be drawn over the picture. Back from playback then returns to the
     // menus and leaves the video playing behind them: the module takes it as
