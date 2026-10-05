@@ -1,9 +1,10 @@
 import QtQuick
 
-// Pixel-art VHS cassette, drawn after the flat two-tone cassette icon: a dark
-// shell with a light line under its top edge, a label with three lines in the
-// middle and, either side of it, the tape wound on a reel around a dark hub.
-// As `progress` goes from 0 to 1 the tape winds off the left (supply) reel onto
+// Pixel-art VHS cassette, drawn after the flat cassette icon in two colours:
+// the shell is solid `ink`, and its cut-outs are left clear so the background
+// shows through. The cut-outs are a line under the top edge, the label in the
+// middle (its three lines are ink again) and, either side of the label, the
+// tape wound on a reel around an ink hub. As `progress` goes from 0 to 1 the tape winds off the left (supply) reel onto
 // the right (take-up) one, so the left pack shrinks while the right one grows.
 // Each reel turns at the speed its tape radius gives it, the full reel slowly
 // and the nearly empty one fast, like a real deck.
@@ -28,12 +29,12 @@ Item {
     width: gridWidth * pixelSize
     height: gridHeight * pixelSize
 
-    // --- Palette: the icon's two tones ---
-    readonly property string shell: "#232327"
-    readonly property string paper: "#f1eee6"
+    // The one colour drawn; everything else is the background. The host sets
+    // it to the theme's text colour.
+    property string ink: "#ffffff"
 
     // --- Geometry (grid cells, inclusive bounds) ---
-    // The light line that splits the top edge off the rest of the shell.
+    // The clear line that splits the top edge off the rest of the shell.
     readonly property int lineY0: 8
     readonly property int lineY1: 10
     // The label, and the rows and span of its three lines.
@@ -107,25 +108,25 @@ Item {
         if (cornerCut(x, y, 0, 0, gridWidth - 1, gridHeight - 1, 2))
             return ""
         if (y >= lineY0 && y <= lineY1)
-            return paper
+            return ""
         if (y >= labelY0 && y <= labelY1) {
             // The reel windows, left to their own layer.
             if (x < windowWidth || x >= gridWidth - windowWidth)
                 return ""
             if (x >= labelX0 && x <= labelX1) {
                 if (cornerCut(x, y, labelX0, labelY0, labelX1, labelY1, 1))
-                    return shell
+                    return ink
                 if (labelLines.indexOf(y) >= 0 && x >= labelLineX0 && x <= labelLineX1)
-                    return shell
-                return paper
+                    return ink
+                return ""
             }
         }
-        return shell
+        return ink
     }
 
     // Colours the reel window that starts at column x0, for a reel centred on
-    // column cx: tape out to the reel's radius, then the dark hub with six
-    // light 2×2 teeth that turn with the reel and make the turning visible.
+    // column cx: clear tape out to the reel's radius, then the ink hub with six
+    // clear 2×2 teeth that turn with the reel and make the turning visible.
     function reelPainter(x0, cx, tapeRadius, angle) {
         var teeth = []
         for (var i = 0; i < 6; ++i) {
@@ -138,15 +139,15 @@ Item {
             var dx = x + 0.5 - cx, dy = y + 0.5 - reelY
             var r2 = dx * dx + dy * dy
             if (r2 > tapeRadius * tapeRadius)
-                return shell
+                return ink
             if (r2 > hubRadius * hubRadius)
-                return paper
+                return ""
             for (var t = 0; t < teeth.length; ++t) {
                 if (x - teeth[t][0] >= 0 && x - teeth[t][0] <= 1
                         && y - teeth[t][1] >= 0 && y - teeth[t][1] <= 1)
-                    return paper
+                    return ""
             }
-            return shell
+            return ink
         }
     }
 
@@ -194,11 +195,13 @@ Item {
         }
     }
 
-    onPixelSizeChanged: {
+    function repaintAll() {
         shellCanvas.requestPaint()
         leftWindow.requestPaint()
         rightWindow.requestPaint()
     }
+    onPixelSizeChanged: repaintAll()
+    onInkChanged: repaintAll()
     onLeftRadiusChanged: leftWindow.requestPaint()
     onRightRadiusChanged: rightWindow.requestPaint()
 

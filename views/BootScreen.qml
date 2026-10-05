@@ -77,6 +77,7 @@ FocusScope {
         id: cassette
         // Roughly a third of the screen height, in whole art pixels.
         pixelSize: Math.max(1, Math.floor(root.sh * 0.36 / gridHeight))
+        ink: root.primaryColor
         x: Math.round((root.sw - width) / 2)
         y: Math.round(root.sh * 0.16)
         progress: bootRoot.shownProgress
