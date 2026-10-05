@@ -560,7 +560,7 @@ Shared QML components live in `views/Components/` (registered via `qmldir`, impo
 | `title` | `string` | Module name — use `moduleRoot.moduleName` |
 | `subtitle` | `string` | Optional context label (hidden when empty) |
 
-The module's logo stands at its left end, in the theme's text colour, a fifth taller than the bar so it stands out of it above and below, an art pixel clear of it on each side. Then comes a solid bar in the same colour with the title and subtitle in the background colour, the way a deck's on-screen menu starts. The logo is drawn by `OsdIconProvider` (`src/util/`, `image://osdicon/<rrggbb>/<px>/<url>`): trimmed to its shape, in one colour, on the art-pixel grid. It does not use a shader effect, which the software scene graph draws as nothing.
+The module's logo stands at its left end, in the theme's text colour, a fifth taller than the bar so it stands out of it above and below, an art pixel clear of it on each side. Then comes a solid bar in the same colour with the title and subtitle in the background colour, the way a deck's on-screen menu starts. The logo is drawn by `OsdIconProvider` (`src/util/`, `image://osdicon/<rrggbb>/<url>`): trimmed to its shape and drawn from the original at the bar's size (a vector is rendered at that height, not scaled from a bitmap), in one colour with its own smooth edges. It does not use a shader effect, which the software scene graph draws as nothing.
 
 ### VCR OSD elements
 

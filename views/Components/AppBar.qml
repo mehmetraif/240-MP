@@ -30,11 +30,11 @@ Item {
         height: appBar.logoHeight
         width: implicitWidth
         sourceSize.height: appBar.logoHeight
-        smooth: false
-        // Drawn by OsdIconProvider in the bar's colour, on the art-pixel grid.
-        // Resolved here, so a path relative to this file works as it always has.
+        // Drawn by OsdIconProvider in the bar's colour, from the original at
+        // this height. Resolved here, so a path relative to this file works as
+        // it always has.
         source: appBar.iconSource.toString() !== "" && appBar.logoHeight > 0
-                ? "image://osdicon/" + root.primaryColor.toString().replace("#", "") + "/" + root.px
+                ? "image://osdicon/" + root.primaryColor.toString().replace("#", "")
                   + "/" + Qt.resolvedUrl(appBar.iconSource)
                 : ""
     }
