@@ -56,6 +56,11 @@ FocusScope {
         }
     }
 
+    // Rows that show their current value after the dots.
+    function hasValue(item) {
+        return item.type === "toggle" || item.type === "list_single" || item.type === "directory_browser"
+    }
+
     function currentDisplayValue(item) {
         var key = item.key
         var type = item.type
@@ -190,7 +195,8 @@ FocusScope {
         anchors.topMargin: root.sh * 0.25 //120
         anchors.leftMargin: root.sw * 0.115625 //74
         width: root.sw * 0.76875 //492
-        height: root.sh * 0.525 //252
+        // One row short of the space, so the ▼ fits above the help line.
+        height: root.sh * 0.4666667 //224
         clip: true
         focus: true
 
@@ -244,141 +250,42 @@ FocusScope {
             }
         }
 
-        delegate: Item {
+        // Lines read like a camcorder's menu: "DISPLAY······ON".
+        delegate: MenuRow {
             width: settingsList.width
             height: root.sh * 0.0583333 //28
-
-            Rectangle {
-                anchors.fill: parent
-                color: settingsList.currentIndex === index ? root.accentColor : "transparent"
-
-                // Label
-                Text {
-                    text: modelData.label || ""
-                    color: settingsList.currentIndex === index ? root.surfaceColor : root.primaryColor
-                    font.family: root.globalFont
-                    font.capitalization: Font.AllUppercase
-                    anchors.verticalCenter: parent.verticalCenter
-                    x: 0
-                    topPadding: root.sh * 0.0041667 //2
-                    leftPadding: root.sw * 0.009375 //6
-                    rightPadding: root.sw * 0.009375 //6
-                    bottomPadding: root.sh * 0.00625 //3
-                    font.pixelSize: root.sh * 0.05 //24
-                }
-
-                // Right-side value/arrow
-                Row {
-                    anchors.verticalCenter: parent.verticalCenter
-                    anchors.right: parent.right
-                    anchors.rightMargin: root.sw * 0.009375 //6
-                    spacing: root.sw * 0.00625 //4
-
-                    // Left arrow for cycled types
-                    Text {
-                        visible: modelData.type === "toggle" || modelData.type === "list_single"
-                        text: "\u25C4"
-                        color: settingsList.currentIndex === index ? root.surfaceColor : root.tertiaryColor
-                        font.family: root.globalFont
-                        anchors.verticalCenter: parent.verticalCenter
-                        topPadding: root.sh * 0.0041667 //2
-                        bottomPadding: root.sh * 0.00625 //3
-                        font.pixelSize: root.sh * 0.0375 //18
-                    }
-
-                    // Current value text (cycled types + directory_browser) with marquee scroll
-                    Item {
-                        id: valueClip
-                        visible: modelData.type === "toggle" || modelData.type === "list_single" || modelData.type === "directory_browser"
-                        width: Math.min(valueText.implicitWidth, root.sw * 0.35)
-                        height: parent.height
-                        clip: true
-
-                        Text {
-                            id: valueText
-                            text: moduleSettingsRoot.currentDisplayValue(modelData)
-                            color: settingsList.currentIndex === index ? root.surfaceColor : root.primaryColor
-                            font.family: root.globalFont
-                            font.capitalization: Font.AllUppercase
-                            anchors.verticalCenter: parent.verticalCenter
-                            x: 0
-                            topPadding: root.sh * 0.0041667 //2
-                            leftPadding: root.sw * 0.009375 //6
-                            rightPadding: root.sw * 0.009375 //6
-                            bottomPadding: root.sh * 0.00625 //3
-                            font.pixelSize: root.sh * 0.05 //24
-                        }
-
-                        SequentialAnimation {
-                            running: settingsList.currentIndex === index && valueText.implicitWidth > valueClip.width
-                            loops: Animation.Infinite
-                            onRunningChanged: if (!running) valueText.x = 0
-
-                            PauseAnimation { duration: 1500 }
-                            NumberAnimation {
-                                target: valueText
-                                property: "x"
-                                to: valueClip.width - valueText.implicitWidth
-                                duration: Math.abs(to) * 20
-                            }
-                            PauseAnimation { duration: 2000 }
-                            PropertyAction { target: valueText; property: "x"; value: 0 }
-                        }
-                    }
-
-                    // Right arrow (always shown)
-                    Text {
-                        text: "\u25BA"
-                        color: settingsList.currentIndex === index ? root.surfaceColor : root.tertiaryColor
-                        font.family: root.globalFont
-                        anchors.verticalCenter: parent.verticalCenter
-                        topPadding: root.sh * 0.0041667 //2
-                        bottomPadding: root.sh * 0.00625 //3
-                        font.pixelSize: root.sh * 0.0375 //18
-                    }
-                }
-            }
+            label: modelData.label || ""
+            value: moduleSettingsRoot.hasValue(modelData)
+                ? moduleSettingsRoot.currentDisplayValue(modelData) : ""
+            selected: settingsList.currentIndex === index
         }
     }
 
-    // --- HELP TEXT --- (shown when a focused row has a description)
-    Rectangle {
-        id: rowHelpBackground
+    // ▲ / ▼ while lines are hidden above or below.
+    ScrollMarks {
+        anchors.fill: settingsList
+        list: settingsList
+    }
+
+    // --- HELP TEXT --- (shown when a focused row has a description), on one
+    // line that scrolls when it is too long for the box.
+    HelpLine {
         property var currentRow: moduleSettingsRoot.schemaItems[settingsList.currentIndex]
         visible: !!(currentRow && currentRow.description)
-        property color baseColor: root.primaryColor
-        color: Qt.rgba(baseColor.r, baseColor.g, baseColor.b, 0.2)
+        text: (currentRow && currentRow.description) || ""
         anchors.bottom: parent.bottom
         anchors.left: parent.left
         anchors.bottomMargin: root.sh * 0.1583333 //76
         anchors.leftMargin: root.sw * 0.125 //80
-        width: root.sw * 0.75 //480
-        height: root.sh * 0.0583333 //28
-        clip: true
-        Text {
-            id: rowHelp
-            text: (rowHelpBackground.currentRow && rowHelpBackground.currentRow.description) || ""
-            color: root.primaryColor
-            font.family: root.globalFont
-            font.pixelSize: root.sh * 0.0291667 //14
-            wrapMode: Text.WordWrap
-            anchors.fill: parent
-            anchors.margins: root.sw * 0.0125 //6
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
-        }
     }
 
     // --- FOOTER ---
-    Text {
+    HintBar {
         id: footer
         text: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE " + root.hints.change + ":CHANGE " + root.hints.select + ":SELECT"
-        color: root.tertiaryColor
-        font.family: root.globalFont
         anchors.bottom: parent.bottom
         anchors.left: parent.left
         anchors.bottomMargin: root.sh * 0.1041667 //50
         anchors.leftMargin: root.sw * 0.125 //80
-        font.pixelSize: root.sh * 0.0333333 //16
     }
 }

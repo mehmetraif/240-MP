@@ -204,8 +204,10 @@ FocusScope {
     Rectangle {
         id: detailBackground
         visible: !!itemsRoot.currentScript
-        property color baseColor: root.primaryColor
-        color: Qt.rgba(baseColor.r, baseColor.g, baseColor.b, 0.2)
+        // Outlined rather than tinted: the OSD keeps to two colours.
+        color: "transparent"
+        border.width: root.px
+        border.color: root.primaryColor
         anchors.bottom: parent.bottom
         anchors.left: parent.left
         anchors.bottomMargin: root.sh * 0.1583333 //76
@@ -378,11 +380,8 @@ FocusScope {
                     }
                 }
 
-                Text {
+                HintBar {
                     text: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE " + root.hints.select + ":SELECT"
-                    color: root.tertiaryColor
-                    font.family: root.globalFont
-                    font.pixelSize: root.sh * 0.0333333 //16
                     anchors.horizontalCenter: parent.horizontalCenter
                 }
             }
@@ -390,19 +389,16 @@ FocusScope {
     }
 
     // Footer
-    Text {
+    HintBar {
         id: footer
         text: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE "
               + root.hints.browse
               + ((itemsRoot.currentScript && itemsRoot.currentScript.favorite)
                  ? ":UNFAVORITE " : ":FAVORITE ")
               + root.hints.select + ":RUN"
-        color: root.tertiaryColor
-        font.family: root.globalFont
         anchors.bottom: parent.bottom
         anchors.left: parent.left
         anchors.bottomMargin: root.sh * 0.1041667 //50
         anchors.leftMargin: root.sw * 0.125 //80
-        font.pixelSize: root.sh * 0.0333333 //16
     }
 }

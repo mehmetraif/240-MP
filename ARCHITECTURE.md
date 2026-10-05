@@ -31,6 +31,8 @@ The guiding idea: **browse structured content, then hand off to the right tool f
       ...
     player/
       MpvController.h/.cpp          # mpv subprocess controller: QProcess launch + IPC socket
+    boot/
+      BootProgress.h/.cpp           # boot screen state on the 240-MP OS image (inert elsewhere)
   modules/                          # QML + assets per module (discovered at startup)
     plex/
       manifest.json                 # module identity and settings shape
@@ -44,9 +46,11 @@ The guiding idea: **browse structured content, then hand off to the right tool f
     ModuleList.qml
     Settings.qml
     ...
-    Components/                     # shared QML components (AppBar, ChoiceOverlay, qmldir)
+    Components/                     # shared QML components (AppBar, HintBar, MenuRow, HelpLine, ScrollMarks, WebPlayerLaunch, the Osd* elements, ChoiceOverlay, qmldir)
+    BootScreen.qml                  # boot screen of the 240-MP OS image (see os/README.md)
   Main.qml                          # app root
   CMakeLists.txt
+  os/                               # 240-MP OS image: a pi-gen stage on Raspberry Pi OS Lite
 ```
 
 There are three modules today: `local_files`, `plex`, and `ambient_mode`. `plex` is a helpful reference when building something new as it covers a more complex use case (connecting to a 3rd party API with auth)
@@ -285,6 +289,8 @@ The **scripts module** (`modules/scripts/`, `src/modules/scripts/`) is the secon
 - **`setsid()` in a child-process modifier**, so the child leads its own process group: `killpg` reaches everything it spawned, and an empty group is how you know the screen is free again. A launcher script that backgrounds its real work and exits immediately would otherwise have the display taken back out from under its children.
 - **Report only after the display is restored.** The caller pops its view on the "finished" signal; doing that while the framebuffer still belongs to the child draws into memory you don't own.
 - **No stop key during a takeover.** A takeover child should own input for it's whole run, and on EGLFS every keystroke is double-delivered (Qt's libinput and the child both read the same evdev devices) so any tap-to-stop key would also fire inside inside a launched takeover application (For example ESC/Back is used by RetroArch's to navigate its menus just like its used inside 240-MP so pressing that key while RA is open would SIGTERM the session mid-run). With this in mind, the runner view is set up to swallow Back events while a takeover is busy and offers no direct stop key. What covers failures instead: the started-watchdog and `FailedToStart` handling, the downgrade-to-console refusal when display state can't be saved, and `~ScriptLauncher`'s SIGTERM → SIGKILL + `releaseNow()` at app quit. Console mode and downgraded runs (where 240-MP kept the screen) still have the Back-to-stop key with `requestStop()`'s SIGTERM → SIGKILL escalation.
+
+The **web player modules**, Netflix and Prime Video (`modules/netflix/`, `modules/prime_video/`, `src/modules/web_player/`), reuse `ScriptLauncher` rather than growing a third launcher. `WebPlayerBackend` runs the bundled `scripts/web-player.sh <service> <url>` as a takeover through its own instance, named after the service for `DisplayHandoff` with `setHandoffOwner()`; `main.cpp` makes one per service. The script opens the service's web player in Chromium (`--kiosk`, a profile per service), under the `cage` Wayland kiosk compositor when there is no desktop; cage opens the display and input devices itself (libseat's `noop` backend), since the app holds no login seat to share. Each module's only view is the shared `WebPlayerLaunch` component. Unlike a script takeover it does have a way out: holding Back for two seconds closes the browser. A browser has no use for a held Back, so the double-delivered key can't misfire the way a tap would in RetroArch.
 
 ## Card Hand-off (NFC → a module)
 
@@ -552,7 +558,31 @@ Shared QML components live in `views/Components/` (registered via `qmldir`, impo
 | `title` | `string` | Module name — use `moduleRoot.moduleName` |
 | `subtitle` | `string` | Optional context label (hidden when empty) |
 
-The icon is automatically colorized to the app accent color
+It is drawn as a solid title bar in the theme's text colour, with the icon, title and subtitle in the background colour, the way a deck's on-screen menu starts.
+
+### VCR OSD elements
+
+The UI keeps to two colours, like a deck's on-screen display: the theme's `primary` on its `surface`. `Main.qml` maps `secondaryColor`, `tertiaryColor` and `accentColor` to `primaryColor`, so existing views follow without change. Within that:
+
+- a selection is a solid box with its text in `surfaceColor`;
+- anything dimmed is dithered with `Dither` instead of given a lower opacity;
+- a box that used to be tinted is outlined (`border.width: root.px`).
+
+Pixel-drawn pieces of a deck's on-screen menu, built on `root.px` (one pixel of a 240-line picture, `sh / 240`) so their edges stay crisp at any screen size:
+
+| Component | What it draws |
+|---|---|
+| `HintBar` | The footer hint line on a solid bar. It is a `Text`, so a view sets `text` and anchors exactly as on one. It owns its font size, steps it down only as far as a long hint needs to fit the safe width. Every view's footer and every dialog's hint line uses it. |
+| `MenuRow` | A settings line the way a camcorder's menu lays one out, `DISPLAY······ON`: `label`, a dot per character cell, then `value` against the line's right end (none for a submenu), with `selected` as a solid bar. With `heading` it heads a group instead: the label and a rule to the line's end (`MODULES ─────`). Settings, every module's settings and Controls use it. |
+| `ScrollMarks` | The ▲ above a list while lines are hidden above it and the ▼ below while lines are hidden below. Laid over a list (`anchors.fill` and `list`); the main menu and the settings menus use it. |
+| `HelpLine` | The help line under a settings menu: the focused line's description in an outlined box, on one line. A description too long for the box scrolls through it like a ticker; one written as several lines reads as one, joined with `•`. |
+| `Dither` | A checkerboard of background-colour art pixels laid over an area: the two-colour way to dim it. |
+| `PixelIcon` | A symbol from a small bitmap: `play`, `left`, `up`, `down`, `ff`, `rew`, `pause`, `stop`, `rec`, `eject`, plus the `ok` key and `tape` badges. |
+| `OsdTicks` | The segment bar, `||||----`: a tick per filled step and a dash per empty one. The boot screen's progress bar. |
+| `OsdBar` | The VOLUME bar: an outline with a solid fill inside. |
+| `OsdSlider` | The TRACKING slider: a double outline with a mark that moves out from the middle. |
+| `OsdChoices` | A row of settings like `SP EP SLP`, with the one in force inverted. |
+| `OsdTapeBar` | The tape position bar: a ▼ over the position, a ruled bar filled up to it, and BEGIN and END under its ends. |
 
 ### ChoiceOverlay (`views/Components/ChoiceOverlay.qml`)
 

@@ -256,7 +256,9 @@ FocusScope {
                 Rectangle {
                     id: extrasButton
                     visible: seasonRoot.hasExtras
-                    color: focusRow === 1 ? root.accentColor : Qt.rgba(baseColor.r, baseColor.g, baseColor.b, 0.1)
+                    color: focusRow === 1 ? root.accentColor : "transparent"
+                    border.width: focusRow === 1 ? 0 : root.px
+                    border.color: root.primaryColor
                     width: parent.width
                     height: extrasLabel.implicitHeight + root.sh * 0.025 //12
                     anchors.horizontalCenter: parent.horizontalCenter
@@ -276,7 +278,9 @@ FocusScope {
                 Rectangle {
                     id: writeCardButton
                     visible: cardWriter.available
-                    color: focusRow === 4 ? root.accentColor : Qt.rgba(baseColor.r, baseColor.g, baseColor.b, 0.1)
+                    color: focusRow === 4 ? root.accentColor : "transparent"
+                    border.width: focusRow === 4 ? 0 : root.px
+                    border.color: root.primaryColor
                     width: parent.width
                     height: writeCardLabel.implicitHeight + root.sh * 0.025 //12
                     anchors.horizontalCenter: parent.horizontalCenter
@@ -396,16 +400,13 @@ FocusScope {
     }
 
     // Footer
-    Text {
+    HintBar {
         id: footer
         text: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE " + root.hints.select + ":SELECT"
-        color: root.tertiaryColor
-        font.family: root.globalFont
         anchors.bottom: parent.bottom
         anchors.left: parent.left
         anchors.bottomMargin: root.sh * 0.1041667 //50
         anchors.leftMargin: root.sw * 0.125 //80
-        font.pixelSize: root.sh * 0.0333333 //16
     }
     // PLAY prompt. Shuffle plays as a jukebox — endless random episodes drawn
     // from this season, reporting no timeline — so it must be a deliberate

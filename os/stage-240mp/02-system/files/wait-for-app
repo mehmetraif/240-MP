@@ -1,0 +1,26 @@
+#!/bin/sh
+# ExecStartPre= of the services the 240-MP OS image holds back (the units in
+# /etc/240mp/boot-units). Waits until 240-MP has drawn its first frame, so the
+# app gets the CPU and the SD card to itself while it starts. Never fails and
+# never waits more than $1 seconds (default 20): a service always comes up.
+#
+# Deliberately not an After=240mp.service ordering: a wait can only ever cost
+# its timeout, where an ordering cycle with an early-boot unit could cost the
+# whole boot.
+
+ready=/run/240mp/ready
+timeout=${1:-20}
+
+# Only worth waiting for an app that is starting or about to: running, or with
+# a start job queued (early in boot it can be queued behind this very unit).
+case "$(systemctl show -p ActiveState --value 240mp.service 2>/dev/null)" in
+    active|activating|reloading) ;;
+    *) [ -n "$(systemctl list-jobs --no-legend 240mp.service 2>/dev/null)" ] || exit 0 ;;
+esac
+
+i=0
+while [ ! -e "$ready" ] && [ "$i" -lt $((timeout * 10)) ]; do
+    sleep 0.1
+    i=$((i + 1))
+done
+exit 0

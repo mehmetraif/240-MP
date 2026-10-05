@@ -475,7 +475,6 @@ FocusScope {
     ListView {
         id: itemList
         model: rows
-        opacity: letterNavActive ? 0.3 : 1
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.topMargin: root.sh * 0.25 //120
@@ -584,12 +583,17 @@ FocusScope {
         }
     }
 
+    // Dimmed the two-colour way while the other panel has the focus.
+    Dither {
+        anchors.fill: itemList
+        visible: itemList.visible && letterNavActive
+    }
+
     // Letter navigation panel
     ListView {
         id: letterList
         model: letterIndex
         visible: showLetterNav && letterIndex.length > 0
-        opacity: letterNavActive ? 1.0 : 0.3
         anchors.left: itemList.right
         anchors.leftMargin: root.sw * 0.0375 //24
         anchors.top: itemList.top
@@ -664,19 +668,22 @@ FocusScope {
         }
     }
 
+    // Dimmed the two-colour way while the other panel has the focus.
+    Dither {
+        anchors.fill: letterList
+        visible: letterList.visible && !letterNavActive
+    }
+
     // Footer
-    Text {
+    HintBar {
         id: footer
         text: showLetterNav
               ? root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE " + root.hints.browse + ":BROWSE " + root.hints.select + ":SELECT"
               : root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE " + root.hints.select + ":SELECT"
-        color: root.tertiaryColor
-        font.family: root.globalFont
         anchors.bottom: parent.bottom
         anchors.left: parent.left
         anchors.bottomMargin: root.sh * 0.1041667 //50
         anchors.leftMargin: root.sw * 0.125 //80
-        font.pixelSize: root.sh * 0.0333333 //16
     }
 
     // Writes a card for the whole set. The ref carries the collection's or

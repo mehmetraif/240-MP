@@ -1,0 +1,22 @@
+{
+  "id": "com.240mp.prime_video",
+  "name": "Prime Video",
+  "icon": "assets/images/logo.svg",
+  "entry_point_qml": "views/Root.qml",
+  "settings": [
+    {
+      "key": "enabled",
+      "label": "Enabled",
+      "type": "toggle",
+      "default": "OFF",
+      "description": "Opens Prime Video's own player full screen\nNeeds Chromium with Widevine (on the 240-MP OS image already)"
+    },
+    {
+      "key": "sign_out",
+      "label": "Sign out",
+      "type": "action",
+      "action_slot": "signOut",
+      "description": "Forgets the Prime Video sign-in on this player\nThe next visit asks for it again"
+    }
+  ]
+}

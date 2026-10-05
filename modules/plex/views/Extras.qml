@@ -235,16 +235,13 @@ FocusScope {
     }
 
     // Footer
-    Text {
+    HintBar {
         id: footer
         text: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE " + root.hints.select + ":SELECT"
-        color: root.tertiaryColor
-        font.family: root.globalFont
         anchors.bottom: parent.bottom
         anchors.left: parent.left
         anchors.bottomMargin: root.sh * 0.1041667 //50
         anchors.leftMargin: root.sw * 0.125 //80
-        font.pixelSize: root.sh * 0.0333333 //16
     }
 
     // Launch overlay — covers the list while Plex prepares the stream so a
@@ -263,14 +260,11 @@ FocusScope {
             font.pixelSize: root.sh * 0.05 //24
         }
 
-        Text {
+        HintBar {
             text: root.hints.back + ":CANCEL"
-            color: root.tertiaryColor
-            font.family: root.globalFont
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.bottom: parent.bottom
             anchors.bottomMargin: root.sh * 0.1041667 //50
-            font.pixelSize: root.sh * 0.0333333 //16
         }
     }
 }

@@ -187,7 +187,6 @@ FocusScope {
     ListView {
         id: itemList
         model: itemsRoot.items
-        opacity: wlOverlayVisible ? 0.3 : 1
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.topMargin: root.sh * 0.25
@@ -320,6 +319,12 @@ FocusScope {
         }
     }
 
+    // Dimmed the two-colour way while the watch-later overlay is up.
+    Dither {
+        anchors.fill: itemList
+        visible: itemList.visible && wlOverlayVisible
+    }
+
     // Watch-later save/remove overlay
     Rectangle {
         anchors.fill: parent
@@ -376,11 +381,8 @@ FocusScope {
                     }
                 }
 
-                Text {
+                HintBar {
                     text: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE " + root.hints.select + ":SELECT"
-                    color: root.tertiaryColor
-                    font.family: root.globalFont
-                    font.pixelSize: root.sh * 0.0333333
                     anchors.horizontalCenter: parent.horizontalCenter
                 }
             }
@@ -388,18 +390,15 @@ FocusScope {
     }
 
     // Footer
-    Text {
+    HintBar {
         id: footer
         visible: !wlOverlayVisible
         text: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE "
               + root.hints.browse + (itemsRoot.mode === "watchlater" ? ":REMOVE " : ":SAVE ")
               + root.hints.select + ":SELECT"
-        color: root.tertiaryColor
-        font.family: root.globalFont
         anchors.bottom: parent.bottom
         anchors.left: parent.left
         anchors.bottomMargin: root.sh * 0.1041667 //50
         anchors.leftMargin: root.sw * 0.125 //80
-        font.pixelSize: root.sh * 0.0333333 //16
     }
 }

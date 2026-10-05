@@ -233,7 +233,8 @@ FocusScope {
         anchors.topMargin: root.sh * 0.125 //60
         anchors.rightMargin: root.sw * 0.125 //80
         font.pixelSize: root.sh * 0.0291667 //14
-        color: root.tertiaryColor
+        // On the title bar, so in the bar's text colour.
+        color: root.surfaceColor
         font.family: root.globalFont
         font.capitalization: Font.AllUppercase
         topPadding: root.sh * 0.0125 //6
@@ -248,7 +249,8 @@ FocusScope {
         anchors.topMargin: root.sh * 0.25 //120
         anchors.leftMargin: root.sw * 0.115625 //74
         width: root.sw * 0.76875 //492
-        height: root.sh * 0.525 //252
+        // One row short of the space, so the ▼ fits above the help line.
+        height: root.sh * 0.4666667 //224
         clip: true
         focus: true
 
@@ -333,125 +335,44 @@ FocusScope {
             width: settingsList.width
             height: root.sh * 0.0583333 //28
 
-            // --- SECTION LABEL ---
-            Text {
-                visible: modelData.type == "section"
-                text: modelData.label || ""
-                color: root.secondaryColor
-                font.family: root.globalFont
-                font.capitalization: Font.AllUppercase
-                anchors.verticalCenter: parent.verticalCenter
-                topPadding: root.sh * 0.0020833 //1
-                leftPadding: root.sw * 0.009375 //6
-                rightPadding: root.sw * 0.009375 //6
-                font.pixelSize: root.sh * 0.0291667 //14
-            }
-
-            // --- SELECTABLE ROW ---
-            Rectangle {
-                visible: modelData.type !== "section"
+            // A line laid out like a camcorder's menu, "DISPLAY······ON", or a
+            // section's heading, as large as the lines under it: "MODULES ─────".
+            MenuRow {
                 anchors.fill: parent
-                color: settingsList.currentIndex === index ? root.accentColor : "transparent"
-
-                // Label
-                Text {
-                    text: modelData.label || ""
-                    color: settingsList.currentIndex === index ? root.surfaceColor : root.primaryColor
-                    font.family: root.globalFont
-                    font.capitalization: Font.AllUppercase
-                    anchors.verticalCenter: parent.verticalCenter
-                    x: 0
-                    topPadding: root.sh * 0.0041667 //2
-                    leftPadding: root.sw * 0.009375 //6
-                    rightPadding: root.sw * 0.009375 //6
-                    bottomPadding: root.sh * 0.00625 //3
-                    font.pixelSize: root.sh * 0.05 //24
-                }
-
-                // Value / arrow indicator
-                Row {
-                    anchors.verticalCenter: parent.verticalCenter
-                    anchors.right: parent.right
-                    anchors.rightMargin: root.sw * 0.009375 //6
-                    spacing: root.sw * 0.00625 //4
-
-                    Text {
-                        visible: modelData.type === "list_single"
-                        text: "\u25C4"
-                        color: settingsList.currentIndex === index ? root.surfaceColor : root.tertiaryColor
-                        font.family: root.globalFont
-                        anchors.verticalCenter: parent.verticalCenter
-                        topPadding: root.sh * 0.0041667 //2
-                        bottomPadding: root.sh * 0.00625 //3
-                        font.pixelSize: root.sh * 0.0375 //18
-                    }
-                    Text {
-                        visible: modelData.type === "list_single"
-                        text: modelData.value || ""
-                        color: settingsList.currentIndex === index ? root.surfaceColor : root.primaryColor
-                        font.family: root.globalFont
-                        font.capitalization: Font.AllUppercase
-                        anchors.verticalCenter: parent.verticalCenter
-                        topPadding: root.sh * 0.0041667 //2
-                        leftPadding: root.sw * 0.009375 //6
-                        rightPadding: root.sw * 0.009375 //6
-                        bottomPadding: root.sh * 0.00625 //3
-                        font.pixelSize:root.sh * 0.05 //24
-                    }
-                    Text {
-                        visible: modelData.type === "submenu" || modelData.type === "list_single"
-                        text: "\u25BA"
-                        color: settingsList.currentIndex === index ? root.surfaceColor : root.tertiaryColor
-                        font.family: root.globalFont
-                        anchors.verticalCenter: parent.verticalCenter
-                        topPadding: root.sh * 0.0041667 //2
-                        bottomPadding: root.sh * 0.00625 //3
-                        font.pixelSize: root.sh * 0.0375 //18
-                    }
-                }
+                heading: modelData.type === "section"
+                label: modelData.label || ""
+                value: modelData.type === "list_single" ? (modelData.value || "") : ""
+                selected: settingsList.currentIndex === index
             }
         }
     }
 
-    // --- HELP TEXT --- (shown when a focused row has a description)
-    Rectangle {
-        id: rowHelpBackground
+    // ▲ / ▼ while lines are hidden above or below.
+    ScrollMarks {
+        anchors.fill: settingsList
+        list: settingsList
+    }
+
+    // --- HELP TEXT --- (shown when a focused row has a description), on one
+    // line that scrolls when it is too long for the box.
+    HelpLine {
         property var currentRow: settingsRoot.settingsItems[settingsList.currentIndex]
         visible: !!(currentRow && currentRow.description)
-        property color baseColor: root.primaryColor
-        color: Qt.rgba(baseColor.r, baseColor.g, baseColor.b, 0.2)
+        text: (currentRow && currentRow.description) || ""
         anchors.bottom: parent.bottom
         anchors.left: parent.left
         anchors.bottomMargin: root.sh * 0.1583333 //76
         anchors.leftMargin: root.sw * 0.125 //80
-        width: root.sw * 0.75 //480
-        height: root.sh * 0.0583333 //28
-        clip: true
-        Text {
-            id: rowHelp
-            text: (rowHelpBackground.currentRow && rowHelpBackground.currentRow.description) || ""
-            color: root.primaryColor
-            font.family: root.globalFont
-            font.pixelSize: root.sh * 0.0291667 //14
-            wrapMode: Text.WordWrap
-            anchors.fill: parent
-            anchors.margins: root.sw * 0.0125 //6
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
-        }
     }
 
     // --- FOOTER ---
-    Text {
+    HintBar {
         id: footer
         text: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE " + root.hints.change + ":CHANGE " + root.hints.select + ":SELECT"
-        color: root.tertiaryColor
-        font.family: root.globalFont
         anchors.bottom: parent.bottom
         anchors.left: parent.left
         anchors.bottomMargin: root.sh * 0.1041667 //50
         anchors.leftMargin: root.sw * 0.125 //80
-        font.pixelSize: root.sh * 0.0333333 //16
     }
 
     // --- QUIT CONFIRMATION OVERLAY ---
@@ -527,11 +448,8 @@ FocusScope {
                     }
                 }
 
-                Text {
+                HintBar {
                     text: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE " + root.hints.select + ":SELECT"
-                    color: root.tertiaryColor
-                    font.family: root.globalFont
-                    font.pixelSize: root.sh * 0.0333333 //16
                     anchors.horizontalCenter: parent.horizontalCenter
                 }
             }

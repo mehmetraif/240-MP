@@ -1,4 +1,5 @@
 import QtQuick
+import Components
 
 // Launcher for playing a whole set. Two modes, one loading frame:
 //
@@ -236,12 +237,9 @@ FocusScope {
                 anchors.horizontalCenter: parent.horizontalCenter
                 font.pixelSize: root.sh * 0.0375
             }
-            Text {
+            HintBar {
                 text: root.hints.back + ":BACK " + root.hints.select + ":RETRY"
-                color: "#919191"
-                font.family: root.globalFont
                 anchors.horizontalCenter: parent.horizontalCenter
-                font.pixelSize: root.sh * 0.0333333
             }
         }
     }

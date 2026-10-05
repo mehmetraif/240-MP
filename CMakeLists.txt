@@ -62,6 +62,7 @@ add_executable(240mp
     src/modules/weather/WeatherBackend.cpp
     src/modules/scripts/ScriptsBackend.cpp
     src/modules/scripts/ScriptLauncher.cpp
+    src/modules/web_player/WebPlayerBackend.cpp
     src/player/MpvController.cpp
     src/util/YtDlpLocator.cpp
     src/util/MpvLocator.cpp
@@ -71,6 +72,7 @@ add_executable(240mp
     src/input/InputManager.cpp
     src/input/IdleTracker.cpp
     src/update/UpdateManager.cpp
+    src/boot/BootProgress.cpp
     $<$<BOOL:${APPLE}>:src/util/MacosUtils.mm>
 )
 

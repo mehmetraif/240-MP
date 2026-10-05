@@ -1,0 +1,9 @@
+# Composite to a CRT, PAL, 4:3; see config.txt for the other presets.
+enable_tvout=1
+sdtv_mode=2
+sdtv_aspect=1
+
+[pi5]
+dtoverlay=vc4-kms-v3d,cma-512,composite=1
+
+[all]

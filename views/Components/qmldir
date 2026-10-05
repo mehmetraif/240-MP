@@ -2,3 +2,16 @@ module Components
 AppBar AppBar.qml
 ChoiceOverlay ChoiceOverlay.qml
 NfcCardWriter NfcCardWriter.qml
+VhsCassette VhsCassette.qml
+HintBar HintBar.qml
+OsdBar OsdBar.qml
+OsdChoices OsdChoices.qml
+OsdSlider OsdSlider.qml
+OsdTapeBar OsdTapeBar.qml
+OsdTicks OsdTicks.qml
+PixelIcon PixelIcon.qml
+Dither Dither.qml
+MenuRow MenuRow.qml
+HelpLine HelpLine.qml
+ScrollMarks ScrollMarks.qml
+WebPlayerLaunch WebPlayerLaunch.qml

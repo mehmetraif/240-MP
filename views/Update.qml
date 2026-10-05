@@ -197,8 +197,9 @@ FocusScope {
                 visible: updateRoot.releaseNotes !== ""
                 width: parent.width
                 height: root.sh * 0.3291667 //158
-                property color baseColor: root.primaryColor
-                color: Qt.rgba(baseColor.r, baseColor.g, baseColor.b, 0.1)
+                color: "transparent"
+                border.width: root.px
+                border.color: root.primaryColor
 
                 Flickable {
                     id: notesFlick
@@ -227,17 +228,14 @@ FocusScope {
         }
 
         // Footer
-        Text {
+        HintBar {
             text: root.hints.back + ":BACK "
                   + (updateRoot.releaseNotes !== "" ? root.hints.navigate + ":SCROLL " : "")
                   + (updateRoot.actionLabel !== "" ? root.hints.select + ":" + updateRoot.actionLabel : "")
-            color: root.tertiaryColor
-            font.family: root.globalFont
             anchors.bottom: parent.bottom
             anchors.left: parent.left
             anchors.bottomMargin: root.sh * 0.1041667 //50
             anchors.leftMargin: root.sw * 0.125 //80
-            font.pixelSize: root.sh * 0.0333333 //16
         }
     }
 
@@ -323,11 +321,8 @@ FocusScope {
                     }
                 }
 
-                Text {
+                HintBar {
                     text: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE " + root.hints.select + ":SELECT"
-                    color: root.tertiaryColor
-                    font.family: root.globalFont
-                    font.pixelSize: root.sh * 0.0333333 //16
                     anchors.horizontalCenter: parent.horizontalCenter
                 }
             }

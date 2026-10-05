@@ -1,0 +1,20 @@
+[Unit]
+Description=Turn cloud-init off after the first boot (240-MP OS)
+# cloud-init applies Raspberry Pi Imager's settings (user, Wi-Fi, SSH, locale)
+# on the first boot only, yet its local and network stages run ahead of
+# sysinit.target on every boot, delaying everything after them, the app
+# included. Once the first boot is through, switch it off. Delete
+# /etc/cloud/cloud-init.disabled to have it run again.
+After=cloud-final.service
+# cloud-final itself runs after multi-user.target; saying so explicitly keeps
+# multi-user.target from being ordered after this unit, which would be a cycle.
+After=multi-user.target
+ConditionPathIsDirectory=/etc/cloud
+ConditionPathExists=!/etc/cloud/cloud-init.disabled
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/touch /etc/cloud/cloud-init.disabled
+
+[Install]
+WantedBy=multi-user.target

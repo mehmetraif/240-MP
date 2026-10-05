@@ -136,14 +136,17 @@ FocusScope {
         }
     }
 
-    Text {
+    // ▲ / ▼ while lines are hidden above or below.
+    ScrollMarks {
+        anchors.fill: dirList
+        list: dirList
+    }
+
+    HintBar {
         text: root.hints.back + ":CANCEL  " + root.hints.navigate + ":NAVIGATE  " + root.hints.select + ":SELECT"
-        color: root.tertiaryColor
-        font.family: root.globalFont
         anchors.bottom: parent.bottom
         anchors.left: parent.left
         anchors.bottomMargin: root.sh * 0.1041667
         anchors.leftMargin: root.sw * 0.125
-        font.pixelSize: root.sh * 0.0333333
     }
 }

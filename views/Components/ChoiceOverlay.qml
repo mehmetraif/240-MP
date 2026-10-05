@@ -127,14 +127,10 @@ FocusScope {
                 }
             }
 
-            Text {
+            HintBar {
+                anchors.horizontalCenter: parent.horizontalCenter
                 text: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE "
                       + root.hints.select + ":SELECT"
-                color: root.tertiaryColor
-                font.family: root.globalFont
-                font.pixelSize: root.sh * 0.0333333 //16
-                width: parent.width
-                horizontalAlignment: Text.AlignHCenter
             }
         }
     }
