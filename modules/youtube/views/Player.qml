@@ -33,6 +33,9 @@ FocusScope {
         overlayVisible = false
         lastStartMs = startMs
         mpvController.loadAndPlay(videoUrl, startMs / 1000.0, 0, subTrack, [], subLangs, false, -1, 0.0, "", false, "", false, [], 0.0, false, ytdlArgs)
+        // How the main menu takes it back once it plays behind the menus.
+        mpvController.noteSession({ module: moduleRoot.moduleId, title: item.title || "",
+                                    params: { item: item } })
     }
 
     // Starting mpv runs synchronously and, on the Pi, immediately switches VT
@@ -166,8 +169,13 @@ FocusScope {
         var resumeSetting = setting("resume_playback", "Ask")
         var saved = youtubeBackend.getSavedPosition(videoId)
         var savedPos = saved.pos || 0
+        // This video, still playing behind the menus: it goes on full screen
+        // where it is, without asking (back saved where it got to).
+        var note = root.behindNote
+        var behind = note.module === moduleRoot.moduleId && note.params && note.params.item
+                     && note.params.item.videoId === videoId
 
-        if (resumeSetting === "Always") {
+        if (resumeSetting === "Always" || behind) {
             play(savedPos)
         } else if (savedPos > 0) {
             savedPositionMs = savedPos

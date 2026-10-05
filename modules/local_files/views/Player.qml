@@ -160,6 +160,15 @@ FocusScope {
             subtitleLangs.push(subLangString)
         }
 
+        // This file, still playing behind the menus: it goes on full screen
+        // where it is, without asking, played as it was started so that it is
+        // the same session (back saved where it got to).
+        var note = root.behindNote
+        if (note.module === moduleRoot.moduleId && note.params && note.params.filePath === filePath) {
+            play(localFilesBackend.getSavedPosition(filePath).pos || 0, note.plPos, note.shuffle)
+            return
+        }
+
         // Shuffle only applies to playlists; "Always" wins over resume: a shuffled
         // playlist starts fresh & random; resume position (a sequential item index)
         // is meaningless once order is randomized.
@@ -217,6 +226,12 @@ FocusScope {
 
     function play(startMs, plPos, shuffle) {
         mpvController.loadAndPlay(filePath, startMs > 0 ? startMs / 1000.0 : 0.0, 0, subFlag, [], subtitleLangs, loopOn, plPos, 0.0, "", false, "", shuffle, [], imageDurationSec, imageContent)
+        // How the main menu takes it back once it plays behind the menus, and
+        // how it was started, which taking it back repeats.
+        mpvController.noteSession({ module: moduleRoot.moduleId,
+                                    title: itemTitle.replace(/\.[^.\/]+$/, ""),
+                                    params: { filePath: filePath, title: itemTitle },
+                                    plPos: plPos, shuffle: shuffle })
     }
 
     Rectangle {

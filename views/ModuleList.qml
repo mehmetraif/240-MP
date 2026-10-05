@@ -17,13 +17,62 @@ FocusScope {
     Connections {
         target: appCore;
         function onModulesLoaded(moduleData) {
-            menuList.model = moduleData
-            if (moduleData.length > 0) {
-                var restore = (navListState.currentIndex !== undefined) ? navListState.currentIndex : 0
-                menuList.currentIndex = Math.min(restore, moduleData.length - 1)
-                menuList.positionViewAtIndex(menuList.currentIndex, ListView.Contain)
+            appRoot.modules = moduleData
+            // With a video to go back to, the cursor starts on its row: the
+            // quickest way out of the menus is then select.
+            appRoot.showRows(appRoot.behind ? null : navListState)
+        }
+    }
+
+    // The enabled modules (AppCore), led by a row for the video playing on
+    // behind the menus (Transparent Background), when its player noted how
+    // to take it back (root.behindNote): select opens that player again,
+    // which brings the video back to full screen where it is.
+    property var modules: []
+    readonly property var behind: root.videoBehind && root.behindNote && root.behindNote.module
+                                  ? root.behindNote : null
+    // Coming and going while the menu is up (STOP, the video ending) moves
+    // the rows below it, so the cursor stays on its row rather than its index.
+    onBehindChanged: if (modules.length > 0) showRows(cursorState())
+
+    // The row the cursor is on, as listState keeps it: its index, and which
+    // row it is (a backend's rows share their module's entry point).
+    function cursorState() {
+        var row = menuList.model[menuList.currentIndex]
+        return { currentIndex: menuList.currentIndex, entry: row ? row.entry_point : "",
+                 name: row ? row.name : "", behind: !!(row && row.behind) }
+    }
+
+    // Lays the rows out with the cursor on keep (a cursorState()): the same
+    // row, else one of its module's, else the same index; on the first row
+    // without.
+    function showRows(keep) {
+        var rows = modules.slice()
+        var note = appRoot.behind
+        var entry = note && appCore ? appCore.moduleEntryPoint(note.module) : ""
+        if (entry)
+            rows.unshift({ name: "\u25BA " + (note.title || ""), entry_point: entry,
+                           params: { resumePlayer: note.params || {} }, behind: true })
+        menuList.model = rows
+        if (rows.length === 0)
+            return
+        var index = -1
+        if (keep && keep.entry) {
+            for (var pass = 0; pass < 2 && index < 0; ++pass) {
+                for (var i = 0; i < rows.length; ++i) {
+                    if (rows[i].entry_point === keep.entry
+                            && (pass === 1 || (rows[i].name === keep.name
+                                               && !!rows[i].behind === !!keep.behind))) {
+                        index = i
+                        break
+                    }
+                }
             }
         }
+        if (index < 0)
+            index = keep && keep.currentIndex !== undefined ? Math.min(keep.currentIndex, rows.length - 1) : 0
+        menuList.currentIndex = index
+        menuList.positionViewAtIndex(index, ListView.Contain)
     }
 
     // Header
@@ -152,18 +201,18 @@ FocusScope {
         Keys.onReturnPressed: {
             // A row is {name, entry_point, params}. Module rows carry no params;
             // rows contributed by a backend (see AppCore::menuEntriesForModule) use
-            // them to tell the module's router what was picked. This view stays
+            // them to tell the module's router what was picked, and so does the
+            // row for the video behind the menus (resumePlayer). This view stays
             // ignorant of what any of them mean.
             var row = menuList.model[menuList.currentIndex]
             if (!row) return
             console.log("Routing to: " + row.entry_point)
-            appRoot.navigateTo(row.entry_point, row.params || {},
-                               { currentIndex: menuList.currentIndex })
+            appRoot.navigateTo(row.entry_point, row.params || {}, appRoot.cursorState())
         }
 
         Keys.onPressed: function(event) {
             if (event.key === Qt.Key_Escape || event.key === Qt.Key_Backspace || event.key === Qt.Key_Back) {
-                appRoot.navigateTo("views/Settings.qml", {}, { currentIndex: menuList.currentIndex })
+                appRoot.navigateTo("views/Settings.qml", {}, appRoot.cursorState())
                 event.accepted = true
             } else if (event.key === Qt.Key_Space && root.videoBehind) {
                 // The play/pause key stops a video left playing behind the

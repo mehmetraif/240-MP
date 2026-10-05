@@ -53,12 +53,15 @@ FocusScope {
         }
     }
 
-    // The startup favourite, when the app opens on one (Main.qml), or the
-    // sign-in page (SIGN IN in the module's settings), whose back returns there.
+    // The startup favourite, when the app opens on one (Main.qml), the video
+    // left playing behind the menus, from the main menu's row for it
+    // (resumePlayer), or the sign-in page (SIGN IN in the module's settings),
+    // whose back returns there.
     Component.onCompleted: {
         if (navParams.signIn)
             navigateTo("SignIn.qml", navParams)
         else
-            navigateTo("Items.qml", { startupPlay: navParams.startupPlay })
+            navigateTo("Items.qml", { startupPlay: navParams.startupPlay,
+                                      resumePlayer: navParams.resumePlayer })
     }
 }

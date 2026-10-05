@@ -149,7 +149,7 @@ FocusScope {
                 step: 10,
                 startText: "TRANSPARENT",
                 endText: "SOLID",
-                description: "How much of a video shows through the menus when back returns to them and leaves it playing behind, until you play something else or stop it on the main menu\n[SOLID] Off: back stops the video, as it always has",
+                description: "How much of a video shows through the menus when back returns to them and leaves it playing behind, until you play something else or stop it on the main menu, whose first row takes it back to full screen\n[SOLID] Off: back stops the video, as it always has",
                 moduleId: ""
             })
         }

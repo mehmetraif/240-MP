@@ -7,6 +7,7 @@
 #include <QTimer>
 #include <QJsonArray>
 #include <QStringList>
+#include <QVariantMap>
 
 class AppCore;
 class DisplayHandoff;
@@ -22,6 +23,9 @@ class MpvController : public QObject {
     Q_PROPERTY(bool videoActive READ videoActive NOTIFY videoActiveChanged)
     // ...and goes on behind the menus, back having returned to them.
     Q_PROPERTY(bool background READ background NOTIFY backgroundChanged)
+    // What its player noted of the session behind the menus (noteSession), so
+    // the main menu can offer it back; empty while there is none.
+    Q_PROPERTY(QVariantMap backgroundNote READ backgroundNote NOTIFY backgroundChanged)
 
 public:
     explicit MpvController(const QString &appRoot, const QString &dataRoot,
@@ -84,6 +88,14 @@ public:
     bool background() const { return m_background; }
     // Ends a session playing behind the menus.
     Q_INVOKABLE void stopBackground();
+    // Called by a player right after loadAndPlay(): how to take the session
+    // back to full screen once it plays behind the menus, as
+    // { module, title, params }, params being the player view's navParams.
+    // Choosing the main menu's row for it opens the module's player with
+    // them, which then calls loadAndPlay() as before and so reattaches. Every
+    // loadAndPlay() clears it, so a player that notes nothing leaves no row.
+    Q_INVOKABLE void noteSession(const QVariantMap &note);
+    QVariantMap backgroundNote() const { return m_background ? m_sessionNote : QVariantMap(); }
     // The embedded session's newest picture, and the size to draw it at
     // (VideoSurface).
     QImage videoFrame() const;
@@ -189,6 +201,7 @@ private:
     int             m_detachPositionMs = 0;
     // The embedded session's command line, to know it when it is asked for again.
     QStringList     m_sessionArgs;
+    QVariantMap     m_sessionNote;
     QSize           m_videoTargetSize { 640, 480 };
     QString         m_embeddedInputConfPath;
     DisplayHandoff *m_handoff      = nullptr;

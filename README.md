@@ -16,7 +16,7 @@ On a Raspberry Pi, 240-MP can also be the whole system. The **240-MP OS** image 
 - **Search with the remote**, typed on an on-screen keyboard.
 - **Info screens** for films and videos: the story, genre, director, cast and rating. One comes up when the cursor rests on a title (3 seconds by default), or straight away with ►.
 - **Options** on any entry, with ►: add it to **Favorites**, or have it **Play at Startup**, straight after the boot screen.
-- **Transparent Background.** Back from a video returns to the menus while the video keeps playing behind them, like a deck's menu over the tape. A slider from TRANSPARENT to SOLID sets how much of it shows through. It needs libmpv (`libmpv2` on Raspberry Pi OS, part of Homebrew's mpv on macOS).
+- **Transparent Background.** Back from a video returns to the menus while the video keeps playing behind them, like a deck's menu over the tape, and the first row of the main menu takes it back to full screen. A slider from TRANSPARENT to SOLID sets how much of it shows through. It needs libmpv (`libmpv2` on Raspberry Pi OS, part of Homebrew's mpv on macOS).
 - **Scaling** for 16:9 pictures on a 4:3 screen: Letterbox, 14:9, Pan & Scan or Anamorphic. Set it for every module, or for one module in its own settings.
 - **Netflix and Prime Video** catalogues from TMDB in the same tree. A title plays in the service's own player.
 - **240-MP OS**, a Raspberry Pi OS Lite image that boots straight into 240-MP and shows a VHS boot screen while its services come up.
@@ -95,7 +95,7 @@ Every screen below is the app itself, running at 640×480. The film and YouTube 
 <table>
 <tr><th width="50%">Back to the menus</th><th width="50%">Main menu</th></tr>
 <tr><td><img src="docs/screenshots/menus-over-video.png" width="100%" alt="Back to the menus" /></td><td><img src="docs/screenshots/main-menu-over-video.png" width="100%" alt="Main menu" /></td></tr>
-<tr><td>With Transparent Background, back returns to the menus and the video plays on behind them, here at 40% solid. Choose it again to watch it full screen from where it is.</td><td>Play/pause on the main menu stops it (<code>[SPACE]:STOP</code>). Playing anything else replaces it.</td></tr>
+<tr><td>With Transparent Background, back returns to the menus and the video plays on behind them, here at 40% solid. Choose it again to watch it full screen from where it is.</td><td>The main menu leads with the video, the cursor on it: select takes it back to full screen where it is. Play/pause stops it (<code>[SPACE]:STOP</code>), and playing anything else replaces it.</td></tr>
 </table>
 
 ### Netflix, Prime Video and YouTube

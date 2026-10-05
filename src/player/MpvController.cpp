@@ -334,6 +334,8 @@ void MpvController::loadAndPlay(const QString &url, float startSeconds,
                                  const QStringList &subTitles, float imageDurationSec,
                                  bool imageContent, const QStringList &extraArgs, const QString &jellyfinToken,
                                  const QStringList &extraUrls) {
+    // Its player notes the new session afresh (noteSession), or leaves none.
+    m_sessionNote.clear();
     // Transparent Background plays inside the app's own window, where the
     // menus can lie over the picture.
     const bool embedded = transparentBackground();
@@ -932,6 +934,12 @@ void MpvController::stopBackground() {
         stop();
 }
 
+void MpvController::noteSession(const QVariantMap &note) {
+    // Only a session played inside the window can be left behind the menus.
+    if (videoActive())
+        m_sessionNote = note;
+}
+
 void MpvController::appendEmbeddedVideoArgs(QStringList &args) const {
     // The mpv_video_args override is for mpv's own outputs, so not used here.
     switch (m_videoProfile) {
@@ -994,6 +1002,7 @@ void MpvController::endEmbedded() {
         return;
     m_embedded->stop();
     m_sessionArgs.clear();
+    m_sessionNote.clear();
     if (m_background) {
         m_background = false;
         emit backgroundChanged();
@@ -1014,6 +1023,7 @@ void MpvController::onEmbeddedFinished(const QString &lastEndReason) {
     m_position = 0;
     m_duration = 0;
     m_sessionArgs.clear();
+    m_sessionNote.clear();
     const bool wasBackground = m_background;
     if (wasBackground) {
         m_background = false;

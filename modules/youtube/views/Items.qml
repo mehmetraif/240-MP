@@ -33,11 +33,21 @@ FocusScope {
     }
 
     // The startup favourite, played as if chosen in FAVORITES, so coming back
-    // from it lands there. Only as the view first opens: coming back from the
-    // player brings navListState instead.
+    // from it lands there, or the video behind the menus (the main menu's row
+    // for it), opened again as if chosen in RECENTLY WATCHED. Only as the view
+    // first opens: coming back from the player brings navListState instead.
     Component.onCompleted: {
-        if (navParams.startupPlay && !navParams.navListState)
+        if (navParams.navListState)
+            return
+        if (navParams.resumePlayer)
+            Qt.callLater(resumeBehind, navParams.resumePlayer)
+        else if (navParams.startupPlay)
             Qt.callLater(playAtStartup, navParams.startupPlay)
+    }
+    function resumeBehind(params) {
+        navigateTo("Player.qml", params,
+                   { trail: [{ path: "home", sel: 0, name: "", pushed: false },
+                             { path: "history", sel: 0, name: "Recently Watched", pushed: false }] })
     }
     function playAtStartup(entry) {
         var favorites = appCore.get_list(moduleRoot.moduleId, "favorites")

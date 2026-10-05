@@ -295,6 +295,10 @@ Window {
     // theirs. The setting's slider says how solid their ground is over it.
     readonly property bool videoActive: mpvController ? mpvController.videoActive : false
     readonly property bool videoBehind: mpvController ? mpvController.background : false
+    // What its player noted of the video behind the menus ({ module, title,
+    // params }, see MpvController::noteSession): the main menu offers it
+    // back as its first row. Empty for a player that notes nothing.
+    readonly property var behindNote: mpvController ? mpvController.backgroundNote : ({})
     property int backdropSolidity: 100
 
     // "transparent_background": how solid the menus' ground is over a video
