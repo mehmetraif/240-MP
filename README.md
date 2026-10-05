@@ -66,7 +66,7 @@ Watch on YouTube: https://youtu.be/r-gylGDoELY
 
 ### Netflix and Prime Video
 - Browse what the service carries in your country in the same tree as Local Files: **Search** (on an on-screen keyboard), **Movies** and **Series** by Popular and by genre, a page of titles at a time with **More…** at the end
-- Choosing a title opens it in the service's own web player full screen, at its page on the service where [Wikidata](https://www.wikidata.org) knows it, or at the service's search for it; **Netflix Home** / **Prime Video Home** opens the service as it is. 240-MP comes back when the player closes, with the tree as you left it
+- Select on a title plays it straight away in the service's own web player, full screen. It opens at the title's own page on the service where [Wikidata](https://www.wikidata.org) knows it (by its TMDB or IMDb id), and at the service's search for it otherwise. **Netflix Home** / **Prime Video Home** opens the service as it is. 240-MP comes back when the player closes, with the tree as you left it
 - The catalogue comes from [TMDB](https://www.themoviedb.org)'s API, which needs a free API key: put it (a v3 key or a v4 read access token) on the first line of `tmdb_api_key.txt` in the data folder. Each module's settings set the country and the language of the titles
 - Neither service has an API for a front end like this one, and their streams are DRM-protected, so playback is the official site in Chromium with Widevine, not a 240-MP view: use it with a keyboard (arrow keys move between titles) or a mouse
 - Come back by holding back (`[ESC]` / `[B]`) for two seconds, or by closing the browser (`Ctrl+W`)
