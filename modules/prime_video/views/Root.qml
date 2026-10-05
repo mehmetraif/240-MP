@@ -1,7 +1,7 @@
 import QtQuick
 
-// Prime Video module router. There is one view: Launch.qml opens Prime Video
-// and comes back to the main menu when it closes.
+// Prime Video module router: Browse.qml lists the catalogue in the tree, and
+// Launch.qml opens a title (or the home page) in the service's own player.
 FocusScope {
     id: moduleRoot
 
@@ -56,7 +56,7 @@ FocusScope {
         }
     }
 
-    // Launch.qml's back falls through the empty stack to goBack(), so the user
-    // lands on the main menu, never on a view that would open Netflix again.
-    Component.onCompleted: navigateTo("Launch.qml", navParams)
+    // Browse.qml's back at the top falls through the empty stack to goBack(),
+    // so the user lands on the main menu.
+    Component.onCompleted: navigateTo("Browse.qml", navParams)
 }

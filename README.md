@@ -65,12 +65,15 @@ Watch on YouTube: https://youtu.be/r-gylGDoELY
 - Switch audio/subtitle tracks during playback
 
 ### Netflix and Prime Video
-- Each opens the service's own web player full screen; 240-MP comes back when it closes
-- Neither service has an API for a front end like this one, and their streams are DRM-protected, so this is the official site in Chromium with Widevine, not a 240-MP view: browse it with a keyboard (arrow keys move between titles) or a mouse
+- Browse what the service carries in your country in the same tree as Local Files: **Search** (on an on-screen keyboard), **Movies** and **Series** by Popular and by genre, a page of titles at a time with **More…** at the end
+- Choosing a title opens it in the service's own web player full screen, at its page on the service where [Wikidata](https://www.wikidata.org) knows it, or at the service's search for it; **Netflix Home** / **Prime Video Home** opens the service as it is. 240-MP comes back when the player closes, with the tree as you left it
+- The catalogue comes from [TMDB](https://www.themoviedb.org)'s API, which needs a free API key: put it (a v3 key or a v4 read access token) on the first line of `tmdb_api_key.txt` in the data folder. Each module's settings set the country and the language of the titles
+- Neither service has an API for a front end like this one, and their streams are DRM-protected, so playback is the official site in Chromium with Widevine, not a 240-MP view: use it with a keyboard (arrow keys move between titles) or a mouse
 - Come back by holding back (`[ESC]` / `[B]`) for two seconds, or by closing the browser (`Ctrl+W`)
 - Each keeps its sign-in between visits; **Sign out** in its settings forgets it
 - Needs `chromium`, `libwidevinecdm0` and, without a desktop, `cage` (on Raspberry Pi OS: `sudo apt install chromium libwidevinecdm0 cage`); the 240-MP OS image has them
 - Off by default; enable them in Settings
+- This product uses the TMDB API but is not endorsed or certified by TMDB. Which service carries a title where comes from [JustWatch](https://www.justwatch.com), through TMDB
 
 ### NFC Reader ([Wiki](https://github.com/anthonycaccese/240-MP/wiki/Module:-NFC-Reader))
 - Start video playback via NFC cards
@@ -118,9 +121,11 @@ Watch on YouTube: https://youtu.be/r-gylGDoELY
 
 ### YouTube ([Wiki](https://github.com/anthonycaccese/240-MP/wiki/Module:-YouTube))
 - List content from YouTube RSS feeds and playback via mpv + yt-dl (no auth required)
+- Browse it all in the same tree as Local Files: **Search**, **Subscriptions**, **Channels**, **Playlists**, **Watch Later** and **History**
+- Search YouTube on an on-screen keyboard (through yt-dlp), twenty matches at a time with **More…** at the end
 - View Subscriptions: Browse the latest videos from your configured channels as a reverse chronological list
-- Browse videos by Channel
-- Save to a local Watch Later list
+- Browse videos by Channel, and by Playlist
+- Save to a local Watch Later list (right on a video)
 - View your local Watch History
 - Resume Playback
 - Set Playback Resolution: 480p (default and good for the RaspberryPi), 720p and 1080p

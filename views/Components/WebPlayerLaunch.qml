@@ -9,6 +9,10 @@ import QtQuick
 // screen over and its rendering is suspended, so what it shows just before the
 // hand-off is what the user reads.
 //
+// It opens navParams.item, a title from the catalogue (WebPlayerBrowse), at the
+// page Wikidata knows for it on the service or at the service's search for its
+// name; without one, the service's home page.
+//
 // A module's Launch.qml is just this, with its backend and name:
 //     WebPlayerLaunch { backend: netflixBackend; serviceName: "Netflix" }
 FocusScope {
@@ -18,6 +22,11 @@ FocusScope {
     // The module's WebPlayerBackend.
     property var backend: null
     property string serviceName: ""
+    // What is being opened, for the screen: a title's name, or the service's.
+    readonly property string opening: navParams.name || serviceName
+    // The page to open; "" for the home page. A title's is looked up first.
+    property string url: ""
+    property bool urlKnown: !navParams.item
 
     signal navigateTo(string path, var params, var listState)
     signal goBack()
@@ -34,20 +43,39 @@ FocusScope {
         return key === Qt.Key_Escape || key === Qt.Key_Backspace || key === Qt.Key_Back
     }
 
+    function launch() {
+        if (launchRoot.backend.launch(launchRoot.url)) {
+            launchRoot.phase = "running"
+        } else {
+            launchRoot.phase = "error"
+            launchRoot.message = launchRoot.backend.lastError()
+        }
+    }
+
+    Component.onCompleted: {
+        if (navParams.item && backend)
+            backend.catalog.resolveTitleUrl(navParams.item)
+    }
+    Connections {
+        target: launchRoot.backend ? launchRoot.backend.catalog : null
+        function onTitleUrlReady(path, url) {
+            // Another title's, asked for by a view since closed.
+            if (launchRoot.urlKnown || path !== launchRoot.navParams.item.path) return
+            launchRoot.url = url
+            launchRoot.urlKnown = true
+            if (!launchTimer.running && launchRoot.phase === "opening")
+                launchRoot.launch()
+        }
+    }
+
     // Long enough to read how to come back, and for a first frame to be on
-    // screen before a headless Pi saves it for the hand-off.
+    // screen before a headless Pi saves it for the hand-off. A title still
+    // being looked up opens once it is found.
     Timer {
         id: launchTimer
         interval: 1200
         running: true
-        onTriggered: {
-            if (launchRoot.backend.launch()) {
-                launchRoot.phase = "running"
-            } else {
-                launchRoot.phase = "error"
-                launchRoot.message = launchRoot.backend.lastError()
-            }
-        }
+        onTriggered: if (launchRoot.urlKnown) launchRoot.launch()
     }
 
     // Holding BACK this long closes the browser.
@@ -80,8 +108,10 @@ FocusScope {
         if (!isBack(event.key)) return
         if (launchRoot.running) {
             if (!event.isAutoRepeat) holdTimer.restart()
-        } else if (launchTimer.running) {
+        } else if (launchRoot.phase === "opening") {
             launchTimer.stop()
+            launchRoot.urlKnown = false
+            launchRoot.phase = "canceled"
             launchRoot.goBack()
         } else if (launchRoot.phase === "error" || launchRoot.phase === "failed") {
             launchRoot.goBack()
@@ -131,7 +161,7 @@ FocusScope {
 
         Text {
             width: parent.width
-            text: launchRoot.phase === "opening" ? "Opening " + launchRoot.serviceName
+            text: launchRoot.phase === "opening" ? "Opening " + launchRoot.opening
                 : launchRoot.phase === "running" ? launchRoot.serviceName + " has the screen"
                 : "Could not open " + launchRoot.serviceName
             color: root.primaryColor

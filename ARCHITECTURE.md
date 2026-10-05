@@ -46,7 +46,7 @@ The guiding idea: **browse structured content, then hand off to the right tool f
     ModuleList.qml
     Settings.qml
     ...
-    Components/                     # shared QML components (AppBar, HintBar, MenuRow, HelpLine, ScrollMarks, WebPlayerLaunch, the Osd* elements, ChoiceOverlay, qmldir)
+    Components/                     # shared QML components (AppBar, HintBar, MenuRow, HelpLine, ScrollMarks, TreeBrowser, OnScreenKeyboard, WebPlayerBrowse, WebPlayerLaunch, the Osd* elements, ChoiceOverlay, qmldir)
     BootScreen.qml                  # boot screen of the 240-MP OS image (see os/README.md)
   Main.qml                          # app root
   CMakeLists.txt
@@ -290,7 +290,9 @@ The **scripts module** (`modules/scripts/`, `src/modules/scripts/`) is the secon
 - **Report only after the display is restored.** The caller pops its view on the "finished" signal; doing that while the framebuffer still belongs to the child draws into memory you don't own.
 - **No stop key during a takeover.** A takeover child should own input for it's whole run, and on EGLFS every keystroke is double-delivered (Qt's libinput and the child both read the same evdev devices) so any tap-to-stop key would also fire inside inside a launched takeover application (For example ESC/Back is used by RetroArch's to navigate its menus just like its used inside 240-MP so pressing that key while RA is open would SIGTERM the session mid-run). With this in mind, the runner view is set up to swallow Back events while a takeover is busy and offers no direct stop key. What covers failures instead: the started-watchdog and `FailedToStart` handling, the downgrade-to-console refusal when display state can't be saved, and `~ScriptLauncher`'s SIGTERM → SIGKILL + `releaseNow()` at app quit. Console mode and downgraded runs (where 240-MP kept the screen) still have the Back-to-stop key with `requestStop()`'s SIGTERM → SIGKILL escalation.
 
-The **web player modules**, Netflix and Prime Video (`modules/netflix/`, `modules/prime_video/`, `src/modules/web_player/`), reuse `ScriptLauncher` rather than growing a third launcher. `WebPlayerBackend` runs the bundled `scripts/web-player.sh <service> <url>` as a takeover through its own instance, named after the service for `DisplayHandoff` with `setHandoffOwner()`; `main.cpp` makes one per service. The script opens the service's web player in Chromium (`--kiosk`, a profile per service), under the `cage` Wayland kiosk compositor when there is no desktop; cage opens the display and input devices itself (libseat's `noop` backend), since the app holds no login seat to share. Each module's only view is the shared `WebPlayerLaunch` component. Unlike a script takeover it does have a way out: holding Back for two seconds closes the browser. A browser has no use for a held Back, so the double-delivered key can't misfire the way a tap would in RetroArch.
+The **web player modules**, Netflix and Prime Video (`modules/netflix/`, `modules/prime_video/`, `src/modules/web_player/`), reuse `ScriptLauncher` rather than growing a third launcher. `WebPlayerBackend` runs the bundled `scripts/web-player.sh <service> <url>` as a takeover through its own instance, named after the service for `DisplayHandoff` with `setHandoffOwner()`; `main.cpp` makes one per service. The script opens the service's web player in Chromium (`--kiosk`, a profile per service), under the `cage` Wayland kiosk compositor when there is no desktop; cage opens the display and input devices itself (libseat's `noop` backend), since the app holds no login seat to share. Each module has two views, both shared components: `WebPlayerBrowse` lists the service's catalogue in a `TreeBrowser`, and `WebPlayerLaunch` opens what was chosen and waits for the browser to close. Unlike a script takeover it does have a way out: holding Back for two seconds closes the browser. A browser has no use for a held Back, so the double-delivered key can't misfire the way a tap would in RetroArch.
+
+The catalogue is `TmdbCatalog`, one per backend (its `catalog` property). Neither service has an API a front end could browse with, so the titles come from TMDB's v3 API: `/discover/{movie,tv}` filtered to the service (`with_watch_providers`, its TMDB provider id, looked up by name per region) and to the subscription (`with_watch_monetization_types=flatrate`), by popularity and by genre, a page at a time; search is `/search/multi`, kept to the matches whose `/{type}/{id}/watch/providers` lists the service in the region. A title opens at the service's own page for it when Wikidata holds both its TMDB id and the service's (`P4947`/`P4983` against `P1874` for Netflix, `P14440` for Prime Video, one SPARQL query), and at the service's search for its name otherwise. The key is read from `tmdb_api_key.txt` in the data folder (a v3 key, or a v4 token sent as a bearer); `problem` says what is in the way when there is no key or no network, for a `HelpLine`. `MP240_TMDB_URL` and `MP240_WIKIDATA_URL` point it at a local stand-in for tests.
 
 ## Card Hand-off (NFC → a module)
 
@@ -583,6 +585,27 @@ Pixel-drawn pieces of a deck's on-screen menu, built on `root.px` (one pixel of 
 | `OsdSlider` | The TRACKING slider: a double outline with a mark that moves out from the middle. |
 | `OsdChoices` | A row of settings like `SP EP SLP`, with the one in force inverted. |
 | `OsdTapeBar` | The tape position bar: a ▼ over the position, a ruled bar filled up to it, and BEGIN and END under its ends. |
+
+### TreeBrowser (`views/Components/TreeBrowser.qml`)
+
+Anything shaped like folders, browsed as a horizontal tree, the way Local Files, the Netflix and Prime Video catalogues and YouTube are. The open folders run left to right along a line through the middle of the screen (the spine), each folder's entries stacked above and below the one that leads on. Every folder in the current one branches off to the right on a dotted line to a few of its entries, and the folder under the cursor branches once more. Up/Down move, Right or Select opens a folder, Left or Back closes one. Named columns stay inside the frame (left of it, a CRT's bezel starts), and only whole rows are drawn.
+
+| Property / signal | Description |
+|---|---|
+| `rootPath` | The folder the tree starts at |
+| `fetch(path, preview)` | The host's lister: `[{ name, path, isFolder, … }]`, or `null` while the entries are on their way (shown as `loading…` until the host calls `refresh(path)`). `preview` is true when only a branch wants them, so a slow source can return `null` then without fetching. Entries may carry anything else the host needs back |
+| `labelOf(item)` | What a row says; `item.name` by default (Local Files drops extensions here) |
+| `savedTrail` | A `trailState()` to reopen on creation: pass it through `navigateTo`'s list state so coming back lands in the same folders |
+| `reservedBottom` | Room the host keeps under the tree for a line of its own (a `HelpLine` while it shows); the spine stays put |
+| `activated(item)` | Select on an entry that isn't a folder |
+| `optionsRequested(item)` | Right on an entry that isn't a folder (YouTube's Watch Later) |
+| `leaveRequested()` | Back with no folder left to close |
+
+`openItem({ name, path })` opens a folder that isn't an entry of the current one, like a search's results; `folderName` is the open folder's name, for the `AppBar` subtitle. A key already held as the tree appears (Back held to close a player) does not repeat into it.
+
+### OnScreenKeyboard (`views/Components/OnScreenKeyboard.qml`)
+
+Typing with a remote: a grid of letters and digits under the line being typed, the way a deck's menu spells a title. The arrows move the box, Select types what is in it (or `SPACE`, `DEL`, `OK` on the last row), Back cancels; a real keyboard types straight in. It covers its parent below the title bar: `open(initial)`, then `accepted(text)` or `canceled()`.
 
 ### ChoiceOverlay (`views/Components/ChoiceOverlay.qml`)
 

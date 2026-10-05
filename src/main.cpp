@@ -165,12 +165,22 @@ int main(int argc, char *argv[]) {
     WeatherBackend      weatherBackend(appRoot, dataRoot);
     DisplayHandoff      displayHandoff;
     ScriptsBackend      scriptsBackend(appRoot, dataRoot, &displayHandoff);
-    WebPlayerBackend    netflixBackend(QStringLiteral("netflix"),
-                                       QStringLiteral("https://www.netflix.com/browse"),
-                                       appRoot, dataRoot, &displayHandoff);
-    WebPlayerBackend    primeVideoBackend(QStringLiteral("prime_video"),
-                                          QStringLiteral("https://www.primevideo.com"),
-                                          appRoot, dataRoot, &displayHandoff);
+    // The streaming services opened as their own web players. TMDB's
+    // provider ids are fallbacks for when its name lookup misses; the
+    // Wikidata properties hold each service's id for a title.
+    WebPlayerBackend    netflixBackend({
+        QStringLiteral("netflix"), QStringLiteral("https://www.netflix.com/browse"),
+        { QStringLiteral("Netflix"), 8, QStringLiteral("Netflix Home"),
+          QStringLiteral("https://www.netflix.com/watch/%1"),
+          QStringLiteral("https://www.netflix.com/search?q=%1"), QStringLiteral("P1874") } },
+        appRoot, dataRoot, &displayHandoff);
+    WebPlayerBackend    primeVideoBackend({
+        QStringLiteral("prime_video"), QStringLiteral("https://www.primevideo.com"),
+        { QStringLiteral("Amazon Prime Video"), 119, QStringLiteral("Prime Video Home"),
+          QStringLiteral("https://www.primevideo.com/detail/%1"),
+          QStringLiteral("https://www.primevideo.com/search/ref=atv_nb_sr?phrase=%1"),
+          QStringLiteral("P14440") } },
+        appRoot, dataRoot, &displayHandoff);
     MpvController       mpvController(appRoot, dataRoot, &appCore, &displayHandoff);
     InputManager        inputManager(dataRoot, &appCore);
     IdleTracker         idleTracker(60);   // disabled until Main.qml applies the saved setting

@@ -1,6 +1,11 @@
 import QtQuick
 import Components
 
+// YouTube in the tree, browsed like Local Files: SEARCH (on the on-screen
+// keyboard), the subscriptions feed, each channel and playlist, Watch Later and
+// History, from youtubeBackend.listing(). A video plays in Player.qml, and
+// coming back reopens the same folders. Right on a video saves it to Watch
+// Later, or takes it off.
 FocusScope {
     id: itemsRoot
 
@@ -11,162 +16,122 @@ FocusScope {
     signal goBack()
 
     focus: true
-    Keys.onPressed: function(event) {
-        if (event.key === Qt.Key_Escape || event.key === Qt.Key_Backspace || event.key === Qt.Key_Back) {
-            goBack()
-            event.accepted = true
-        }
+
+    // Shorts are left out when the "Display Shorts" setting is off.
+    // Unset/true/"ON" => show shorts (default); explicit false => hide.
+    readonly property bool showShorts: {
+        var raw = appCore ? appCore.get_setting(moduleRoot.moduleId, "display_shorts") : undefined
+        return raw === undefined || raw === null || raw === true || raw === "ON"
     }
-
-    property var items: []
-    property bool isLoading: false
-    property string errorMessage: ""
-
-    // The subscriptions/playlists files and the watch-later/history files are
-    // local reads, so this menu builds synchronously — isLoading exists only
-    // for pattern parity with the other modules.
-    //
-    // The module loads when either youtube_subscriptions.txt or
-    // youtube_playlists.txt is usable; each file only gates its own entries.
-    Component.onCompleted: {
-        var subsStatus = youtubeBackend.check_subscriptions()
-        var plStatus = youtubeBackend.check_playlists()
-        if (!subsStatus.ok && !plStatus.ok) {
-            // A file that exists but failed its check has the more actionable
-            // error; with no files at all, point at both options.
-            if (subsStatus.fileExists)
-                errorMessage = subsStatus.error
-            else if (plStatus.fileExists)
-                errorMessage = plStatus.error
-            else
-                errorMessage = "REQUIRED FILES NOT FOUND\n\n"
-                             + "ADD YOUTUBE_SUBSCRIPTIONS.TXT OR YOUTUBE_PLAYLISTS.TXT\n\n"
-                             + "PLEASE SEE THE WIKI FOR DETAILS"
-            return
-        }
-        var list = []
-        if (subsStatus.ok)
-            list.push("Subscriptions", "Channels")
-        if (plStatus.ok)
-            list.push("Playlists")
-        if (youtubeBackend.getWatchLater().length > 0)
-            list.push("Watch Later")
-        if (youtubeBackend.getHistory().length > 0)
-            list.push("History")
-        items = list
-        var restore = navListState.currentIndex !== undefined ? navListState.currentIndex : 0
-        itemList.currentIndex = Math.min(restore, Math.max(0, itemList.count - 1))
-        itemList.positionViewAtIndex(itemList.currentIndex, ListView.Contain)
-    }
-
-    // ---
-    // UI
-    // ---
 
     AppBar {
-        anchors.top: parent.top
-        anchors.left: parent.left
-        anchors.topMargin: root.sh * 0.125
-        anchors.leftMargin: root.sw * 0.125
         iconSource: moduleRoot.moduleIcon
         title: moduleRoot.moduleName
-    }
-
-    // Loading / Error states
-    Text {
-        visible: isLoading
-        text: "LOADING..."
-        color: root.tertiaryColor
-        font.family: root.globalFont
-        anchors.centerIn: parent
-        font.pixelSize: root.sh * 0.05 //24
-    }
-    Text {
-        visible: !isLoading && errorMessage !== ""
-        text: errorMessage
-        color: root.secondaryColor
-        font.family: root.globalFont
-        anchors.centerIn: parent
-        width: root.sw * 0.76875 //492 — long guidance lines wrap instead of clipping offscreen
-        wrapMode: Text.WordWrap
-        horizontalAlignment: Text.AlignHCenter
-        font.pixelSize: root.sh * 0.05 //24
-    }
-
-    // List
-    ListView {
-        id: itemList
-        model: itemsRoot.items
-        visible: !isLoading && errorMessage === ""
+        subtitle: tree.folderName
         anchors.top: parent.top
         anchors.left: parent.left
-        anchors.topMargin: root.sh * 0.25
-        anchors.leftMargin: root.sw * 0.115625
-        width: root.sw * 0.76875
-        height: root.sh * 0.525
-        clip: true
-        focus: true
-
-        delegate: Item {
-            width: itemList.width
-            height: root.sh * 0.0583333
-
-            Rectangle {
-                color: root.accentColor
-                anchors.fill: label
-                visible: itemList.currentIndex === index
-            }
-
-            Text {
-                id: label
-                text: modelData
-                color: itemList.currentIndex === index ? root.surfaceColor : root.primaryColor
-                font.family: root.globalFont
-                font.capitalization: Font.AllUppercase
-                font.pixelSize: root.sh * 0.05
-                anchors.verticalCenter: parent.verticalCenter
-                leftPadding: root.sw * 0.009375
-                rightPadding: root.sw * 0.009375
-                topPadding: root.sh * 0.0041667
-                bottomPadding: root.sh * 0.00625
-            }
-        }
-
-        Keys.onReturnPressed: {
-            var selected = itemsRoot.items[itemList.currentIndex]
-            if (!selected)
-                return
-            var state = { currentIndex: itemList.currentIndex }
-            if (selected === "Subscriptions")
-                navigateTo("Subscriptions.qml", { mode: "feed" }, state)
-            else if (selected === "Channels")
-                navigateTo("Channels.qml", {}, state)
-            else if (selected === "Playlists")
-                navigateTo("Playlists.qml", {}, state)
-            else if (selected === "Watch Later")
-                navigateTo("Subscriptions.qml", { mode: "watchlater" }, state)
-            else if (selected === "History")
-                navigateTo("Subscriptions.qml", { mode: "history" }, state)
-        }
-        Keys.onUpPressed: {
-            if (count === 0) return
-            if (currentIndex > 0) currentIndex--
-            else currentIndex = count - 1
-        }
-        Keys.onDownPressed: {
-            if (count === 0) return
-            if (currentIndex < count - 1) currentIndex++
-            else currentIndex = 0
-        }
+        anchors.topMargin: root.sh * 0.125 //60
+        anchors.leftMargin: root.sw * 0.125 //80
     }
 
-    // Footer
+    TreeBrowser {
+        id: tree
+        anchors.fill: parent
+        focus: true
+        rootPath: "home"
+        reservedBottom: problemLine.visible ? treeBottom - problemLine.y : 0
+        savedTrail: itemsRoot.navListState.trail || []
+        fetch: function(path, preview) {
+            var entries = youtubeBackend.listing(path, preview)
+            if (entries === undefined)
+                return null
+            return itemsRoot.showShorts ? entries : entries.filter(function(e) { return !e.isShort })
+        }
+        onActivated: function(item) {
+            switch (item.kind) {
+            case "search":
+                osk.open("")
+                break
+            case "more":
+                youtubeBackend.loadMore(item.path.replace("#more", ""))
+                break
+            case "video":
+                itemsRoot.navigateTo("Player.qml", { item: item }, { trail: tree.trailState() })
+                break
+            }
+        }
+        onOptionsRequested: function(item) {
+            if (item.kind === "video")
+                watchLater.offer(item)
+        }
+        onLeaveRequested: itemsRoot.goBack()
+    }
+
+    Connections {
+        target: youtubeBackend
+        function onListingReady(path) { tree.refresh(path) }
+    }
+
+    // What stands in the way of browsing, when anything does: no network, or
+    // no yt-dlp.
+    HelpLine {
+        id: problemLine
+        visible: !osk.visible && !watchLater.visible && text !== ""
+        text: youtubeBackend ? youtubeBackend.problem : ""
+        anchors.bottom: parent.bottom
+        anchors.left: parent.left
+        anchors.bottomMargin: root.sh * 0.1583333 //76
+        anchors.leftMargin: root.sw * 0.125 //80
+    }
+
     HintBar {
-        id: footer
-        text: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE " + root.hints.select + ":SELECT"
+        visible: !osk.visible && !watchLater.visible
+        text: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE "
+              + root.hints.browse + ":SAVE " + root.hints.select + ":SELECT"
         anchors.bottom: parent.bottom
         anchors.left: parent.left
         anchors.bottomMargin: root.sh * 0.1041667 //50
         anchors.leftMargin: root.sw * 0.125 //80
+    }
+
+    OnScreenKeyboard {
+        id: osk
+        anchors.fill: parent
+        title: "Search YouTube"
+        onAccepted: function(text) {
+            tree.forceActiveFocus()
+            tree.openItem({ name: "Search: " + text, path: "search/" + text })
+        }
+        onCanceled: tree.forceActiveFocus()
+    }
+
+    // Save to Watch Later, or take off it what is already there.
+    ChoiceOverlay {
+        id: watchLater
+        property var video: null
+        property bool saved: false
+
+        function offer(item) {
+            video = item
+            saved = youtubeBackend.isInWatchLater(item.videoId)
+            open()
+        }
+
+        anchors.fill: parent
+        promptText: saved ? "Remove from Watch Later?" : "Save to Watch Later?"
+        subtitleText: video ? video.title : ""
+        choices: [{ label: "Yes", action: "yes" }, { label: "No", action: "no" }]
+        onClosed: tree.forceActiveFocus()
+        onActivated: function(action) {
+            if (action !== "yes" || !video)
+                return
+            if (saved)
+                youtubeBackend.removeFromWatchLater(video.videoId)
+            else
+                youtubeBackend.addToWatchLater(video.videoId, video.title || "", video.channelName || "")
+            // WATCH LATER comes and goes with what is on it.
+            tree.refresh("watchlater")
+            tree.refresh("home")
+        }
     }
 }
