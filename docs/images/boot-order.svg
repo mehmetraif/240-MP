@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 340" width="960" height="340" role="img" aria-label="Boot order. In a manual install 240-MP starts last, after multi-user.target, once every service has started. On 240-MP OS it starts right after basic.target and its boot screen is up while Wi-Fi, Bluetooth, the local network, optional SSH and the online check start one after another, after its first frame.">
+<defs><marker id="ah" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#fff"/></marker></defs>
+<rect x="0" y="0" width="960" height="340" rx="14" fill="#0110C5"/>
+<g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', 'DejaVu Sans Mono', monospace" fill="#fff">
+<text x="205.0" y="28" font-size="11" text-anchor="middle" font-weight="normal" fill="#fff" fill-opacity="0.75">firmware</text>
+<text x="290.0" y="28" font-size="11" text-anchor="middle" font-weight="normal" fill="#fff" fill-opacity="0.75">kernel</text>
+<text x="370.0" y="28" font-size="11" text-anchor="middle" font-weight="normal" fill="#fff" fill-opacity="0.75">systemd</text>
+<line x1="250" y1="36" x2="250" y2="294" stroke="#fff" stroke-opacity="0.3" stroke-dasharray="3 4"/>
+<line x1="330" y1="36" x2="330" y2="294" stroke="#fff" stroke-opacity="0.3" stroke-dasharray="3 4"/>
+<line x1="410" y1="36" x2="410" y2="294" stroke="#fff" stroke-opacity="0.3" stroke-dasharray="3 4"/>
+<text x="16" y="58" font-size="13" text-anchor="start" font-weight="bold" fill="#fff">MANUAL INSTALL · install.sh</text>
+<text x="150" y="94" font-size="11" text-anchor="end" font-weight="normal" fill="#fff" fill-opacity="0.75">screen</text>
+<text x="150" y="134" font-size="11" text-anchor="end" font-weight="normal" fill="#fff" fill-opacity="0.75">services</text>
+<rect x="160" y="78" width="540" height="24" rx="3" fill="#000" stroke="#fff" stroke-opacity="0.5"/>
+<text x="430.0" y="94" font-size="11" text-anchor="middle" font-weight="normal" fill="#fff" fill-opacity="0.8">black screen · boot messages · login</text>
+<rect x="700" y="78" width="240" height="24" rx="3" fill="#fff"/>
+<text x="820.0" y="94" font-size="12" text-anchor="middle" font-weight="bold" fill="#0110C5">240-MP · menu</text>
+<path d="M694,64 L706,64 L700,73 Z" fill="#fff"/>
+<text x="710" y="72" font-size="11" text-anchor="start" font-weight="bold" fill="#fff">first frame</text>
+<rect x="334" y="118" width="72" height="24" rx="3" fill="#0110C5" stroke="#fff" stroke-width="1.2"/>
+<text x="370.0" y="134" font-size="11" text-anchor="middle" font-weight="normal" fill="#fff">systemd</text>
+<rect x="414" y="118" width="276" height="24" rx="3" fill="#0110C5" stroke="#fff" stroke-width="1.2"/>
+<text x="552.0" y="134" font-size="11" text-anchor="middle" font-weight="normal" fill="#fff">NetworkManager · avahi · cron · …</text>
+<line x1="700" y1="130" x2="700" y2="106" stroke="#fff" stroke-width="1.5" marker-end="url(#ah)"/>
+<text x="710" y="134" font-size="11" text-anchor="start" font-weight="normal" fill="#fff">After=multi-user.target</text>
+<text x="16" y="178" font-size="13" text-anchor="start" font-weight="bold" fill="#fff">240-MP OS · the image</text>
+<text x="150" y="214" font-size="11" text-anchor="end" font-weight="normal" fill="#fff" fill-opacity="0.75">screen</text>
+<text x="150" y="254" font-size="11" text-anchor="end" font-weight="normal" fill="#fff" fill-opacity="0.75">services</text>
+<rect x="160" y="198" width="270" height="24" rx="3" fill="#000" stroke="#fff" stroke-opacity="0.5"/>
+<text x="295.0" y="214" font-size="11" text-anchor="middle" font-weight="normal" fill="#fff" fill-opacity="0.8">black screen</text>
+<rect x="430" y="198" width="390" height="24" rx="3" fill="#fff"/>
+<text x="625.0" y="214" font-size="12" text-anchor="middle" font-weight="bold" fill="#0110C5">VHS boot screen · progress</text>
+<rect x="822" y="198" width="118" height="24" rx="3" fill="#fff"/>
+<text x="881.0" y="214" font-size="12" text-anchor="middle" font-weight="bold" fill="#0110C5">menu</text>
+<path d="M424,184 L436,184 L430,193 Z" fill="#fff"/>
+<text x="440" y="192" font-size="11" text-anchor="start" font-weight="bold" fill="#fff">first frame</text>
+<rect x="334" y="238" width="72" height="24" rx="3" fill="#0110C5" stroke="#fff" stroke-width="1.2"/>
+<text x="370.0" y="254" font-size="11" text-anchor="middle" font-weight="normal" fill="#fff">systemd</text>
+<path d="M432,223 V250 H444" fill="none" stroke="#fff" stroke-width="1.5" marker-end="url(#ah)"/>
+<text x="438" y="233" font-size="11" text-anchor="start" font-weight="bold" fill="#fff">ready</text>
+<rect x="450" y="238" width="60" height="24" rx="3" fill="#0110C5" stroke="#fff" stroke-width="1.2"/>
+<text x="480.0" y="254" font-size="11" text-anchor="middle" font-weight="normal" fill="#fff">WI-FI</text>
+<rect x="514" y="238" width="86" height="24" rx="3" fill="#0110C5" stroke="#fff" stroke-width="1.2"/>
+<text x="557.0" y="254" font-size="11" text-anchor="middle" font-weight="normal" fill="#fff">BLUETOOTH</text>
+<rect x="604" y="238" width="110" height="24" rx="3" fill="#0110C5" stroke="#fff" stroke-width="1.2"/>
+<text x="659.0" y="254" font-size="11" text-anchor="middle" font-weight="normal" fill="#fff">LOCAL NETWORK</text>
+<rect x="718" y="238" width="42" height="24" rx="3" fill="none" stroke="#fff" stroke-opacity="0.5" stroke-dasharray="4 3"/>
+<text x="739.0" y="254" font-size="11" text-anchor="middle" font-weight="normal" fill="#fff" fill-opacity="0.6">SSH</text>
+<rect x="764" y="238" width="56" height="24" rx="3" fill="#0110C5" stroke="#fff" stroke-width="1.2"/>
+<text x="792.0" y="254" font-size="11" text-anchor="middle" font-weight="normal" fill="#fff">ONLINE</text>
+<text x="450" y="280" font-size="11" text-anchor="start" font-weight="normal" fill="#fff" fill-opacity="0.8">they start after its first frame, one after another</text>
+<line x1="160" y1="302" x2="940" y2="302" stroke="#fff" stroke-width="1.5" marker-end="url(#ah)"/>
+<text x="410" y="322" font-size="11" text-anchor="middle" font-weight="normal" fill="#fff">basic.target</text>
+<text x="940" y="322" font-size="11" text-anchor="end" font-weight="normal" fill="#fff" fill-opacity="0.75">time · not to scale</text>
+</g></svg>
