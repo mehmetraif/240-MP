@@ -9,7 +9,7 @@
       "label": "Enabled",
       "type": "toggle",
       "default": "OFF",
-      "description": "Opens Prime Video's own player full screen\nNeeds Chromium with Widevine (on the 240-MP OS image already)"
+      "description": "Browses what Prime Video carries, and plays it in Prime Video's own player full screen\nNeeds Chromium with Widevine (on the 240-MP OS image already)"
     },
     {
       "key": "region",
@@ -28,7 +28,7 @@
         "AU"
       ],
       "default": "TR",
-      "description": "The country whose Prime Video catalogue to list\nTitles come from TMDB, which needs a free API key in tmdb_api_key.txt"
+      "description": "The country whose Prime Video catalogue to list\nTitles come from TMDB, which needs a free API key in tmdb_api_key.txt\nThis product uses the TMDB API but is not endorsed or certified by TMDB\nStreaming data from JustWatch"
     },
     {
       "key": "catalog_language",
