@@ -243,9 +243,10 @@ At this point you can type `240mp` at any time to start up the app.  And if you 
             - Run `mpv --audio-device=help` to see the exact device strings mpv will accept and copy the one that matches your audio output device.
     - In both options the change applies the next time playback starts and will cover every mpv instance that 240-MP launches.  Please see [ARCHITECTURE.md → How mpv flags are layered](ARCHITECTURE.md#how-mpv-flags-are-layered-the-precedence-cascade) for why audio output is left to your ALSA / mpv config rather than being set by 240-MP.
 
-**Exit to Terminal**
+**Exit to Terminal and Restart**
 
 - If you have the autostart service installed, the Quit dialog gains an `Exit to Terminal` option alongside `Power Off`. Choosing that will drop you to a login shell on the Pi instead of powering off, and leaves autostart intact for subsequent reboots. 
+- It also offers `Restart`, which reboots the Pi. An install from before it was added needs `install.sh` run again to get it, since the service's stop helper is what reboots.
 - To get back into 240-MP from that shell you can do one of the following:
     1. (*Recommended*) type `sudo systemctl start 240mp` to start up 240-MP and the autostart service again
     2. type `sudo reboot` to reboot and start up the device from scratch (which will also restart the autostart service)

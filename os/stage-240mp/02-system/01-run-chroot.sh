@@ -15,6 +15,12 @@ fi
 # tty1 belongs to the app; "Exit to Terminal" starts 240mp-terminal.service.
 systemctl mask getty@tty1.service autovt@.service
 
+# Settings → Bluetooth talks to BlueZ as this user, which BlueZ's D-Bus policy
+# lets in through the bluetooth group.
+if getent group bluetooth > /dev/null; then
+	usermod -aG bluetooth "${FIRST_USER_NAME}"
+fi
+
 # Raspberry Pi Connect's remote-access agent: not wanted on an appliance.
 if dpkg -s rpi-connect-lite > /dev/null 2>&1; then
 	apt-get purge -y rpi-connect-lite

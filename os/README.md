@@ -24,7 +24,10 @@ Compared with flashing Raspberry Pi OS Lite and running `scripts/install.sh` ([I
   - It lives in the app's data directory (`~/.local/share/240-MP/bin/yt-dlp`), where the app looks first, and replaces itself with the newest build two minutes after each boot and once a day (`240mp-yt-dlp-update.timer`). A check is one small request to GitHub. Without a connection within five minutes, it waits for the next run.
   - They add about 90 MB; build with `MP240_YOUTUBE=0` to leave them out.
 - **Films go on the card.** On the first boot the system keeps 8 GiB of the card, and the rest becomes a partition of its own in exFAT, labelled **240-MP**, which Windows and macOS open too. Local Files opens it. See [Films on the card](#films-on-the-card).
-- **Stopping isn't powering off.** `systemctl stop` and `systemctl restart` leave the Pi on. Quit in the app still powers it off, and Exit to Terminal still drops to a login shell, as with `install.sh`.
+- **Stopping isn't powering off.** `systemctl stop` and `systemctl restart` leave the Pi on. Quit in the app still powers it off, Restart reboots it, and Exit to Terminal still drops to a login shell, as with `install.sh`.
+- **Bluetooth from the app.** The user the app runs as is in the `bluetooth` group, so Settings → Bluetooth can search for and pair a keyboard, gamepad or remote through BlueZ.
+  - The Pi's own adapter is left powered down once `bthelper` (pi-bluetooth) has set it up, and bluetoothd powers it on when it starts.
+  - That works around a race: `bthelper` brings the adapter up the quick way, which skips part of the kernel's set-up, and relied on bluetoothd to power it off and on again within 5 s. Here bluetoothd starts later, after the app, so the adapter stayed half set up and wouldn't turn on. pi-bluetooth fixes it the same way ([RPi-Distro/pi-bluetooth#39](https://github.com/RPi-Distro/pi-bluetooth/pull/39)).
 
 Everything else (the launcher, in-app updates, Exit to Terminal, the data directory in `~/.local/share/240-MP`) is the same as a manual install. The launcher, stop helper and terminal unit are taken from `scripts/install.sh` at build time.
 
@@ -33,8 +36,8 @@ Everything else (the launcher, in-app updates, Exit to Terminal, the data direct
 1. In Raspberry Pi Imager, choose **Use custom** and pick the `.img.xz` (take it out of the zip GitHub's artifact comes in first).
 2. Raspberry Pi Imager 2 skips OS customisation for an image chosen with **Use custom**: it can't tell which kind the image takes. For Wi-Fi, a user, SSH, the locale and the keyboard, open the image through a local manifest instead, one that gives it `"init_format": "cloudinit-rpi"` ([Imager's notes on it](https://github.com/raspberrypi/rpi-imager/tree/main/doc/local_json)). Imager 1 seems to apply it, but on Trixie its settings never take effect. Without one, Wi-Fi can be set up by hand: before the first boot, add it to `network-config` on the boot partition, following the example in that file. With Ethernet there is nothing to do.
 3. The image's own user is `pi` (or whatever `FIRST_USER_NAME` was at build time), and the app runs as that user. Logging in is only needed for Exit to Terminal or SSH:
-   - If the image was built with a password (`FIRST_USER_PASS`), you can log in as `pi`.
-   - If it was built without one, the `pi` account is locked. Log in as the user Imager's customisation creates.
+   - If the image was built with a password (`FIRST_USER_PASS`), you can log in as `pi`. The OS image workflow takes it from the repository secret `OS_FIRST_USER_PASS`, if there is one.
+   - If it was built without one, the `pi` account has no password to log in with. Exit to Terminal then logs `pi` in by itself, with `sudo` as usual: whoever is at the keyboard could take the card out anyway. SSH needs a key (`PUBKEY_SSH_FIRST_USER`) or the user Imager's customisation creates.
 
 ### Films on the card
 

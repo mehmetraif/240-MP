@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Window
 import MP240.Video
+import Components
 
 Window {
     id: root
@@ -107,6 +108,10 @@ Window {
                 root.currentTheme = value
             } else if (key === "transparent_background") {
                 root.backdropSolidity = root.solidityOf(value)
+            } else if (key === "mouse_pointer") {
+                root.pointerSetting = String(value)
+                if (root.pointerShown)
+                    pointerTimer.restart()
             } else if (key === "screensaver_timeout") {
                 var sec = parseInt(value)
                 if (sec > 0) {
@@ -148,6 +153,7 @@ Window {
         }
         root.currentTheme = savedTheme
         root.backdropSolidity = root.solidityOf(cfg.app && cfg.app.transparent_background)
+        root.pointerSetting = String((cfg.app && cfg.app.mouse_pointer) || "5")
 
         // Screensaver: the tracker starts disabled; this is the single place the
         // saved setting is applied (live changes land in onAppSettingChanged above,
@@ -295,11 +301,21 @@ Window {
     // theirs. The setting's slider says how solid their ground is over it.
     readonly property bool videoActive: mpvController ? mpvController.videoActive : false
     readonly property bool videoBehind: mpvController ? mpvController.background : false
+    // What its player noted of the video behind the menus ({ module, title,
+    // params }, see MpvController::noteSession): the main menu offers it
+    // back as its first row. Empty for a player that notes nothing.
+    readonly property var behindNote: mpvController ? mpvController.backgroundNote : ({})
     property int backdropSolidity: 100
 
     // "transparent_background": how solid the menus' ground is over a video
-    // behind them, 0 (TRANSPARENT) to 100 (SOLID, which is off: back stops
-    // the video, as it always has). Its first values were words.
+    // behind them, 0 (TRANSPARENT) to 100 (SOLID: none of it shows, but it
+    // plays on, sound and all), or "Off", the default when unset (back stops
+    // the video, as it always has). Its first values were words: On (0) and
+    // Dim (60). Read as MpvController::transparentBackground() reads it.
+    function backgroundOn(raw) {
+        var s = String(raw === undefined || raw === null ? "" : raw).trim().toLowerCase()
+        return s === "on" || s === "dim" || !isNaN(parseInt(s))
+    }
     function solidityOf(raw) {
         var s = String(raw === undefined || raw === null ? "" : raw).toLowerCase()
         if (s === "on") return 0
@@ -482,6 +498,49 @@ Window {
             }
             screenSaverActive = false
             moduleLoader.forceActiveFocus()
+        }
+    }
+
+    // --- MOUSE POINTER ---
+    // Qt's own pointer stays hidden (main.cpp: on a headless screen it is a
+    // hardware cursor that wouldn't stay hidden). This one is drawn in the
+    // OSD's pixels, over everything: it shows as the mouse moves and goes
+    // again after Settings' MOUSE POINTER seconds without moving
+    // (app.mouse_pointer: "off", "always" or seconds; 5 when unset). Moving
+    // the mouse counts as being there, for the screen saver too. The menus
+    // themselves go by keys.
+    property string pointerSetting: "5"
+    property bool pointerShown: false
+
+    MouseArea {
+        anchors.fill: parent
+        z: 20000
+        enabled: root.pointerSetting !== "off"
+        hoverEnabled: true
+        // Only follows the mouse: clicks and the wheel go on to what is under it.
+        acceptedButtons: Qt.NoButton
+        onPositionChanged: function(mouse) {
+            pointer.x = mouse.x
+            pointer.y = mouse.y
+            root.pointerShown = true
+            pointerTimer.restart()
+            idleTracker.resetActivity()
+            root.dismissScreenSaver()
+        }
+    }
+
+    MousePointer {
+        id: pointer
+        z: 20001
+        visible: root.pointerShown && root.pointerSetting !== "off"
+    }
+
+    Timer {
+        id: pointerTimer
+        interval: (parseInt(root.pointerSetting) || 5) * 1000
+        onTriggered: {
+            if (root.pointerSetting !== "always")
+                root.pointerShown = false
         }
     }
 }

@@ -113,6 +113,8 @@ sudo apt-get install -y \
 
 For the NFC Reader module, `libpcsclite-dev` is optional and only needed for PC/SC readers such as the ACR122U — it is detected automatically at configure time. A PN532 USB reader needs no build dependency at all.
 
+Settings → Bluetooth talks to BlueZ through Qt D-Bus, which `qt6-base-dev` includes; without it the row is left out. At run time it needs `bluez` (Raspberry Pi OS Lite has it), with the user the app runs as in the `bluetooth` group (`sudo usermod -aG bluetooth $USER`; `install.sh` and the OS image do this).
+
 ```bash
 sudo apt-get install -y libpcsclite-dev
 ```

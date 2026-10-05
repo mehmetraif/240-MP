@@ -34,7 +34,120 @@ FocusScope {
     property int    lastKnownDurationMs:  0
     property int    lastKnownPlaylistPos: -1
 
+    // Back during the video opens its menu over the picture (PlayerMenu),
+    // the video playing on behind it. A change the video can't take as it
+    // plays (its subtitles) reloads it where it is as the menu closes; CLOSE
+    // VIDEO goes back to the main menu. How it was started, for that reload.
+    property bool   reloadOnClose:   false
+    property bool   closeToMainMenu: false
+    property bool   startedShuffled: false
+
     focus: true
+
+    // The module's settings the file plays with.
+    function readSettings() {
+        loopOn        = !!appCore.get_setting(moduleRoot.moduleId, "loop_playback")
+        // Some fancy logic to honor the old boolean settings until they get updated to the new format
+        var shufRaw   = appCore.get_setting(moduleRoot.moduleId, "shuffle_playback")
+        shuffleSetting = (typeof shufRaw === "boolean") ? (shufRaw ? "yes" : "no") : (shufRaw || "ask")
+        var autoSubs  = appCore.get_setting(moduleRoot.moduleId, "auto_subtitles")
+        subtitleMode  = (typeof autoSubs === "boolean") ? ((autoSubs === true) ? "on" : "forced") : (autoSubs || "forced")
+        var resRaw    = appCore.get_setting(moduleRoot.moduleId, "resume_playback") || "ask"
+        resumeSetting = (resRaw === "yes" || resRaw === "no") ? resRaw : "ask"
+        var imgDur = parseFloat(appCore.get_setting(moduleRoot.moduleId, "image_duration"))
+        imageDurationSec = isNaN(imgDur) ? 5 : imgDur
+
+        // Leaving this as an array since MPV - like most players - expects a *list* of languages
+        // to progressively fall back to until a sub track is found. If we ever switch back to
+        // selecting a list in Settings, the change to support them all will be considerably simpler.
+        // "-" is the value we store for "Any" (i.e. no preference) thats also the manifest default and
+        // "Any" option's id. If the user never opened this setting, then get_setting returns nothing,
+        // so it will fall back to "-" too. With this, "haven't picked one" will behave the same as "Any":
+        // the check below adds nothing to the list and MPV is launched without a --slang preference.
+        var subLangString = appCore.get_setting(moduleRoot.moduleId, "sub_lang") || "-"
+        subtitleLangs = []
+        if (subLangString !== "-") {
+            subtitleLangs.push(subLangString)
+        }
+    }
+
+    // The file as FAVORITES keeps it, as the tree's options put it there.
+    readonly property var entry: ({ name: itemTitle, path: filePath, isFolder: false })
+
+    function openMenu() {
+        playerMenu.actions = menuActions()
+        playerMenu.open(itemTitle.replace(/\.[^.\/]+$/, ""))
+    }
+    function menuActions() {
+        var favorite = appCore.list_contains(moduleRoot.moduleId, "favorites", filePath)
+        var startup = appCore.get_setting("", "startup_favorite")
+        var atStartup = !!startup && startup.module === moduleRoot.moduleId && startup.path === filePath
+        return [{ label: favorite ? "Remove from Favorites" : "Add to Favorites", action: "favorite" },
+                { label: atStartup ? "Don't Play at Startup" : "Play at Startup", action: "startup" },
+                { label: "Browse " + moduleRoot.moduleName, action: "browse" }]
+    }
+    // A setting changed in the menu: loop and the Scaling at once, the
+    // subtitles as the menu closes.
+    function applySetting(key, value) {
+        if (key === "loop_playback") {
+            loopOn = value === true || value === "ON"
+            mpvController.setVideoProperty("loop-playlist", loopOn ? "inf" : "no")
+        } else if (key === "video_scaling") {
+            playerMenu.applyScaling(value)
+        } else {
+            reloadOnClose = true
+        }
+    }
+    function menuAction(action) {
+        var favorite = appCore.list_contains(moduleRoot.moduleId, "favorites", filePath)
+        var startup = appCore.get_setting("", "startup_favorite")
+        var atStartup = !!startup && startup.module === moduleRoot.moduleId && startup.path === filePath
+        if (action === "favorite") {
+            if (favorite) {
+                appCore.remove_from_list(moduleRoot.moduleId, "favorites", filePath)
+                // The startup favourite is one of the favourites.
+                if (atStartup)
+                    appCore.save_setting("", "startup_favorite", "")
+            } else {
+                appCore.add_to_list(moduleRoot.moduleId, "favorites", entry, 100)
+            }
+        } else if (action === "startup") {
+            if (atStartup) {
+                appCore.save_setting("", "startup_favorite", "")
+            } else {
+                // Played at startup from FAVORITES, so it goes there too.
+                if (!favorite)
+                    appCore.add_to_list(moduleRoot.moduleId, "favorites", entry, 100)
+                appCore.save_setting("", "startup_favorite",
+                                     { module: moduleRoot.moduleId, path: filePath, name: itemTitle })
+            }
+        } else if (action === "browse") {
+            // As back always did: saved where it is, then the module's tree,
+            // the video playing on behind it.
+            playerMenu.close()
+            mpvController.leavePlayerMenu()
+            return
+        } else if (action === "close") {
+            closeToMainMenu = true
+            playerMenu.close()
+            mpvController.stop()
+            return
+        }
+        playerMenu.actions = menuActions()
+        playerMenu.refresh()
+    }
+    // Back in the menu: the video full screen again, reloaded where it is if
+    // a setting asks for it.
+    function backToVideo() {
+        playerMenu.close()
+        playerRoot.forceActiveFocus()
+        mpvController.closePlayerMenu()
+        if (reloadOnClose) {
+            reloadOnClose = false
+            readSettings()
+            play(lastKnownPositionMs, lastKnownPlaylistPos, startedShuffled)
+        }
+    }
 
     Keys.onPressed: function(event) {
         if (overlayVisible) {
@@ -85,6 +198,10 @@ FocusScope {
     Connections {
         target: mpvController
 
+        function onPlayerMenuRequested() {
+            playerRoot.openMenu()
+        }
+
         function onPositionChanged(ms) {
             if (ms > 0) playerRoot.lastKnownPositionMs = ms
         }
@@ -127,37 +244,29 @@ FocusScope {
                 else if (pos > 5000)
                     localFilesBackend.savePosition(filePath, pos, -1)
             }
-            goBack()
+            playerMenu.close()
+            // CLOSE VIDEO leaves the module for the main menu.
+            if (closeToMainMenu)
+                moduleRoot.goBack()
+            else
+                goBack()
         }
     }
 
     Component.onCompleted: {
         if (filePath === "") return
-        loopOn        = !!appCore.get_setting(moduleRoot.moduleId, "loop_playback")
-        // Some fancy logic to honor the old boolean settings until they get updated to the new format
-        var shufRaw   = appCore.get_setting(moduleRoot.moduleId, "shuffle_playback")
-        shuffleSetting = (typeof shufRaw === "boolean") ? (shufRaw ? "yes" : "no") : (shufRaw || "ask")
-        var autoSubs  = appCore.get_setting(moduleRoot.moduleId, "auto_subtitles")
-        subtitleMode  = (typeof autoSubs === "boolean") ? ((autoSubs === true) ? "on" : "forced") : (autoSubs || "forced")
-        var resRaw    = appCore.get_setting(moduleRoot.moduleId, "resume_playback") || "ask"
-        resumeSetting = (resRaw === "yes" || resRaw === "no") ? resRaw : "ask"
-        var imgDur = parseFloat(appCore.get_setting(moduleRoot.moduleId, "image_duration"))
-        imageDurationSec = isNaN(imgDur) ? 5 : imgDur
+        readSettings()
 
         imageContent = isImage(filePath) ||
                        (isPlaylist(filePath) && localFilesBackend.playlistContainsImages(filePath))
 
-        // Leaving this as an array since MPV - like most players - expects a *list* of languages
-        // to progressively fall back to until a sub track is found. If we ever switch back to
-        // selecting a list in Settings, the change to support them all will be considerably simpler.
-        // "-" is the value we store for "Any" (i.e. no preference) thats also the manifest default and
-        // "Any" option's id. If the user never opened this setting, then get_setting returns nothing,
-        // so it will fall back to "-" too. With this, "haven't picked one" will behave the same as "Any":
-        // the check below adds nothing to the list and MPV is launched without a --slang preference.
-        var subLangString = appCore.get_setting(moduleRoot.moduleId, "sub_lang") || "-"
-        subtitleLangs = []
-        if (subLangString !== "-") {
-            subtitleLangs.push(subLangString)
+        // This file, still playing behind the menus: it goes on full screen
+        // where it is, without asking, played as it was started so that it is
+        // the same session (back saved where it got to).
+        var note = root.behindNote
+        if (note.module === moduleRoot.moduleId && note.params && note.params.filePath === filePath) {
+            play(localFilesBackend.getSavedPosition(filePath).pos || 0, note.plPos, note.shuffle)
+            return
         }
 
         // Shuffle only applies to playlists; "Always" wins over resume: a shuffled
@@ -174,6 +283,17 @@ FocusScope {
         // Images inside a playlist still resume via the playlist's item index below.
         if (!canShuffle && isImage(filePath)) {
             play(0, -1, false)
+            return
+        }
+
+        // The favourite played at startup begins without asking, where
+        // Settings' STARTUP FROM says (a playlist in order, unless shuffle is
+        // always on, above).
+        if (navParams.startup) {
+            var held = appCore.get_setting("", "startup_from") === "Beginning"
+                       ? ({}) : localFilesBackend.getSavedPosition(filePath)
+            var heldPos = held.pos || 0
+            play(heldPos, heldPos > 0 && held.plPos !== undefined ? held.plPos : -1, false)
             return
         }
 
@@ -217,11 +337,32 @@ FocusScope {
 
     function play(startMs, plPos, shuffle) {
         mpvController.loadAndPlay(filePath, startMs > 0 ? startMs / 1000.0 : 0.0, 0, subFlag, [], subtitleLangs, loopOn, plPos, 0.0, "", false, "", shuffle, [], imageDurationSec, imageContent)
+        // How the main menu takes it back once it plays behind the menus, and
+        // how it was started, which taking it back repeats.
+        mpvController.noteSession({ module: moduleRoot.moduleId,
+                                    title: itemTitle.replace(/\.[^.\/]+$/, ""),
+                                    params: { filePath: filePath, title: itemTitle },
+                                    plPos: plPos, shuffle: shuffle, menu: true })
+        startedShuffled = shuffle
     }
 
     Rectangle {
         anchors.fill: parent
         color: "black"
+        // The video shows through its menu.
+        visible: !playerMenu.visible
+    }
+
+    PlayerMenu {
+        id: playerMenu
+        anchors.fill: parent
+        moduleId: moduleRoot.moduleId
+        iconSource: moduleRoot.moduleIcon
+        moduleName: moduleRoot.moduleName
+        keys: ["auto_subtitles", "sub_lang", "loop_playback", "video_scaling"]
+        onSettingChanged: function(key, value) { playerRoot.applySetting(key, value) }
+        onActivated: function(action) { playerRoot.menuAction(action) }
+        onClosed: playerRoot.backToVideo()
     }
 
     Rectangle {

@@ -27,26 +27,37 @@ FocusScope {
     focus: true
 
     // Plays a file, putting it on RECENTLY WATCHED; trail is where coming back
-    // lands.
-    function play(item, trail) {
+    // lands, and startup says it is the favourite played at startup.
+    function play(item, trail, startup) {
         appCore.add_to_list(moduleRoot.moduleId, "recent",
                             { name: item.name, path: item.path, isFolder: false }, 30)
-        itemsRoot.navigateTo("Player.qml", { filePath: item.path, title: item.name }, { trail: trail })
+        itemsRoot.navigateTo("Player.qml", { filePath: item.path, title: item.name, startup: !!startup },
+                             { trail: trail })
     }
 
     // The startup favourite, played as if chosen in FAVORITES, so coming back
-    // from it lands there. Only as the view first opens: coming back from the
-    // player brings navListState instead.
+    // from it lands there, or the file behind the menus (the main menu's row
+    // for it), opened again as if chosen in RECENTLY WATCHED. Only as the view
+    // first opens: coming back from the player brings navListState instead.
     Component.onCompleted: {
-        if (navParams.startupPlay && !navParams.navListState)
+        if (navParams.navListState)
+            return
+        if (navParams.resumePlayer)
+            Qt.callLater(resumeBehind, navParams.resumePlayer)
+        else if (navParams.startupPlay)
             Qt.callLater(playAtStartup, navParams.startupPlay)
+    }
+    function resumeBehind(params) {
+        itemsRoot.navigateTo("Player.qml", params,
+                             { trail: [{ path: itemsRoot.rootPath, sel: 0, name: "", pushed: false },
+                                       { path: "recent", sel: 0, name: "Recently Watched", pushed: false }] })
     }
     function playAtStartup(entry) {
         var favorites = localFilesBackend.existing(appCore.get_list(moduleRoot.moduleId, "favorites"))
         for (var i = 0; i < favorites.length; ++i) {
             if (favorites[i].path === entry.path) {
                 play(favorites[i], [{ path: itemsRoot.rootPath, sel: 1, name: "", pushed: false },
-                                    { path: "favorites", sel: i, name: "Favorites", pushed: false }])
+                                    { path: "favorites", sel: i, name: "Favorites", pushed: false }], true)
                 return
             }
         }

@@ -71,6 +71,12 @@ if [[ "${AUTOSTART_REPLY}" =~ ^[Yy]$ ]]; then
 fi
 OWNER_USER="${SERVICE_USER:-$USER}"
 
+# Settings → Bluetooth talks to BlueZ as the user the app runs as, which
+# BlueZ's D-Bus policy lets in through the bluetooth group.
+if getent group bluetooth > /dev/null; then
+    sudo usermod -aG bluetooth "${OWNER_USER}"
+fi
+
 # ── Download tarball ───────────────────────────────────────────────────────────
 echo "Downloading ${TARBALL}..."
 TMP_DIR=$(mktemp -d)
@@ -101,7 +107,8 @@ INSTALL_DIR="/opt/240mp"
 # Tells the app this launcher knows how to apply staged updates; the in-app
 # updater refuses to stage anything without it (older installs must re-run
 # this installer once to pick up the launcher/240mp-stop contract).
-export MP240_LAUNCHER_API=1
+# 2: 240mp-stop also reboots on exit 12, so the quit menu offers Restart.
+export MP240_LAUNCHER_API=2
 
 # ── Apply a staged in-app update ───────────────────────────────────────────────
 # The app downloads the release tarball to DATA_ROOT/updates and writes
@@ -212,7 +219,7 @@ ExecStartPre=+-/usr/bin/systemctl stop 240mp-terminal.service
 ExecStart=${LAUNCHER}
 Restart=on-failure
 RestartSec=5s
-RestartPreventExitStatus=10
+RestartPreventExitStatus=10 12
 ExecStopPost=+/usr/local/bin/240mp-stop
 StandardOutput=journal
 StandardError=journal
@@ -225,6 +232,8 @@ UNIT
     # before; exit 10 means the user chose "Exit to Terminal", so instead spawn a
     # login shell on tty1 (see views/Settings.qml). RestartPreventExitStatus=10
     # keeps Restart=on-failure from relaunching the app over that shell.
+    # Exit 12 is the quit menu's "Restart": reboot (kept out of Restart=on-failure
+    # the same way, so the app isn't started again on the way down).
     # Exit 11 is "Apply & Restart" from the in-app updater (views/Update.qml):
     # do nothing here — it's a failure status, so Restart=on-failure relaunches
     # through the launcher, which applies the staged update before exec.
@@ -237,6 +246,7 @@ UNIT
 case "${EXIT_STATUS:-}" in
     10) systemctl start 240mp-terminal.service ;;
     11) : ;;  # in-app update restart — Restart=on-failure brings the app back up
+    12) systemctl reboot ;;  # the quit menu's Restart
     129|130|143|HUP|INT|TERM|KILL) : ;;  # stopped from outside, not by the user
     *)  systemctl poweroff ;;
 esac

@@ -31,6 +31,12 @@ public:
     Q_INVOKABLE bool isAutostartSession() const {
         return qEnvironmentVariableIsSet("MP240_AUTOSTART");
     }
+    // The quit overlay's "Restart": exit 12, which the service's stop helper
+    // (240mp-stop) takes as a reboot since launcher API 2. An older install's
+    // helper would power the Pi off instead, so it isn't offered there.
+    Q_INVOKABLE bool canRestartSystem() const {
+        return isAutostartSession() && qEnvironmentVariableIntValue("MP240_LAUNCHER_API") >= 2;
+    }
 
     Q_INVOKABLE void scan_for_modules();
     Q_INVOKABLE QVariant get_settings();

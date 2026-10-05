@@ -30,6 +30,7 @@
 #include "input/IdleTracker.h"
 #include "update/UpdateManager.h"
 #include "boot/BootProgress.h"
+#include "bluetooth/BluetoothManager.h"
 #include "util/ExecPath.h"
 #include "util/DisplayHandoff.h"
 #include "util/OsdIconProvider.h"
@@ -199,6 +200,7 @@ int main(int argc, char *argv[]) {
     IdleTracker         idleTracker(60);   // disabled until Main.qml applies the saved setting
     UpdateManager       updateManager(appRoot, dataRoot);
     BootProgress        bootProgress;      // inert outside the 240-MP OS image (os/)
+    BluetoothManager    bluetoothManager;  // Settings → Bluetooth (BlueZ on Linux)
 
     // Playback follows the UI's display: mpv gets a --fs-screen* arg derived
     // from this on macOS / desktop Linux (no-op at index 0 and on headless).
@@ -231,6 +233,7 @@ int main(int argc, char *argv[]) {
     ctx->setContextProperty("inputManager",  &inputManager);
     ctx->setContextProperty("updateManager", &updateManager);
     ctx->setContextProperty("bootProgress",  &bootProgress);
+    ctx->setContextProperty("bluetoothManager", &bluetoothManager);
 #ifdef Q_OS_MAC
     // Target display geometry in Qt coordinates (top-left origin), so the QML
     // Window bindings position onto the chosen screen. The native fullscreen

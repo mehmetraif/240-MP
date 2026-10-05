@@ -93,6 +93,30 @@ local sub_cycle   = mp.get_opt("sub-cycle") == "1"
 -- the AUDIO button asks the module to re-request rather than cycling locally.
 local audio_cycle = mp.get_opt("audio-cycle") == "1"
 
+-- The four Scalings of Settings (MpvController::sessionArgs), which CROP steps
+-- through live: how a 16:9 picture fills the 4:3 tube.
+local SCALINGS = {
+    { name = "LETTERBOX",  panscan = 0,    keepaspect = true  },
+    { name = "14:9",       panscan = 0.43, keepaspect = true  },
+    { name = "PAN & SCAN", panscan = 1,    keepaspect = true  },
+    { name = "ANAMORPHIC", panscan = 0,    keepaspect = false },
+}
+
+-- The one in force, read off mpv, so CROP carries on from the Scaling the
+-- video started with.
+local function current_scaling()
+    if mp.get_property_bool("keepaspect", true) == false then return 4 end
+    local p = mp.get_property_number("panscan", 0) or 0
+    if p > 0.7 then return 3 elseif p > 0.2 then return 2 end
+    return 1
+end
+
+local function next_scaling()
+    local s = SCALINGS[current_scaling() % #SCALINGS + 1]
+    mp.set_property_bool("keepaspect", s.keepaspect)
+    mp.set_property_number("panscan", s.panscan)
+end
+
 local btn_actions = {
     function()
         if audio_cycle then
@@ -108,7 +132,7 @@ local btn_actions = {
             mp.command("no-osd cycle sub")
         end
     end,
-    function() mp.command("no-osd cycle-values panscan 0 1") end,
+    next_scaling,
     function() mp.command("quit") end,
     function() mp.command("playlist-prev") end,
     function() mp.command("playlist-next") end,
@@ -233,6 +257,10 @@ local function draw_menu()
     draw_text(ass, lm, info_y, 4, "AUDIO: " .. get_audio_str(), info_fs, C_WHITE, A_OPAQUE)
     if has_sub then
         draw_text(ass, lm, info_y + info_lh, 4, "SUBTITLE: " .. get_sub_str(),  info_fs, C_WHITE, A_OPAQUE)
+    end
+    if not hide_crop then
+        draw_text(ass, lm, info_y + (has_sub and 2 or 1) * info_lh, 4,
+                  "CROP: " .. SCALINGS[current_scaling()].name, info_fs, C_WHITE, A_OPAQUE)
     end
 
     -- ── Row 1: Time text ──────────────────────────────────────────

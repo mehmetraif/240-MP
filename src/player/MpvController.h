@@ -7,6 +7,7 @@
 #include <QTimer>
 #include <QJsonArray>
 #include <QStringList>
+#include <QVariantMap>
 
 class AppCore;
 class DisplayHandoff;
@@ -22,6 +23,9 @@ class MpvController : public QObject {
     Q_PROPERTY(bool videoActive READ videoActive NOTIFY videoActiveChanged)
     // ...and goes on behind the menus, back having returned to them.
     Q_PROPERTY(bool background READ background NOTIFY backgroundChanged)
+    // What its player noted of the session behind the menus (noteSession), so
+    // the main menu can offer it back; empty while there is none.
+    Q_PROPERTY(QVariantMap backgroundNote READ backgroundNote NOTIFY backgroundChanged)
 
 public:
     explicit MpvController(const QString &appRoot, const QString &dataRoot,
@@ -68,7 +72,7 @@ public:
 
     // Transparent Background (app setting "transparent_background": how solid
     // the menus' ground is over the picture, 0 to 100 on Settings' TRANSPARENT
-    // ... SOLID slider, on below SOLID): video is played inside the app's own
+    // ... SOLID slider, or Off, the default): video is played inside the app's own
     // window (EmbeddedMpv) rather than by an mpv process over it, so the menus
     // can be drawn over the picture. Back from playback then returns to the
     // menus and leaves the video playing behind them: the module takes it as
@@ -84,6 +88,27 @@ public:
     bool background() const { return m_background; }
     // Ends a session playing behind the menus.
     Q_INVOKABLE void stopBackground();
+    // Called by a player right after loadAndPlay(): how to take the session
+    // back to full screen once it plays behind the menus, as
+    // { module, title, params }, params being the player view's navParams.
+    // Choosing the main menu's row for it opens the module's player with
+    // them, which then calls loadAndPlay() as before and so reattaches. Every
+    // loadAndPlay() clears it, so a player that notes nothing leaves no row.
+    Q_INVOKABLE void noteSession(const QVariantMap &note);
+    QVariantMap backgroundNote() const { return m_background ? m_sessionNote : QVariantMap(); }
+    // A player with a playback menu of its own says so in its note (menu:
+    // true): back then has it open the menu over the picture
+    // (playerMenuRequested), the session staying its player's, where any
+    // other player takes back as stopped and goes back to its menus. Its end
+    // still comes as playbackEnded, while the menu is open too.
+    // closePlayerMenu() takes the picture back to full screen;
+    // leavePlayerMenu() does what back always did, for the menu's way to its
+    // module's browser: playbackEnded "stopped", the video playing on behind.
+    Q_INVOKABLE void closePlayerMenu();
+    Q_INVOKABLE void leavePlayerMenu();
+    // Sets a property of the session that plays, for a setting changed while
+    // it plays: speed, panscan, loop-playlist and the like.
+    Q_INVOKABLE void setVideoProperty(const QString &name, const QVariant &value);
     // The embedded session's newest picture, and the size to draw it at
     // (VideoSurface).
     QImage videoFrame() const;
@@ -115,6 +140,7 @@ signals:
     void skipRequested();
     void videoActiveChanged();
     void backgroundChanged();
+    void playerMenuRequested();
     void videoFrameReady();
     // The OSC's SUBTITLE button when the sub is burned into the stream and mpv
     // has nothing to cycle (see `sub-cycle` in scripts/mpv-osc.lua). The module
@@ -189,6 +215,9 @@ private:
     int             m_detachPositionMs = 0;
     // The embedded session's command line, to know it when it is asked for again.
     QStringList     m_sessionArgs;
+    QVariantMap     m_sessionNote;
+    // Back has its player's menu open over the picture (see closePlayerMenu).
+    bool            m_playerMenu   = false;
     QSize           m_videoTargetSize { 640, 480 };
     QString         m_embeddedInputConfPath;
     DisplayHandoff *m_handoff      = nullptr;

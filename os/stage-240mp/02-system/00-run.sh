@@ -61,3 +61,31 @@ cat > "${ETC}/systemd/system/NetworkManager-wait-online.service.d/240mp.conf" <<
 [Service]
 Environment=NM_ONLINE_TIMEOUT=20
 EOF
+
+# The Pi's own Bluetooth. bthelper@hciN (pi-bluetooth, started by udev before
+# bluetooth.service) brings the adapter up with hciconfig to set it up, which
+# skips the kernel's power-on initialisation, and relied on bluetoothd running
+# 5 s later to power it off and on again. Here bluetoothd waits for the app
+# (above), so the adapter was left half set up and BlueZ couldn't turn it on.
+# Leave it down instead, as pi-bluetooth itself now does
+# (RPi-Distro/pi-bluetooth#39): bluetoothd powers it on when it starts. With
+# bluetoothd running already (an adapter plugged in later), the kludge works.
+install -d "${ETC}/systemd/system/bthelper@.service.d"
+cat > "${ETC}/systemd/system/bthelper@.service.d/240mp.conf" << 'EOF'
+# 240-MP OS: leave the adapter down, for bluetoothd to power on (AutoEnable).
+[Service]
+ExecStartPost=-/bin/sh -c 'pidof bluetoothd > /dev/null || /bin/hciconfig %I down'
+EOF
+
+# Built without a password (os/build.sh), the first user can't log in, and Exit
+# to Terminal would end at a login nobody can pass: it logs that user in by
+# itself instead. Whoever is at the keyboard could take the card out anyway.
+if [ "${MP240_LOCK_FIRST_USER:-0}" = "1" ]; then
+	install -d "${ETC}/systemd/system/240mp-terminal.service.d"
+	cat > "${ETC}/systemd/system/240mp-terminal.service.d/240mp-autologin.conf" << EOF
+# 240-MP OS built without a password: the terminal logs ${FIRST_USER_NAME} in by itself.
+[Service]
+ExecStart=
+ExecStart=-/sbin/agetty --autologin ${FIRST_USER_NAME} --noclear tty1 linux
+EOF
+fi
