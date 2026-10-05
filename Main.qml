@@ -83,10 +83,15 @@ Window {
     property var allThemes: themes  // may gain a "Custom" entry on startup
     property string currentTheme: "Video 1"
     property string primaryColor:   (allThemes[currentTheme] || allThemes["Video 1"]).primary
-    property string secondaryColor: (allThemes[currentTheme] || allThemes["Video 1"]).secondary
-    property string tertiaryColor:  (allThemes[currentTheme] || allThemes["Video 1"]).tertiary
     property string surfaceColor:   (allThemes[currentTheme] || allThemes["Video 1"]).surface
-    property string accentColor:    (allThemes[currentTheme] || allThemes["Video 1"]).accent
+    // Two colours only, like a deck's on-screen display: everything is drawn in
+    // the theme's primary colour on its surface colour. A selection is a solid
+    // box with its text in the surface colour, and anything dimmed is dithered
+    // (Components/Dither) rather than faded. The themes' other three colours
+    // stay in their definitions, unused.
+    property string secondaryColor: primaryColor
+    property string tertiaryColor:  primaryColor
+    property string accentColor:    primaryColor
 
     readonly property real sw: width
     readonly property real sh: height

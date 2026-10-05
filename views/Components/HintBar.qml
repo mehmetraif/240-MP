@@ -2,17 +2,31 @@ import QtQuick
 
 // The footer every view carries: its hint line in the background colour on a
 // solid bar across the screen's safe width, the way a deck's menu ends with
-// "SELECT WITH (▲▼) AND (OK)". It is a Text, so a view sets its text, font and
-// anchors exactly as on one.
+// "SELECT WITH (▲▼) AND (OK)". It is a Text, so a view sets its text and anchors
+// exactly as on one; the bar keeps its own font size, a size a CRT reads, and
+// steps it down only as far as a long hint line needs to fit the safe width.
 Text {
-    // The safe width, or more for a hint line longer than that, which runs on
-    // into the gutter as the plain footers did.
-    width: Math.max(root.sw * 0.75, implicitWidth) //480
+    id: hint
+
+    readonly property real largest: root.sh * 0.0375 //18
+    readonly property real smallest: root.sh * 0.0291667 //14
+
+    width: root.sw * 0.75 //480
     color: root.surfaceColor
+    font.family: root.globalFont
+    font.pixelSize: Math.max(smallest, Math.min(largest,
+        Math.floor(largest * (width - leftPadding - rightPadding) / Math.max(1, probe.advanceWidth(text)))))
+    elide: Text.ElideRight
     leftPadding: root.sw * 0.0125 //8
     rightPadding: root.sw * 0.0125 //8
     topPadding: root.px
     bottomPadding: root.px
+
+    FontMetrics {
+        id: probe
+        font.family: root.globalFont
+        font.pixelSize: hint.largest
+    }
 
     Rectangle {
         z: -1

@@ -560,11 +560,18 @@ It is drawn as a solid title bar in the theme's text colour, with the icon, titl
 
 ### VCR OSD elements
 
-Pixel-drawn pieces of a deck's on-screen menu, built on `root.px` (one pixel of a 240-line picture, `sh / 240`) so their edges stay crisp at any screen size. They draw in two colours: the theme's text colour, and the background showing through.
+The UI keeps to two colours, like a deck's on-screen display: the theme's `primary` on its `surface`. `Main.qml` maps `secondaryColor`, `tertiaryColor` and `accentColor` to `primaryColor`, so existing views follow without change. Within that:
+
+- a selection is a solid box with its text in `surfaceColor`;
+- anything dimmed is dithered with `Dither` instead of given a lower opacity;
+- a box that used to be tinted is outlined (`border.width: root.px`).
+
+Pixel-drawn pieces of a deck's on-screen menu, built on `root.px` (one pixel of a 240-line picture, `sh / 240`) so their edges stay crisp at any screen size:
 
 | Component | What it draws |
 |---|---|
-| `HintBar` | The footer hint line on a solid bar. It is a `Text`, so a view sets `text`, `font.*` and anchors exactly as on one. Every view's footer uses it. |
+| `HintBar` | The footer hint line on a solid bar. It is a `Text`, so a view sets `text` and anchors exactly as on one. It owns its font size, steps it down only as far as a long hint needs to fit the safe width, and every view's footer uses it. |
+| `Dither` | A checkerboard of background-colour art pixels laid over an area: the two-colour way to dim it. |
 | `PixelIcon` | A symbol from a small bitmap: `play`, `left`, `up`, `down`, `ff`, `rew`, `pause`, `stop`, `rec`, `eject`, plus the `ok` key and `tape` badges. |
 | `OsdTicks` | The segment bar, `||||----`: a tick per filled step and a dash per empty one. The boot screen's progress bar. |
 | `OsdBar` | The VOLUME bar: an outline with a solid fill inside. |

@@ -139,7 +139,6 @@ Item {
                     anchors.bottom: parent.bottom
                     width: Math.max(1, root.sh * 0.003125) //2
                     color: root.tertiaryColor
-                    opacity: 0.5
                     visible: index < screen.days.length - 1
                 }
             }

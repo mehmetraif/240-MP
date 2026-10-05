@@ -10,3 +10,4 @@ OsdSlider OsdSlider.qml
 OsdTapeBar OsdTapeBar.qml
 OsdTicks OsdTicks.qml
 PixelIcon PixelIcon.qml
+Dither Dither.qml

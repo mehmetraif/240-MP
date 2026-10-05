@@ -23,8 +23,8 @@ Item {
     property real progress: 0
     property bool running: visible
 
-    readonly property int gridWidth: 96
-    readonly property int gridHeight: 56
+    readonly property int gridWidth: 80
+    readonly property int gridHeight: 46
 
     width: gridWidth * pixelSize
     height: gridHeight * pixelSize
@@ -35,34 +35,34 @@ Item {
 
     // --- Geometry (grid cells, inclusive bounds) ---
     // The clear line that splits the top edge off the rest of the shell.
-    readonly property int lineY0: 8
-    readonly property int lineY1: 10
+    readonly property int lineY0: 7
+    readonly property int lineY1: 8
     // The label, and the rows and span of its three lines.
-    readonly property int labelX0: 28
-    readonly property int labelX1: 67
-    readonly property int labelY0: 23
-    readonly property int labelY1: 47
-    readonly property var labelLines: [29, 35, 41]
-    readonly property int labelLineX0: 32
-    readonly property int labelLineX1: 63
+    readonly property int labelX0: 23
+    readonly property int labelX1: 56
+    readonly property int labelY0: 19
+    readonly property int labelY1: 39
+    readonly property var labelLines: [24, 29, 34]
+    readonly property int labelLineX0: 27
+    readonly property int labelLineX1: 52
     // The tape shows level with the label, beyond a 2-cell gap on either side
-    // of it: columns 0..25 and 70..95. Only these two windows are repainted.
+    // of it: columns 0..20 and 59..79. Only these two windows are repainted.
     readonly property int windowWidth: labelX0 - 2
     readonly property int windowHeight: labelY1 - labelY0 + 1
     // Reel centres sit on the label's edges, so the gap and the label hide
     // the inner half of each reel, as on the icon.
-    readonly property real leftReelX: 27
+    readonly property real leftReelX: 22
     readonly property real rightReelX: gridWidth - leftReelX
     readonly property real reelY: (labelY0 + labelY1 + 1) / 2
     // Radii that rest on screen are kept off half-integers: those leave a
     // one-cell nub on the circle's outer edge.
-    readonly property real hubRadius: 8.3
-    readonly property real toothRadius: 5.5
-    readonly property real emptyRadius: 10   // a reel never shows bare hub
-    readonly property real fullRadius: 23.4
+    readonly property real hubRadius: 6.9
+    readonly property real toothRadius: 4.6
+    readonly property real emptyRadius: 8.3   // a reel never shows bare hub
+    readonly property real fullRadius: 19.4
     // Linear tape speed in grid cells per second; each reel's angular speed is
     // this over its current tape radius.
-    readonly property real tapeSpeed: 24
+    readonly property real tapeSpeed: 20
 
     // Tape radius on each reel for the current progress. The tape's area is
     // conserved, so the radii follow the square root, not a straight line.

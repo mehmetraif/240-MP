@@ -116,8 +116,9 @@ FocusScope {
         // holds the LAST run's, and showing that under a "could not start" error
         // would be actively misleading.
         visible: consoleRoot.startError === ""
-        property color baseColor: root.primaryColor
-        color: Qt.rgba(baseColor.r, baseColor.g, baseColor.b, 0.1)
+        color: "transparent"
+        border.width: root.px
+        border.color: root.primaryColor
 
         Flickable {
             id: outputFlick

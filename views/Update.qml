@@ -197,8 +197,9 @@ FocusScope {
                 visible: updateRoot.releaseNotes !== ""
                 width: parent.width
                 height: root.sh * 0.3291667 //158
-                property color baseColor: root.primaryColor
-                color: Qt.rgba(baseColor.r, baseColor.g, baseColor.b, 0.1)
+                color: "transparent"
+                border.width: root.px
+                border.color: root.primaryColor
 
                 Flickable {
                     id: notesFlick

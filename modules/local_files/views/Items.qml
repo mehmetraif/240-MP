@@ -295,50 +295,42 @@ FocusScope {
                 readonly property bool current: index === col.reach
                 readonly property bool cursor: current && col.role === "active"
                 readonly property string label: entry ? itemsRoot.displayName(entry) : ""
-                readonly property color textColor: {
-                    if (col.role === "preview") return root.tertiaryColor
-                    if (col.role === "path") return current ? root.primaryColor : root.tertiaryColor
-                    return current || (entry && entry.isFolder) ? root.primaryColor : root.secondaryColor
-                }
 
                 visible: entry !== undefined
                 width: col.width
                 height: itemsRoot.rowHeight
                 y: itemsRoot.spine - height / 2 + (index - col.reach + col.slide) * height
-                clip: cursor
+
+                // The cursor: the row in a solid box, its name in the
+                // background colour, as a deck's menu marks what is selected.
+                Rectangle {
+                    visible: row.cursor
+                    x: -itemsRoot.pad
+                    width: Math.min(labelText.implicitWidth, row.width) + 2 * itemsRoot.pad
+                    height: row.height
+                    color: root.primaryColor
+                    antialiasing: false
+                }
 
                 Item {
-                    id: slider
-                    height: parent.height
+                    width: row.width
+                    height: row.height
+                    clip: row.cursor
 
-                    // The cursor: a block behind the first letter, which turns
-                    // to the background colour on it.
-                    Rectangle {
-                        visible: row.cursor
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: itemsRoot.textWidth(row.label.charAt(0))
-                        height: itemsRoot.fontSize * 1.1
-                        color: root.accentColor
-                    }
-                    Text {
-                        id: labelText
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: row.cursor ? implicitWidth : row.width
-                        text: row.label
-                        elide: row.cursor ? Text.ElideNone : Text.ElideRight
-                        color: row.textColor
-                        font.family: root.globalFont
-                        font.capitalization: Font.AllUppercase
-                        font.pixelSize: itemsRoot.fontSize
-                    }
-                    Text {
-                        visible: row.cursor
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: row.label.charAt(0)
-                        color: root.surfaceColor
-                        font.family: root.globalFont
-                        font.capitalization: Font.AllUppercase
-                        font.pixelSize: itemsRoot.fontSize
+                    Item {
+                        id: slider
+                        height: parent.height
+                        Text {
+                            id: labelText
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: row.cursor ? implicitWidth : row.width
+                            text: row.label
+                            elide: row.cursor ? Text.ElideNone : Text.ElideRight
+                            color: row.cursor ? root.surfaceColor : root.primaryColor
+                            font.family: root.globalFont
+                            font.capitalization: Font.AllUppercase
+                            font.pixelSize: itemsRoot.fontSize
+                        }
                     }
                 }
 
@@ -364,23 +356,52 @@ FocusScope {
             visible: col.folderPath !== "" && col.items.length === 0
             y: itemsRoot.spine - height / 2
             text: "(empty)"
-            color: root.tertiaryColor
+            color: root.primaryColor
             font.family: root.globalFont
             font.capitalization: Font.AllUppercase
             font.pixelSize: itemsRoot.fontSize
         }
 
-        // The line on from the cursor row: bright along the open folders, dim
-        // into the preview.
+        // Two colours only, so what is not on the way to the cursor is dithered
+        // rather than dimmed: a path column's other entries, and all of the
+        // preview.
+        Dither {
+            visible: col.role === "path" && !col.collapsed
+            width: col.width
+            height: itemsRoot.spine - itemsRoot.rowHeight / 2
+        }
+        Dither {
+            visible: col.role === "path" && !col.collapsed
+            y: itemsRoot.spine + itemsRoot.rowHeight / 2
+            width: col.width
+            height: Math.max(0, col.height - y)
+        }
+        Dither {
+            visible: col.role === "preview"
+            width: col.width
+            height: col.height
+        }
+
+        // The line on from the cursor row: solid along the open folders,
+        // dotted into the preview.
         Rectangle {
+            id: lead
             readonly property real start: col.collapsed ? 0
+                : col.role === "active" ? Math.min(col.width, itemsRoot.textWidth(col.cursorLabel)) + 2 * itemsRoot.pad
                 : Math.min(col.width, itemsRoot.textWidth(col.cursorLabel)) + itemsRoot.pad
             visible: col.leadsOn && col.items.length > 0
             x: start
             y: itemsRoot.spine - height / 2
             width: Math.max(0, col.width + itemsRoot.gap - (col.joinsNext ? 0 : itemsRoot.pad) - start)
             height: itemsRoot.lineWidth
-            color: col.role === "path" ? root.accentColor : root.tertiaryColor
+            color: root.primaryColor
+        }
+        Dither {
+            visible: lead.visible && col.role === "active"
+            x: lead.x
+            y: lead.y
+            width: lead.width
+            height: lead.height
         }
     }
 
@@ -477,11 +498,9 @@ FocusScope {
     HintBar {
         id: footer
         text: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE " + root.hints.select + ":SELECT"
-        font.family: root.globalFont
         anchors.bottom: parent.bottom
         anchors.left: parent.left
         anchors.bottomMargin: root.sh * 0.1041667 //50
         anchors.leftMargin: root.sw * 0.125 //80
-        font.pixelSize: root.sh * 0.0333333 //16
     }
 }

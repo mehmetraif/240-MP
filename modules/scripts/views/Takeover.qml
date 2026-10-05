@@ -166,8 +166,9 @@ FocusScope {
         // As in Console.qml: a script that never started has no output of its own,
         // so don't show the previous run's under a "could not start" error.
         visible: takeoverRoot.startError === "" && scriptsBackend.consoleOutput !== ""
-        property color baseColor: root.primaryColor
-        color: Qt.rgba(baseColor.r, baseColor.g, baseColor.b, 0.1)
+        color: "transparent"
+        border.width: root.px
+        border.color: root.primaryColor
 
         Flickable {
             id: outputFlick

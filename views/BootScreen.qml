@@ -20,6 +20,25 @@ FocusScope {
 
     readonly property int unit: cassette.pixelSize
 
+    // The text runs as wide as the cassette: the longest service line sets its
+    // size, kept within what a CRT reads comfortably.
+    FontMetrics {
+        id: probe
+        font.family: root.globalFont
+        font.pixelSize: 100
+    }
+    readonly property string longestLine: {
+        var line = "[ OK ] READY"
+        for (var i = 0; i < root.bootSteps.length; ++i) {
+            var candidate = "[ OK ] " + root.bootSteps[i].label
+            if (candidate.length > line.length)
+                line = candidate
+        }
+        return line.toUpperCase()
+    }
+    readonly property real textSize: Math.max(root.sh * 0.0375, Math.min(root.sh * 0.0583333,
+        Math.floor(100 * cassette.width / probe.advanceWidth(longestLine))))
+
     // Cycles 0..3 for the "..." after whatever is starting.
     property int dots: 0
     Timer {
@@ -36,15 +55,6 @@ FocusScope {
         case "skipped": return "[ -- ]"
         case "running": return "[" + [" .  ", " .. ", " ...", "    "][bootRoot.dots] + "]"
         default:        return "[    ]"
-        }
-    }
-
-    function markerColor(state) {
-        switch (state) {
-        case "done":    return root.primaryColor
-        case "running":
-        case "failed":  return root.accentColor
-        default:        return root.tertiaryColor
         }
     }
 
@@ -84,62 +94,73 @@ FocusScope {
 
     VhsCassette {
         id: cassette
-        // Roughly a third of the screen height, in whole art pixels.
-        pixelSize: Math.max(1, Math.floor(root.sh * 0.36 / gridHeight))
+        // Under a third of the screen height, in whole art pixels.
+        pixelSize: Math.max(1, Math.floor(root.sh * 0.3 / gridHeight))
         ink: root.primaryColor
         x: Math.round((root.sw - width) / 2)
-        y: Math.round(root.sh * 0.16)
+        y: Math.round(root.sh * 0.14)
         progress: bootRoot.shownProgress
     }
 
-    // The deck's segment bar in the cassette's own pixel grid: 24 steps of 4
-    // art pixels span the cassette's 96-pixel width exactly.
+    // The deck's segment bar in the cassette's own pixel grid: 20 steps of 4
+    // art pixels span the cassette's 80-pixel width exactly.
     OsdTicks {
         id: bar
         x: cassette.x
-        y: cassette.y + cassette.height + bootRoot.unit * 7
+        y: cassette.y + cassette.height + bootRoot.unit * 5
         width: cassette.width
         height: bootRoot.unit * 4
         pixel: bootRoot.unit
-        segments: 24
+        segments: 20
         value: bootRoot.shownProgress
     }
 
     Text {
         id: status
         anchors.left: bar.left
-        y: bar.y + bar.height + bootRoot.unit * 4
-        text: root.bootLabel !== "" ? "LOADING " + root.bootLabel + "...".substr(0, bootRoot.dots) : "READY"
+        y: bar.y + bar.height + bootRoot.unit * 3
+        text: root.bootLabel !== "" ? "LOADING" + "...".substr(0, bootRoot.dots) : "READY"
         color: root.primaryColor
         font.family: root.globalFont
-        font.capitalization: Font.AllUppercase
-        font.pixelSize: root.sh * 0.0333333 //16
+        font.pixelSize: bootRoot.textSize
     }
 
     Text {
         anchors.right: bar.right
         anchors.baseline: status.baseline
         text: Math.round(bootRoot.shownProgress * 100) + "%"
-        color: root.accentColor
+        color: root.primaryColor
         font.family: root.globalFont
-        font.pixelSize: root.sh * 0.0333333 //16
+        font.pixelSize: bootRoot.textSize
     }
 
-    // One line per service, in the order the image starts them.
+    // One line per service, in the order the image starts them; the one
+    // starting now is inverted, like a deck's menu marks what is selected.
     Column {
         anchors.left: bar.left
         anchors.top: status.bottom
-        anchors.topMargin: bootRoot.unit * 3
-        spacing: root.sh * 0.004
+        anchors.topMargin: bootRoot.unit * 2
 
         Repeater {
             model: root.bootSteps
-            Text {
-                text: bootRoot.marker(modelData.state) + " " + modelData.label
-                color: bootRoot.markerColor(modelData.state)
-                font.family: root.globalFont
-                font.capitalization: Font.AllUppercase
-                font.pixelSize: root.sh * 0.0291667 //14
+            Item {
+                readonly property bool starting: modelData.state === "running"
+                width: line.implicitWidth
+                height: line.implicitHeight
+                Rectangle {
+                    anchors.fill: parent
+                    visible: parent.starting
+                    color: root.primaryColor
+                    antialiasing: false
+                }
+                Text {
+                    id: line
+                    text: bootRoot.marker(modelData.state) + " " + modelData.label
+                    color: parent.starting ? root.surfaceColor : root.primaryColor
+                    font.family: root.globalFont
+                    font.capitalization: Font.AllUppercase
+                    font.pixelSize: bootRoot.textSize
+                }
             }
         }
     }
@@ -150,7 +171,5 @@ FocusScope {
         anchors.bottom: parent.bottom
         anchors.bottomMargin: root.sh * 0.1041667 //50
         text: root.hints.select + ":SKIP"
-        font.family: root.globalFont
-        font.pixelSize: root.sh * 0.0333333 //16
     }
 }

@@ -58,11 +58,13 @@ FocusScope {
                     anchors.fill: statusIndicatorImage
                     source: statusIndicatorImage
                     colorization: 1.0
-                    colorizationColor: nfcReaderBackend.cardState === "matched" ? root.accentColor : root.primaryColor
-                    opacity: !nfcReaderBackend.readerConnected ? 0.2
-                        : nfcReaderBackend.cardState === "matched" ? 0.8
-                        : nfcReaderBackend.cardState === "unmatched" ? 0.2
-                        : 0.5
+                    colorizationColor: root.primaryColor
+                }
+                // No reader, or a card it doesn't know: the icon is dithered,
+                // the two-colour stand-in for the faded look it used to have.
+                Dither {
+                    anchors.fill: statusIndicatorImage
+                    visible: !nfcReaderBackend.readerConnected || nfcReaderBackend.cardState === "unmatched"
                 }
             }
 
@@ -172,11 +174,9 @@ FocusScope {
     HintBar {
         id: footer
         text: root.hints.back + ":BACK"
-        font.family: root.globalFont
         anchors.bottom: parent.bottom
         anchors.left: parent.left
         anchors.bottomMargin: root.sh * 0.1041667
         anchors.leftMargin: root.sw * 0.125
-        font.pixelSize: root.sh * 0.0333333
     }
 }
