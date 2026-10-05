@@ -216,11 +216,10 @@ FocusScope {
     }
 
     // Footer
-    Text {
+    HintBar {
         id: footer
         text: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE " + root.hints.select + ":SELECT"
               + (browseRoot.canSwitchServer ? " " + root.hints.change + ":SERVER" : "")
-        color: root.tertiaryColor
         font.family: root.globalFont
         anchors.bottom: parent.bottom
         anchors.left: parent.left

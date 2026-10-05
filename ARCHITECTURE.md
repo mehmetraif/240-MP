@@ -46,7 +46,7 @@ The guiding idea: **browse structured content, then hand off to the right tool f
     ModuleList.qml
     Settings.qml
     ...
-    Components/                     # shared QML components (AppBar, ChoiceOverlay, qmldir)
+    Components/                     # shared QML components (AppBar, HintBar, the Osd* elements, ChoiceOverlay, qmldir)
     BootScreen.qml                  # boot screen of the 240-MP OS image (see os/README.md)
   Main.qml                          # app root
   CMakeLists.txt
@@ -556,7 +556,21 @@ Shared QML components live in `views/Components/` (registered via `qmldir`, impo
 | `title` | `string` | Module name — use `moduleRoot.moduleName` |
 | `subtitle` | `string` | Optional context label (hidden when empty) |
 
-The icon is automatically colorized to the app accent color
+It is drawn as a solid title bar in the theme's text colour, with the icon, title and subtitle in the background colour, the way a deck's on-screen menu starts.
+
+### VCR OSD elements
+
+Pixel-drawn pieces of a deck's on-screen menu, built on `root.px` (one pixel of a 240-line picture, `sh / 240`) so their edges stay crisp at any screen size. They draw in two colours: the theme's text colour, and the background showing through.
+
+| Component | What it draws |
+|---|---|
+| `HintBar` | The footer hint line on a solid bar. It is a `Text`, so a view sets `text`, `font.*` and anchors exactly as on one. Every view's footer uses it. |
+| `PixelIcon` | A symbol from a small bitmap: `play`, `left`, `up`, `down`, `ff`, `rew`, `pause`, `stop`, `rec`, `eject`, plus the `ok` key and `tape` badges. |
+| `OsdTicks` | The segment bar, `||||----`: a tick per filled step and a dash per empty one. The boot screen's progress bar. |
+| `OsdBar` | The VOLUME bar: an outline with a solid fill inside. |
+| `OsdSlider` | The TRACKING slider: a double outline with a mark that moves out from the middle. |
+| `OsdChoices` | A row of settings like `SP EP SLP`, with the one in force inverted. |
+| `OsdTapeBar` | The tape position bar: a ▼ over the position, a ruled bar filled up to it, and BEGIN and END under its ends. |
 
 ### ChoiceOverlay (`views/Components/ChoiceOverlay.qml`)
 

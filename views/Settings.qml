@@ -233,7 +233,8 @@ FocusScope {
         anchors.topMargin: root.sh * 0.125 //60
         anchors.rightMargin: root.sw * 0.125 //80
         font.pixelSize: root.sh * 0.0291667 //14
-        color: root.tertiaryColor
+        // On the title bar, so in the bar's text colour.
+        color: root.surfaceColor
         font.family: root.globalFont
         font.capitalization: Font.AllUppercase
         topPadding: root.sh * 0.0125 //6
@@ -418,8 +419,10 @@ FocusScope {
         id: rowHelpBackground
         property var currentRow: settingsRoot.settingsItems[settingsList.currentIndex]
         visible: !!(currentRow && currentRow.description)
-        property color baseColor: root.primaryColor
-        color: Qt.rgba(baseColor.r, baseColor.g, baseColor.b, 0.2)
+        // Outlined rather than tinted: the OSD keeps to two colours.
+        color: "transparent"
+        border.width: root.px
+        border.color: root.primaryColor
         anchors.bottom: parent.bottom
         anchors.left: parent.left
         anchors.bottomMargin: root.sh * 0.1583333 //76
@@ -442,10 +445,9 @@ FocusScope {
     }
 
     // --- FOOTER ---
-    Text {
+    HintBar {
         id: footer
         text: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE " + root.hints.change + ":CHANGE " + root.hints.select + ":SELECT"
-        color: root.tertiaryColor
         font.family: root.globalFont
         anchors.bottom: parent.bottom
         anchors.left: parent.left

@@ -346,8 +346,10 @@ FocusScope {
         id: rowHelpBackground
         property var currentRow: moduleSettingsRoot.schemaItems[settingsList.currentIndex]
         visible: !!(currentRow && currentRow.description)
-        property color baseColor: root.primaryColor
-        color: Qt.rgba(baseColor.r, baseColor.g, baseColor.b, 0.2)
+        // Outlined rather than tinted: the OSD keeps to two colours.
+        color: "transparent"
+        border.width: root.px
+        border.color: root.primaryColor
         anchors.bottom: parent.bottom
         anchors.left: parent.left
         anchors.bottomMargin: root.sh * 0.1583333 //76
@@ -370,10 +372,9 @@ FocusScope {
     }
 
     // --- FOOTER ---
-    Text {
+    HintBar {
         id: footer
         text: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE " + root.hints.change + ":CHANGE " + root.hints.select + ":SELECT"
-        color: root.tertiaryColor
         font.family: root.globalFont
         anchors.bottom: parent.bottom
         anchors.left: parent.left

@@ -90,6 +90,9 @@ Window {
 
     readonly property real sw: width
     readonly property real sh: height
+    // One pixel of a 240-line picture, in screen pixels: the unit the
+    // pixel-drawn OSD elements (Components/Osd*, PixelIcon) are built on.
+    readonly property int px: Math.max(1, Math.floor(sh / 240))
 
     Connections {
         target: appCore

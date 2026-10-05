@@ -64,13 +64,22 @@ FocusScope {
 
     // The deck's own on-screen display while a tape plays, inside the same
     // overscan-safe gutter as every other view.
-    Text {
-        text: "PLAY ▶"
-        color: root.primaryColor
-        font.family: root.globalFont
-        font.pixelSize: root.sh * 0.0416667 //20
+    Row {
         x: root.sw * 0.125 //80
         y: root.sh * 0.125 //60
+        spacing: root.sw * 0.0125 //8
+        Text {
+            id: playLabel
+            text: "PLAY"
+            color: root.primaryColor
+            font.family: root.globalFont
+            font.pixelSize: root.sh * 0.0416667 //20
+        }
+        PixelIcon {
+            name: "play"
+            color: root.primaryColor
+            anchors.verticalCenter: playLabel.verticalCenter
+        }
     }
 
     VhsCassette {
@@ -83,26 +92,17 @@ FocusScope {
         progress: bootRoot.shownProgress
     }
 
-    // Segmented bar in the cassette's own pixel grid: 24 blocks of 3 art
-    // pixels with a 1-pixel gap span the cassette's 96-pixel width exactly.
-    Item {
+    // The deck's segment bar in the cassette's own pixel grid: 24 steps of 4
+    // art pixels span the cassette's 96-pixel width exactly.
+    OsdTicks {
         id: bar
-        readonly property int segments: 24
         x: cassette.x
         y: cassette.y + cassette.height + bootRoot.unit * 7
         width: cassette.width
-        height: bootRoot.unit * 3
-
-        Repeater {
-            model: bar.segments
-            Rectangle {
-                x: index * bootRoot.unit * 4
-                width: bootRoot.unit * 3
-                height: bar.height
-                antialiasing: false
-                color: index < Math.round(bootRoot.shownProgress * bar.segments) ? root.accentColor : root.tertiaryColor
-            }
-        }
+        height: bootRoot.unit * 4
+        pixel: bootRoot.unit
+        segments: 24
+        value: bootRoot.shownProgress
     }
 
     Text {
@@ -144,13 +144,12 @@ FocusScope {
         }
     }
 
-    Text {
+    HintBar {
         anchors.left: parent.left
         anchors.leftMargin: root.sw * 0.125 //80
         anchors.bottom: parent.bottom
         anchors.bottomMargin: root.sh * 0.1041667 //50
         text: root.hints.select + ":SKIP"
-        color: root.tertiaryColor
         font.family: root.globalFont
         font.pixelSize: root.sh * 0.0333333 //16
     }
