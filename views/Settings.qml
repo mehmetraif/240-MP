@@ -16,17 +16,6 @@ FocusScope {
     // Flat model: mix of section headers and rows
     property var settingsItems: []
 
-    // Every value starts in one column, two cells past the longest label that
-    // has one, the way a camcorder's menu lines them up.
-    readonly property int valueColumn: {
-        var cells = 0
-        for (var i = 0; i < settingsItems.length; i++) {
-            if (settingsItems[i].type === "list_single")
-                cells = Math.max(cells, (settingsItems[i].label || "").length)
-        }
-        return cells + 2
-    }
-
     property bool quitOverlayVisible: false
     property int quitChoiceIndex: 0
 
@@ -365,7 +354,6 @@ FocusScope {
                 anchors.fill: parent
                 label: modelData.label || ""
                 value: modelData.type === "list_single" ? (modelData.value || "") : ""
-                valueColumn: settingsRoot.valueColumn
                 selected: settingsList.currentIndex === index
             }
         }

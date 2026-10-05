@@ -61,17 +61,6 @@ FocusScope {
         return item.type === "toggle" || item.type === "list_single" || item.type === "directory_browser"
     }
 
-    // Every value starts in one column, two cells past the longest label that
-    // has one, the way a camcorder's menu lines them up.
-    readonly property int valueColumn: {
-        var cells = 0
-        for (var i = 0; i < schemaItems.length; i++) {
-            if (hasValue(schemaItems[i]))
-                cells = Math.max(cells, (schemaItems[i].label || "").length)
-        }
-        return cells + 2
-    }
-
     function currentDisplayValue(item) {
         var key = item.key
         var type = item.type
@@ -267,7 +256,6 @@ FocusScope {
             label: modelData.label || ""
             value: moduleSettingsRoot.hasValue(modelData)
                 ? moduleSettingsRoot.currentDisplayValue(modelData) : ""
-            valueColumn: moduleSettingsRoot.valueColumn
             selected: settingsList.currentIndex === index
         }
     }

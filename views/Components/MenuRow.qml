@@ -1,9 +1,9 @@
 import QtQuick
 
 // One line of a settings menu, laid out the way a camcorder's on-screen menu
-// does it: the label, a run of dots, then the value, "DISPLAY······ON".
-// Everything sits on the font's character grid, one dot per cell, and a menu
-// starts all its values in one column, so the dots meet them exactly. The
+// does it: the label, a run of dots, then the value, "DISPLAY······ON", with
+// the value against the line's right end. Everything sits on the font's
+// character grid, one dot per cell, so the dots meet the value exactly. The
 // selected line is a solid bar with its text in the background colour. A line
 // without a value (a submenu) is just its label.
 Item {
@@ -13,11 +13,6 @@ Item {
     // "" for a line with no value.
     property string value: ""
     property bool selected: false
-    // The cell the values start at. A menu gives all its lines the same one,
-    // two cells past its longest label, so the values line up and the longest
-    // label gets two dots; a label too long for it pushes its own value on.
-    // Left at 0, a line puts its value two cells after its label.
-    property int valueColumn: 0
     property real fontSize: root.sh * 0.05 //24
 
     readonly property color ink: selected ? root.surfaceColor : root.primaryColor
@@ -29,7 +24,11 @@ Item {
     // By the label's drawn width, so a letter from the fallback font, which is
     // not one cell wide, still leaves the dots on the grid and clear of it.
     readonly property int labelCells: Math.ceil(labelText.implicitWidth / cell - 0.01)
-    readonly property int valueCell: Math.max(valueColumn, labelCells + 2)
+    // The value ends on the line's last whole cell. One too long for the line
+    // starts two dots after the label instead, and is cut short there.
+    readonly property int lineCells: Math.floor((width - 2 * pad) / cell)
+    readonly property int valueCells: Math.ceil(valueText.implicitWidth / cell - 0.01)
+    readonly property int valueCell: Math.max(labelCells + 2, lineCells - valueCells)
     // How far above the baseline the middle of a capital is: VCR OSD Mono's
     // capitals stand from 100 to 1500 of its 2048 units, and its hyphen sits
     // at their middle, 800.
@@ -81,7 +80,7 @@ Item {
         id: valueClip
         visible: menuRow.value !== ""
         x: menuRow.pad + menuRow.valueCell * menuRow.cell
-        width: Math.max(0, menuRow.width - x - menuRow.pad)
+        width: Math.max(0, menuRow.lineCells - menuRow.valueCell) * menuRow.cell
         height: parent.height
         clip: true
 
