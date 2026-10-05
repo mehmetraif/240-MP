@@ -4,8 +4,8 @@ import Components
 // Local Files browser, laid out as a horizontal tree. The folders on the way to
 // the current one run left to right along a line through the middle of the
 // screen (the spine). Each folder's contents are stacked above and below the
-// item that leads on, and the folder under the cursor is previewed, dimmed, to
-// the right of it before it is opened.
+// item that leads on, and the folder under the cursor is previewed to the right
+// of it, on a dotted line, before it is opened.
 //
 // Up/down move within the current folder, right (or select) opens a folder,
 // left (or back) returns to its parent, and select on a file plays it. The
@@ -360,26 +360,6 @@ FocusScope {
             font.family: root.globalFont
             font.capitalization: Font.AllUppercase
             font.pixelSize: itemsRoot.fontSize
-        }
-
-        // Two colours only, so what is not on the way to the cursor is dithered
-        // rather than dimmed: a path column's other entries, and all of the
-        // preview.
-        Dither {
-            visible: col.role === "path" && !col.collapsed
-            width: col.width
-            height: itemsRoot.spine - itemsRoot.rowHeight / 2
-        }
-        Dither {
-            visible: col.role === "path" && !col.collapsed
-            y: itemsRoot.spine + itemsRoot.rowHeight / 2
-            width: col.width
-            height: Math.max(0, col.height - y)
-        }
-        Dither {
-            visible: col.role === "preview"
-            width: col.width
-            height: col.height
         }
 
         // The line on from the cursor row: solid along the open folders,

@@ -27,7 +27,7 @@ Window {
             "primary": "#FFFFFF",
             "secondary": "#C2BFE4",
             "tertiary": "#8480C9",
-            "surface": "#0A0094",
+            "surface": "#0110C5", // the blue of a VCR's on-screen menu
             "accent": "#AECFFF"
         },
         "Late Night": {
