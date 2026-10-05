@@ -58,7 +58,7 @@ Watch on YouTube: https://youtu.be/r-gylGDoELY
 ### Local Files ([Wiki](https://github.com/anthonycaccese/240-MP/wiki/Module:-Local-Files))
 - Supported file types: `"mp4", "mkv", "avi", "mov", "m4v", "webm", "wmv", "flv", "f4v", "mpg", "mpeg", "vob"`
 - Playlist support using `m3u` and `m3u8` files
-- Folder browsing as a horizontal tree: the open folders run along a line across the screen, and the folder under the cursor is previewed beside it
+- Folder browsing as a horizontal tree: the open folders run along a line across the screen, every folder in the current one branches off to a few of its own entries, and the folder under the cursor branches once more
 - Loop playback
 - Shuffle playback
 - Playback history

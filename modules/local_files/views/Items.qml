@@ -4,8 +4,9 @@ import Components
 // Local Files browser, laid out as a horizontal tree. The folders on the way to
 // the current one run left to right along a line through the middle of the
 // screen (the spine). Each folder's contents are stacked above and below the
-// item that leads on, and the folder under the cursor is previewed to the right
-// of it, on a dotted line, before it is opened.
+// item that leads on. Every folder in the current one branches off to the
+// right, on a dotted line to a few of its own entries, and the folder under
+// the cursor branches once more, from each folder in it.
 //
 // Up/down move within the current folder, right (or select) opens a folder,
 // left (or back) returns to its parent, and select on a file plays it. The
@@ -39,27 +40,39 @@ FocusScope {
     readonly property real maxColumnWidth: root.sw * 0.34375 //220
     readonly property real leftEdge: root.sw * 0.125 //80
     readonly property real rightEdge: root.sw * 0.875 //560
-    // How much of the preview stays on screen when the columns run out of room.
-    readonly property real previewPeek: root.sw * 0.15 //96
     readonly property real treeTop: root.sh * 0.2083333 //100
     readonly property real treeBottom: root.sh * 0.8333333 //400
     // The spine, in tree-area coordinates.
     readonly property real spine: Math.round((treeBottom - treeTop) / 2)
+    // Branches: the gap before each level leaves room for the lanes their
+    // lines turn in, one a line's width apart from the next.
+    readonly property real branchGap: root.sw * 0.0625 //40
+    readonly property real laneStep: 2 * lineWidth
+    readonly property real blockGap: Math.round(rowHeight / 2)
+    // Entries a branch shows: a window around the remembered row for the folder
+    // under the cursor, the first few for the others.
+    readonly property int anchorRows: 5
+    readonly property int branchRows: 3
 
     // --- Tree state ---
     // The open folders, root first; the last one holds the cursor.
     // Roles: path, sel (the row the spine runs through).
     ListModel { id: trail }
     readonly property int active: trail.count - 1
-    // The folder under the cursor, previewed after the open ones ("" for none).
-    property string previewPath: ""
     // Each folder is listed once per visit of this view.
     property var listings: ({})
     // Last cursor row per folder, so reopening one lands where it was left.
     property var remembered: ({})
-    // Left edge of each open folder's column, and of the preview after them.
+    // Left edge of each open folder's column.
     property var columnX: []
-    property real previewX: 0
+    // The branches off the current folder, in strip coordinates with y from the
+    // spine: blocks of entries { x, top, width, rows: [{ label }] }, the dotted
+    // lines to them { x0, y0, x1, y1, lane }, and how far right they reach.
+    property var blocks: []
+    property var wires: []
+    property real branchLeft: 0
+    property real branchRight: 0
+    property bool branched: false
     // Open folders left of this one are off to the left: their names are
     // hidden and the spine runs on through them from the screen's edge.
     property int firstShown: 0
@@ -109,11 +122,8 @@ FocusScope {
         return parts[parts.length - 1] || path
     }
 
-    // Places the columns side by side and slides the strip so the parent
-    // folder starts at the left edge, unless that would push the preview off
-    // the right; then the strip slides left, but never so far that the column
-    // with the cursor leaves the screen.
-    function relayout() {
+    // Places the columns side by side.
+    function placeColumns() {
         var xs = []
         var x = 0
         for (var i = 0; i < trail.count; ++i) {
@@ -121,24 +131,184 @@ FocusScope {
             x += listing(trail.get(i).path).width + gap
         }
         columnX = xs
-        previewX = x
-        var activeLeft = xs[active]
-        var activeRight = activeLeft + listing(trail.get(active).path).width
-        var want = leftEdge - (active > 0 ? xs[active - 1] : 0)
-        var room = rightEdge - (previewPath !== "" ? gap + previewPeek : 0) - activeRight
-        var stripX = Math.max(leftEdge - activeLeft, Math.min(want, room))
+    }
+
+    // Slides the strip so the parent folder starts at the left edge, unless
+    // that would push the branches off the right; then the strip slides left,
+    // but never so far that the column with the cursor leaves the screen. The
+    // branches come before the parent, which the spine still runs in from.
+    // Only opening and closing folders move it.
+    function placeStrip() {
+        var activeLeft = columnX[active]
+        var right = Math.max(activeLeft + listing(trail.get(active).path).width, branchRight)
+        var want = leftEdge - (active > 0 ? columnX[active - 1] : 0)
+        var stripX = Math.max(leftEdge - activeLeft, Math.min(want, rightEdge - right))
         strip.x = stripX
         // Only the parent stays named, and only while it is wholly on screen.
         firstShown = Math.max(0, active - 1)
-        if (active > 0 && xs[active - 1] + stripX < 0)
+        if (active > 0 && columnX[active - 1] + stripX < 0)
             firstShown = active
         folderName = active > 0 ? baseName(trail.get(active).path) : ""
     }
 
-    function updatePreview() {
-        var item = selectedItem()
-        previewPath = item && item.isFolder ? item.path : ""
-        relayout()
+    // A block of a folder's entries for a branch: a window of anchorRows
+    // around entry `around`, or with around < 0 its first few, the last of
+    // them "…" when there are more. null for an empty folder off the spine.
+    function blockFor(path, around) {
+        var items = listing(path).items
+        var rows = []
+        var offset = 0
+        if (items.length === 0) {
+            if (around < 0) return null
+            rows.push({ label: "(empty)" })
+        } else if (around >= 0) {
+            var r = Math.min(around, items.length - 1)
+            var first = Math.max(0, Math.min(r - Math.floor(anchorRows / 2), items.length - anchorRows))
+            for (var i = first; i < Math.min(items.length, first + anchorRows); ++i)
+                rows.push({ label: displayName(items[i]), item: items[i] })
+            offset = r - first
+        } else {
+            var shown = items.length > branchRows ? branchRows - 1 : items.length
+            for (var j = 0; j < shown; ++j)
+                rows.push({ label: displayName(items[j]), item: items[j] })
+            if (items.length > branchRows)
+                rows.push({ label: "\u2026" })
+        }
+        var w = 0
+        for (var k = 0; k < rows.length; ++k)
+            w = Math.max(w, textWidth(rows[k].label))
+        return { path: path, rows: rows, offset: offset, width: Math.min(maxColumnWidth, w) }
+    }
+
+    // One level of branches. parents: the folders it branches from, top to
+    // bottom, { path, y, end } with y the middle of the folder's row and end
+    // where a line can leave it. The one on the spine keeps its remembered
+    // entry on the spine; every other block grows away from the spine from
+    // its folder's row, as near to it as the block before it allows. A line
+    // that has to turn does it in a lane of its own, the farther from the
+    // spine the further left, so no two lines cross.
+    function branchLevel(parents, laneLeft, x) {
+        var level = { blocks: [], wires: [], width: 0, anchor: null }
+        var top = -rowHeight / 2
+        var bottom = rowHeight / 2
+        var above = []
+        var below = []
+        for (var i = 0; i < parents.length; ++i) {
+            var p = parents[i]
+            if (Math.abs(p.y) < 1) {
+                var a = blockFor(p.path, remembered[p.path] || 0)
+                a.top = -(a.offset + 0.5) * rowHeight
+                top = a.top
+                bottom = a.top + a.rows.length * rowHeight
+                level.anchor = a
+                level.blocks.push(a)
+                level.wires.push({ x0: p.end, y0: 0, x1: x - pad, y1: 0, lane: -1 })
+            } else if (p.y < 0) {
+                above.unshift(p)
+            } else {
+                below.push(p)
+            }
+        }
+        var sides = [{ list: above, up: true }, { list: below, up: false }]
+        for (var s = 0; s < sides.length; ++s) {
+            var limit = sides[s].up ? top - blockGap : bottom + blockGap
+            var turning = []
+            for (var j = 0; j < sides[s].list.length; ++j) {
+                var q = sides[s].list[j]
+                var b = blockFor(q.path, -1)
+                if (!b) continue
+                var h = b.rows.length * rowHeight
+                var target
+                if (sides[s].up) {
+                    b.top = Math.min(q.y + rowHeight / 2, limit) - h
+                    target = b.top + h - rowHeight / 2
+                } else {
+                    b.top = Math.max(q.y - rowHeight / 2, limit)
+                    target = b.top + rowHeight / 2
+                }
+                // A line ending on another entry's row would read as that
+                // entry's, so such a block moves half a row further out.
+                var phase = ((target % rowHeight) + rowHeight) % rowHeight
+                if (Math.abs(target - q.y) >= 1 && (phase < 1 || phase > rowHeight - 1)) {
+                    var shift = sides[s].up ? -rowHeight / 2 : rowHeight / 2
+                    b.top += shift
+                    target += shift
+                }
+                limit = sides[s].up ? b.top - blockGap : b.top + h + blockGap
+                level.blocks.push(b)
+                var wire = { x0: q.end, y0: q.y, x1: x - pad, y1: target, lane: -1 }
+                level.wires.push(wire)
+                if (Math.abs(target - q.y) >= 1)
+                    turning.push(wire)
+            }
+            // Nearest first in `turning`, so the farthest gets lane 0. The
+            // lanes stop a step short of the blocks; past that they share one.
+            var lastLane = Math.max(0, Math.floor((x - laneLeft - 2 * pad) / laneStep) - 1)
+            for (var t = 0; t < turning.length; ++t)
+                turning[t].lane = laneLeft + pad + Math.min(turning.length - 1 - t, lastLane) * laneStep
+        }
+        for (var m = 0; m < level.blocks.length; ++m) {
+            level.blocks[m].x = x
+            level.width = Math.max(level.width, level.blocks[m].width)
+        }
+        return level
+    }
+
+    // Lays out the branches off the folder with the cursor: one level from
+    // every folder in it that is near enough to show, and a second from each
+    // folder in the block under the cursor.
+    function layoutBranches() {
+        var col = trail.get(active)
+        var items = listing(col.path).items
+        var colX = columnX[active]
+        var colW = listing(col.path).width
+        var reach = Math.ceil(spine / rowHeight) + 1
+        var parents = []
+        for (var i = Math.max(0, col.sel - reach); i < Math.min(items.length, col.sel + reach + 1); ++i) {
+            if (!items[i].isFolder) continue
+            var name = Math.min(colW, textWidth(displayName(items[i])))
+            parents.push({
+                path: items[i].path,
+                y: (i - col.sel) * rowHeight,
+                // The cursor's box reaches a pad further than a name does.
+                end: colX + name + (i === col.sel ? 2 : 1) * pad
+            })
+        }
+        var x1 = colX + colW + branchGap
+        var first = branchLevel(parents, colX + colW, x1)
+        var all = first.blocks.slice()
+        var lines = first.wires.slice()
+        var right = first.blocks.length > 0 ? x1 + first.width : 0
+        var a = first.anchor
+        if (a) {
+            var x2 = x1 + first.width + branchGap
+            var next = []
+            for (var k = 0; k < a.rows.length; ++k) {
+                var entry = a.rows[k].item
+                if (!entry || !entry.isFolder) continue
+                next.push({
+                    path: entry.path,
+                    y: a.top + (k + 0.5) * rowHeight,
+                    end: x1 + Math.min(a.width, textWidth(a.rows[k].label)) + pad
+                })
+            }
+            var second = branchLevel(next, x1 + first.width, x2)
+            all = all.concat(second.blocks)
+            lines = lines.concat(second.wires)
+            if (second.blocks.length > 0)
+                right = x2 + second.width
+        }
+        branchLeft = colX
+        branchRight = right
+        blocks = all
+        wires = lines
+        branched = true
+    }
+
+    function clearBranches() {
+        branched = false
+        blocks = []
+        wires = []
     }
 
     function move(delta) {
@@ -148,27 +318,32 @@ FocusScope {
         var sel = (col.sel + delta + n) % n
         trail.setProperty(active, "sel", sel)
         remembered[col.path] = sel
-        // The old preview is wrong now; the new one follows once the cursor rests.
-        previewPath = ""
-        relayout()
-        previewTimer.restart()
+        // The branches are wrong now; new ones grow once the cursor rests.
+        clearBranches()
+        branchTimer.restart()
+    }
+
+    // After opening or closing a folder: the columns, its branches, and the
+    // strip slid to show them.
+    function relayout() {
+        branchTimer.stop()
+        placeColumns()
+        layoutBranches()
+        placeStrip()
     }
 
     function openFolder() {
         var item = selectedItem()
         if (!item || !item.isFolder) return false
-        previewTimer.stop()
         trail.append({ path: item.path, sel: remembered[item.path] || 0 })
-        updatePreview()
+        relayout()
         return true
     }
 
     function closeFolder() {
         if (active <= 0) return false
-        previewTimer.stop()
         trail.remove(active)
-        // The folder just left is under the cursor again, so it is the preview.
-        updatePreview()
+        relayout()
         return true
     }
 
@@ -197,9 +372,9 @@ FocusScope {
     }
 
     Timer {
-        id: previewTimer
+        id: branchTimer
         interval: 180
-        onTriggered: itemsRoot.updatePreview()
+        onTriggered: itemsRoot.layoutBranches()
     }
 
     Keys.onPressed: function(event) {
@@ -238,7 +413,7 @@ FocusScope {
 
         property string folderPath: ""
         property int cursorIndex: 0
-        // "path" (an open folder left of the cursor), "active" or "preview".
+        // "path" (an open folder left of the cursor) or "active".
         property string role: "path"
         // Whether a line runs on from the cursor row to the next column.
         property bool leadsOn: false
@@ -261,9 +436,8 @@ FocusScope {
             var delta = cursorIndex - lastIndex
             lastIndex = cursorIndex
             slideAnim.stop()
-            // One row at a time slides; a wrap-around just jumps, and so does a
-            // preview, whose cursor only moves when it shows another folder.
-            slide = Math.abs(delta) === 1 && role !== "preview" ? delta : 0
+            // One row at a time slides; a wrap-around just jumps.
+            slide = Math.abs(delta) === 1 ? delta : 0
             if (slide !== 0) slideAnim.start()
         }
         onFolderPathChanged: {
@@ -362,12 +536,9 @@ FocusScope {
             font.pixelSize: itemsRoot.fontSize
         }
 
-        // The line on from the cursor row: solid along the open folders,
-        // dotted into the preview.
+        // The spine on from the cursor row to the next open folder.
         Rectangle {
-            id: lead
             readonly property real start: col.collapsed ? 0
-                : col.role === "active" ? Math.min(col.width, itemsRoot.textWidth(col.cursorLabel)) + 2 * itemsRoot.pad
                 : Math.min(col.width, itemsRoot.textWidth(col.cursorLabel)) + itemsRoot.pad
             visible: col.leadsOn && col.items.length > 0
             x: start
@@ -375,13 +546,6 @@ FocusScope {
             width: Math.max(0, col.width + itemsRoot.gap - (col.joinsNext ? 0 : itemsRoot.pad) - start)
             height: itemsRoot.lineWidth
             color: root.primaryColor
-        }
-        Dither {
-            visible: lead.visible && col.role === "active"
-            x: lead.x
-            y: lead.y
-            width: lead.width
-            height: lead.height
         }
     }
 
@@ -451,18 +615,93 @@ FocusScope {
                     folderPath: path
                     cursorIndex: sel
                     role: index === itemsRoot.active ? "active" : "path"
-                    leadsOn: index < itemsRoot.active || itemsRoot.previewPath !== ""
+                    leadsOn: index < itemsRoot.active
                     collapsed: index < itemsRoot.firstShown
                     joinsNext: index + 1 < itemsRoot.firstShown
                 }
             }
 
-            TreeColumn {
-                visible: itemsRoot.previewPath !== ""
-                x: itemsRoot.previewX
-                folderPath: itemsRoot.previewPath
-                cursorIndex: itemsRoot.remembered[itemsRoot.previewPath] || 0
-                role: "preview"
+            // The branches off the current folder, grown in once the cursor rests.
+            Item {
+                id: branches
+                width: parent.width
+                height: parent.height
+                opacity: itemsRoot.branched ? 1 : 0
+                Behavior on opacity {
+                    enabled: itemsRoot.branched
+                    NumberAnimation { duration: 120 }
+                }
+
+                // Dotted lines, on a checkerboard of the line's width so every
+                // segment and corner falls on the same dots.
+                Canvas {
+                    id: wiresCanvas
+                    readonly property real cell: itemsRoot.lineWidth
+                    x: Math.floor(itemsRoot.branchLeft / cell) * cell
+                    width: Math.max(1, itemsRoot.branchRight - x)
+                    height: parent.height
+                    onPaint: {
+                        var ctx = getContext("2d")
+                        ctx.reset()
+                        ctx.fillStyle = root.primaryColor
+                        var c = cell
+                        var ox = x
+                        // Cell row 0 is the spine's own line.
+                        var oy = itemsRoot.spine - c / 2
+                        function dots(gx0, gx1, gy0, gy1) {
+                            for (var gx = Math.min(gx0, gx1); gx <= Math.max(gx0, gx1); ++gx)
+                                for (var gy = Math.min(gy0, gy1); gy <= Math.max(gy0, gy1); ++gy)
+                                    if ((gx + gy) % 2 === 0)
+                                        ctx.fillRect(gx * c - ox, gy * c + oy, c, c)
+                        }
+                        var ws = itemsRoot.wires
+                        for (var i = 0; i < ws.length; ++i) {
+                            var w = ws[i]
+                            var gy0 = Math.round(w.y0 / c)
+                            var gy1 = Math.round(w.y1 / c)
+                            var gx0 = Math.ceil(w.x0 / c)
+                            var gx1 = Math.floor(w.x1 / c) - 1
+                            if (w.lane < 0) {
+                                dots(gx0, gx1, gy0, gy0)
+                            } else {
+                                // On a dot where it leaves the folder's row.
+                                var gl = Math.round(w.lane / c)
+                                if ((gl + gy0) % 2 !== 0) gl += 1
+                                dots(gx0, gl, gy0, gy0)
+                                dots(gl, gl, gy0, gy1)
+                                dots(gl, gx1, gy1, gy1)
+                            }
+                        }
+                    }
+                    Connections {
+                        target: itemsRoot
+                        function onWiresChanged() { wiresCanvas.requestPaint() }
+                    }
+                }
+
+                Repeater {
+                    model: itemsRoot.blocks
+                    Column {
+                        required property var modelData
+                        x: modelData.x
+                        y: itemsRoot.spine + modelData.top
+                        Repeater {
+                            model: parent.modelData.rows
+                            Text {
+                                required property var modelData
+                                width: Math.min(implicitWidth, itemsRoot.maxColumnWidth)
+                                height: itemsRoot.rowHeight
+                                verticalAlignment: Text.AlignVCenter
+                                text: modelData.label
+                                elide: Text.ElideRight
+                                color: root.primaryColor
+                                font.family: root.globalFont
+                                font.capitalization: Font.AllUppercase
+                                font.pixelSize: itemsRoot.fontSize
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -470,7 +709,7 @@ FocusScope {
     Component.onCompleted: {
         restore(navListState.trail || [])
         rootEmpty = listing(rootPath).items.length === 0
-        updatePreview()
+        relayout()
         ready = true
     }
 
