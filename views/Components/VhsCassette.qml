@@ -1,14 +1,18 @@
 import QtQuick
 
-// Pixel-art VHS cassette with two reels turning behind the window. As
-// `progress` goes from 0 to 1 the tape winds off the left (supply) reel onto
-// the right (take-up) one, and each reel turns at the speed its tape radius
-// gives it: the full reel slowly, the nearly empty one fast, like a real deck.
+// Pixel-art VHS cassette, drawn after the flat two-tone cassette icon: a dark
+// shell with a light line under its top edge, a label with three lines in the
+// middle and, either side of it, the tape wound on a reel around a dark hub.
+// As `progress` goes from 0 to 1 the tape winds off the left (supply) reel onto
+// the right (take-up) one, so the left pack shrinks while the right one grows.
+// Each reel turns at the speed its tape radius gives it, the full reel slowly
+// and the nearly empty one fast, like a real deck.
 //
 // The art lives on a fixed gridWidth × gridHeight grid and every grid cell is
 // drawn as a pixelSize × pixelSize block, so the picture stays crisp at any
 // integer scale (and a single-pixel line never lands on one interlaced CRT
-// field). The shell is painted once; only the window is repainted per tick.
+// field). The shell and label are painted once; only the two reel windows are
+// repainted per tick.
 Item {
     id: cassette
 
@@ -24,45 +28,40 @@ Item {
     width: gridWidth * pixelSize
     height: gridHeight * pixelSize
 
-    // --- Palette ---
-    readonly property string shellBase:  "#1d1d22"
-    readonly property string shellHi:    "#4b4b55"
-    readonly property string shellLo:    "#0c0c0f"
-    readonly property string shellRidge: "#2e2e36"
-    readonly property string screw:      "#3a3a44"
-    readonly property string recess:     "#131317"
-    readonly property string label:      "#efe8d8"
-    readonly property string labelShade: "#cfc5ad"
-    readonly property string ink:        "#1d1d22"
-    readonly property var    stripes:    ["#e8452c", "#f39c1f", "#f7d038"]
-    readonly property string glass:      "#4a5160"
-    readonly property string glassHi:    "#5f6778"
-    readonly property string glare:      "rgba(255, 255, 255, 0.16)"
-    readonly property string tape:       "#2b1e17"
-    readonly property string tapeRing:   "#38281f"
-    readonly property string tapeEdge:   "#4a3529"
-    readonly property string tapeGlint:  "#7a5e4b"
-    readonly property string hub:        "#ebe7de"
-    readonly property string hubShade:   "#b9b3a6"
-    readonly property string hubNotch:   "#3b3b42"
-    readonly property string hubHole:    "#141418"
+    // --- Palette: the icon's two tones ---
+    readonly property string shell: "#232327"
+    readonly property string paper: "#f1eee6"
 
-    // --- Geometry (grid cells) ---
-    // Window interior, inclusive bounds.
-    readonly property int winX0: 22
-    readonly property int winY0: 24
-    readonly property int winX1: 73
-    readonly property int winY1: 48
-    // Reel centres sit on cell centres so each reel is symmetric.
-    readonly property real leftReelX:  35.5
-    readonly property real rightReelX: 60.5
-    readonly property real reelY:      36.5
-    readonly property real hubRadius:  5.6
-    readonly property real emptyRadius: 6.4   // a reel never shows bare plastic
-    readonly property real fullRadius:  11.4
+    // --- Geometry (grid cells, inclusive bounds) ---
+    // The light line that splits the top edge off the rest of the shell.
+    readonly property int lineY0: 8
+    readonly property int lineY1: 10
+    // The label, and the rows and span of its three lines.
+    readonly property int labelX0: 28
+    readonly property int labelX1: 67
+    readonly property int labelY0: 23
+    readonly property int labelY1: 47
+    readonly property var labelLines: [29, 35, 41]
+    readonly property int labelLineX0: 32
+    readonly property int labelLineX1: 63
+    // The tape shows level with the label, beyond a 2-cell gap on either side
+    // of it: columns 0..25 and 70..95. Only these two windows are repainted.
+    readonly property int windowWidth: labelX0 - 2
+    readonly property int windowHeight: labelY1 - labelY0 + 1
+    // Reel centres sit on the label's edges, so the gap and the label hide
+    // the inner half of each reel, as on the icon.
+    readonly property real leftReelX: 27
+    readonly property real rightReelX: gridWidth - leftReelX
+    readonly property real reelY: (labelY0 + labelY1 + 1) / 2
+    // Radii that rest on screen are kept off half-integers: those leave a
+    // one-cell nub on the circle's outer edge.
+    readonly property real hubRadius: 8.3
+    readonly property real toothRadius: 5.5
+    readonly property real emptyRadius: 10   // a reel never shows bare hub
+    readonly property real fullRadius: 23.4
     // Linear tape speed in grid cells per second; each reel's angular speed is
     // this over its current tape radius.
-    readonly property real tapeSpeed: 30
+    readonly property real tapeSpeed: 24
 
     // Tape radius on each reel for the current progress. The tape's area is
     // conserved, so the radii follow the square root, not a straight line.
@@ -76,17 +75,6 @@ Item {
 
     property real leftAngle: 0
     property real rightAngle: 0
-
-    // 3×5 / 5×5 glyphs for the label text.
-    readonly property var glyphs: ({
-        "2": ["111", "001", "111", "100", "111"],
-        "4": ["101", "101", "111", "001", "001"],
-        "0": ["111", "101", "101", "101", "111"],
-        "-": ["000", "000", "111", "000", "000"],
-        "M": ["10001", "11011", "10101", "10001", "10001"],
-        "P": ["111", "101", "111", "100", "100"]
-    })
-    readonly property string labelText: "240-MP"
 
     // Paints `w` × `h` cells through colorAt(x, y), merging horizontal runs of
     // one colour into a single fillRect; "" leaves a cell transparent.
@@ -109,115 +97,57 @@ Item {
         }
     }
 
-    // Cells of the label text, keyed "x,y", laid out once.
-    readonly property var textCells: {
-        var cells = {}
-        var width = 0
-        for (var i = 0; i < labelText.length; ++i)
-            width += glyphs[labelText[i]][0].length + (i > 0 ? 1 : 0)
-        var x = Math.floor((10 + 85 + 1 - width) / 2)
-        for (var j = 0; j < labelText.length; ++j) {
-            var g = glyphs[labelText[j]]
-            for (var row = 0; row < g.length; ++row)
-                for (var col = 0; col < g[row].length; ++col)
-                    if (g[row][col] === "1")
-                        cells[(x + col) + "," + (6 + row)] = true
-            x += g[0].length + 1
-        }
-        return cells
-    }
-
-    function cornerCut(x, y, x0, y0, x1, y1) {
-        return (x - x0) + (y - y0) < 2 || (x1 - x) + (y - y0) < 2
-            || (x - x0) + (y1 - y) < 2 || (x1 - x) + (y1 - y) < 2
+    // True for the cells a corner of `size` cells cuts off the given box.
+    function cornerCut(x, y, x0, y0, x1, y1, size) {
+        return (x - x0) + (y - y0) < size || (x1 - x) + (y - y0) < size
+            || (x - x0) + (y1 - y) < size || (x1 - x) + (y1 - y) < size
     }
 
     function shellColor(x, y) {
-        var W = gridWidth, H = gridHeight
-        if (cornerCut(x, y, 0, 0, W - 1, H - 1))
+        if (cornerCut(x, y, 0, 0, gridWidth - 1, gridHeight - 1, 2))
             return ""
-        // Window interior: left to the animated layer, except its cut corners.
-        if (x >= winX0 && x <= winX1 && y >= winY0 && y <= winY1)
-            return cornerCut(x, y, winX0, winY0, winX1, winY1) ? recess : ""
-        // Bevelled rim: lit from the top left.
-        if (x === 0 || y === 0 || x + y === 2)
-            return shellHi
-        if (x === W - 1 || y === H - 1 || (W - 1 - x) + (H - 1 - y) === 2)
-            return shellLo
-        // Label with the brand stripes and the text.
-        if (x >= 10 && x <= 85 && y >= 4 && y <= 20) {
-            if (y === 20)
-                return labelShade
-            if (y >= 13 && y <= 18 && x >= 12 && x <= 83)
-                return stripes[Math.floor((y - 13) / 2)]
-            return textCells[x + "," + y] ? ink : label
-        }
-        // Sunken frame around the window: shadow on top/left, light bottom/right.
-        if (x >= 20 && x <= 75 && y >= 22 && y <= 50) {
-            if (y === 22 || x === 20)
-                return shellLo
-            if (y === 50 || x === 75)
-                return shellRidge
-            return recess
-        }
-        // Screws in the four corners.
-        var screws = [[5, 5], [90, 5], [5, 50], [90, 50]]
-        for (var i = 0; i < screws.length; ++i) {
-            var dx = x - screws[i][0], dy = y - screws[i][1]
-            if (Math.abs(dx) <= 1 && Math.abs(dy) <= 1) {
-                if (dx === 0 && dy === 0)
-                    return shellLo
-                return (dx === 0 || dy === 0) ? screw : shellBase
+        if (y >= lineY0 && y <= lineY1)
+            return paper
+        if (y >= labelY0 && y <= labelY1) {
+            // The reel windows, left to their own layer.
+            if (x < windowWidth || x >= gridWidth - windowWidth)
+                return ""
+            if (x >= labelX0 && x <= labelX1) {
+                if (cornerCut(x, y, labelX0, labelY0, labelX1, labelY1, 1))
+                    return shell
+                if (labelLines.indexOf(y) >= 0 && x >= labelLineX0 && x <= labelLineX1)
+                    return shell
+                return paper
             }
         }
-        // Ribbed grips on both sides of the window.
-        if ((x === 4 || x === 5 || x === 90 || x === 91) && y >= 16 && y <= 44 && y % 2 === 0)
-            return shellRidge
-        // Embossed seam above the tape door.
-        if (y === 53 && x >= 8 && x <= 87)
-            return shellLo
-        if (y === 54 && x >= 8 && x <= 87)
-            return shellRidge
-        return shellBase
+        return shell
     }
 
-    // One reel cell at offset (dx, dy) from the reel centre, or "" outside it.
-    function reelColor(dx, dy, tapeRadius, angle) {
-        var r = Math.sqrt(dx * dx + dy * dy)
-        if (r > tapeRadius)
-            return ""
-        var theta = Math.atan2(dy, dx) - angle
-        if (r <= 1.6)
-            return hubHole
-        if (r <= hubRadius) {
-            // Six notches around the hub; they are what makes the turn visible.
-            var sector = Math.PI / 3
-            var a = ((theta % sector) + sector) % sector
-            if (r >= 2.6 && r <= 4.7 && a < 0.36)
-                return hubNotch
-            return (r > 4.6 && dx + dy > 3) ? hubShade : hub
+    // Colours the reel window that starts at column x0, for a reel centred on
+    // column cx: tape out to the reel's radius, then the dark hub with six
+    // light 2×2 teeth that turn with the reel and make the turning visible.
+    function reelPainter(x0, cx, tapeRadius, angle) {
+        var teeth = []
+        for (var i = 0; i < 6; ++i) {
+            var a = angle + i * Math.PI / 3
+            teeth.push([Math.round(cx + toothRadius * Math.cos(a) - 1),
+                        Math.round(reelY + toothRadius * Math.sin(a) - 1)])
         }
-        // A glint on the tape pack turns with the reel.
-        var g = Math.atan2(Math.sin(theta), Math.cos(theta))
-        if (Math.abs(g) < 0.22 && r >= tapeRadius - 2.2)
-            return tapeGlint
-        if (r > tapeRadius - 0.9)
-            return tapeEdge
-        return (Math.floor(r) % 3 === 0) ? tapeRing : tape
-    }
-
-    function windowColor(lx, ly) {
-        var x = winX0 + lx, y = winY0 + ly
-        if (cornerCut(x, y, winX0, winY0, winX1, winY1))
-            return ""
-        var px = x + 0.5, py = y + 0.5
-        var c = reelColor(px - leftReelX, py - reelY, leftRadius, leftAngle)
-        if (c)
-            return c
-        c = reelColor(px - rightReelX, py - reelY, rightRadius, rightAngle)
-        if (c)
-            return c
-        return ly === 0 ? glassHi : glass
+        return function(lx, ly) {
+            var x = x0 + lx, y = labelY0 + ly
+            var dx = x + 0.5 - cx, dy = y + 0.5 - reelY
+            var r2 = dx * dx + dy * dy
+            if (r2 > tapeRadius * tapeRadius)
+                return shell
+            if (r2 > hubRadius * hubRadius)
+                return paper
+            for (var t = 0; t < teeth.length; ++t) {
+                if (x - teeth[t][0] >= 0 && x - teeth[t][0] <= 1
+                        && y - teeth[t][1] >= 0 && y - teeth[t][1] <= 1)
+                    return paper
+            }
+            return shell
+        }
     }
 
     Canvas {
@@ -233,38 +163,49 @@ Item {
     }
 
     Canvas {
-        id: windowCanvas
-        x: cassette.winX0 * cassette.pixelSize
-        y: cassette.winY0 * cassette.pixelSize
-        width: (cassette.winX1 - cassette.winX0 + 1) * cassette.pixelSize
-        height: (cassette.winY1 - cassette.winY0 + 1) * cassette.pixelSize
+        id: leftWindow
+        y: cassette.labelY0 * cassette.pixelSize
+        width: cassette.windowWidth * cassette.pixelSize
+        height: cassette.windowHeight * cassette.pixelSize
         antialiasing: false
         smooth: false
         onPaint: {
             var ctx = getContext("2d")
             ctx.reset()
-            var w = cassette.winX1 - cassette.winX0 + 1
-            var h = cassette.winY1 - cassette.winY0 + 1
-            cassette.paintCells(ctx, w, h, cassette.windowColor)
-            // Two diagonal glare streaks across the glass, over the reels.
-            var s = cassette.pixelSize
-            ctx.fillStyle = cassette.glare
-            for (var ly = 1; ly < h - 1; ++ly) {
-                var streaks = [ly + 30, ly + 32, ly + 33]
-                for (var i = 0; i < streaks.length; ++i) {
-                    var lx = streaks[i]
-                    if (lx > 1 && lx < w - 2)
-                        ctx.fillRect(lx * s, ly * s, s, s)
-                }
-            }
+            cassette.paintCells(ctx, cassette.windowWidth, cassette.windowHeight,
+                                cassette.reelPainter(0, cassette.leftReelX, cassette.leftRadius, cassette.leftAngle))
         }
     }
 
-    onPixelSizeChanged: { shellCanvas.requestPaint(); windowCanvas.requestPaint() }
-    onLeftRadiusChanged: windowCanvas.requestPaint()
+    Canvas {
+        id: rightWindow
+        x: (cassette.gridWidth - cassette.windowWidth) * cassette.pixelSize
+        y: cassette.labelY0 * cassette.pixelSize
+        width: cassette.windowWidth * cassette.pixelSize
+        height: cassette.windowHeight * cassette.pixelSize
+        antialiasing: false
+        smooth: false
+        onPaint: {
+            var ctx = getContext("2d")
+            ctx.reset()
+            cassette.paintCells(ctx, cassette.windowWidth, cassette.windowHeight,
+                                cassette.reelPainter(cassette.gridWidth - cassette.windowWidth, cassette.rightReelX,
+                                                     cassette.rightRadius, cassette.rightAngle))
+        }
+    }
+
+    onPixelSizeChanged: {
+        shellCanvas.requestPaint()
+        leftWindow.requestPaint()
+        rightWindow.requestPaint()
+    }
+    onLeftRadiusChanged: leftWindow.requestPaint()
+    onRightRadiusChanged: rightWindow.requestPaint()
 
     // ~15 fps keeps the motion choppy in the way old OSD graphics were, and
-    // costs next to nothing.
+    // costs next to nothing. Both reels turn anticlockwise, as they do while a
+    // deck plays: the tape leaves the left reel and arrives on the right one
+    // along the front edge.
     Timer {
         interval: 66
         repeat: true
@@ -272,9 +213,10 @@ Item {
         onTriggered: {
             var dt = interval / 1000
             var full = 2 * Math.PI
-            cassette.leftAngle  = (cassette.leftAngle  + dt * cassette.tapeSpeed / cassette.leftRadius)  % full
-            cassette.rightAngle = (cassette.rightAngle + dt * cassette.tapeSpeed / cassette.rightRadius) % full
-            windowCanvas.requestPaint()
+            cassette.leftAngle  = (cassette.leftAngle  - dt * cassette.tapeSpeed / cassette.leftRadius)  % full
+            cassette.rightAngle = (cassette.rightAngle - dt * cassette.tapeSpeed / cassette.rightRadius) % full
+            leftWindow.requestPaint()
+            rightWindow.requestPaint()
         }
     }
 }
