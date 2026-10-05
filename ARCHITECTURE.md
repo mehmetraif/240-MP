@@ -101,6 +101,7 @@ Loaded at startup by `AppCore` — the single source of truth for a module's ide
 | `toggle` | ON/OFF toggle | `default: "ON"` or `"OFF"` |
 | `list_single` | Single-select list | `options_source`, `options_slot`, `apply_slot` |
 | `multiselect_submenu` | Multi-select list via submenu | `options_source`, `options_slot` |
+| `submenu` | A page of its own for a group of settings, like YouTube's ADVANCED | `settings`: its rows, in this same format (a submenu may hold another) |
 | `directory_browser` | Keyboard-navigable directory picker | `default` (path string, may be empty) |
 | `action` | Button that calls a backend slot | `action_slot` |
 
@@ -109,6 +110,8 @@ Additional fields any setting may carry:
 - `key` — the config key written under `modules.<id>.<key>` in `config.json`. Supports dot-notation.
 - `label` — display text in Settings.
 - `requires_auth` — if `true`, the setting is only shown when the module reports an authenticated state via `get_module_auth_state(moduleId)`. Used by Plex to hide server/user/library settings until sign-in.
+
+A `submenu` row opens `ModuleSettings.qml` again on just its rows (`navParams.submenu` names it, and the title bar reads `MODULE / LABEL`); back returns to the row. Its rows' keys stay flat under `modules.<id>`, so moving a setting into or out of a submenu keeps what was saved.
 
 ### Dynamic options and apply slots
 

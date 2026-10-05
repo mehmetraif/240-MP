@@ -598,20 +598,98 @@ QVariantList YouTubeBackend::buildPlaylistList() const {
 }
 
 // ---------------------------------------------------------------------------
-// Playback resolution → yt-dlp format
+// ADVANCED settings → yt-dlp format and mpv arguments
 // ---------------------------------------------------------------------------
 
-QString YouTubeBackend::ytdlFormatForResolution(const QString &resolution) const {
-    int height = 480;
-    if (resolution == QLatin1String("720p"))
-        height = 720;
-    else if (resolution == QLatin1String("1080p"))
-        height = 1080;
-    // H.264 first (RPi hardware decode), then any codec at the cap, then best
-    return QStringLiteral("bestvideo[height<=?%1][vcodec^=avc1]+bestaudio/"
-                          "bestvideo[height<=?%1]+bestaudio/"
-                          "best[height<=?%1]/best")
-        .arg(height);
+// The languages YouTube most often has dubbed audio and subtitles in, by the
+// code yt-dlp reports them with; a code also matches its regions ("pt" takes
+// "pt-BR").
+static const struct { const char *code; const char *label; } kLanguages[] = {
+    {"en", "English"},    {"es", "Spanish"},  {"fr", "French"},  {"de", "German"},
+    {"it", "Italian"},    {"pt", "Portuguese"}, {"nl", "Dutch"}, {"pl", "Polish"},
+    {"ru", "Russian"},    {"tr", "Turkish"},  {"ar", "Arabic"},  {"hi", "Hindi"},
+    {"id", "Indonesian"}, {"ja", "Japanese"}, {"ko", "Korean"},  {"zh", "Chinese"},
+};
+
+static QVariantList languageOptions() {
+    QVariantList options;
+    for (const auto &l : kLanguages)
+        options << QVariantMap{{QStringLiteral("id"), QString::fromLatin1(l.code)},
+                               {QStringLiteral("label"), QString::fromLatin1(l.label)}};
+    return options;
+}
+
+QString YouTubeBackend::ytdlFormat(const QString &resolution, const QString &codec,
+                                   const QString &maxFrameRate, const QString &audioLanguage) const {
+    static const QHash<QString, int> kHeights{
+        {QStringLiteral("240p"), 240},   {QStringLiteral("360p"), 360},
+        {QStringLiteral("480p"), 480},   {QStringLiteral("720p"), 720},
+        {QStringLiteral("1080p"), 1080}, {QStringLiteral("1440p"), 1440},
+        {QStringLiteral("2160p"), 2160}};
+    // "<=?" also takes a format that doesn't say its height or rate.
+    QString cap = QStringLiteral("[height<=?%1]").arg(kHeights.value(resolution, 480));
+    if (maxFrameRate == QLatin1String("30"))
+        cap += QStringLiteral("[fps<=?30]");
+
+    QStringList videos;
+    if (codec != QLatin1String("Any"))
+        videos << QStringLiteral("bestvideo") + cap + QStringLiteral("[vcodec^=avc1]");
+    videos << QStringLiteral("bestvideo") + cap;
+
+    // Plain bestaudio is the original track: yt-dlp ranks it first.
+    QStringList audios;
+    const QString language = audioLanguage.trimmed().toLower();
+    if (!language.isEmpty() && language != QLatin1String("original"))
+        audios << QStringLiteral("bestaudio[language^=%1]").arg(language);
+    audios << QStringLiteral("bestaudio");
+
+    // The language outranks the codec: a dub in VP9 before the original in H.264.
+    QStringList choices;
+    for (const QString &audio : audios)
+        for (const QString &video : videos)
+            choices << video + QLatin1Char('+') + audio;
+    choices << QStringLiteral("best") + cap << QStringLiteral("best");
+    return choices.join(QLatin1Char('/'));
+}
+
+QStringList YouTubeBackend::playbackArgs(const QVariantMap &settings) const {
+    QStringList args{
+        QStringLiteral("--ytdl=yes"),
+        QStringLiteral("--ytdl-format=")
+            + ytdlFormat(settings.value(QStringLiteral("resolution")).toString(),
+                         settings.value(QStringLiteral("codec")).toString(),
+                         settings.value(QStringLiteral("maxFrameRate")).toString(),
+                         settings.value(QStringLiteral("audioLanguage")).toString())};
+
+    // Without these mpv has yt-dlp list every subtitle the video has, none shown.
+    const QString subtitles = settings.value(QStringLiteral("subtitles")).toString();
+    if (subtitles == QLatin1String("On") || subtitles == QLatin1String("With Auto")) {
+        QString language = settings.value(QStringLiteral("subtitleLanguage")).toString().trimmed().toLower();
+        if (language.isEmpty())
+            language = QStringLiteral("en");
+        QString raw = QStringLiteral("write-subs=,sub-langs=%1.*").arg(language);
+        if (subtitles == QLatin1String("With Auto"))
+            raw += QStringLiteral(",write-auto-subs=");
+        args << QStringLiteral("--ytdl-raw-options=") + raw;
+    }
+
+    bool ok = false;
+    const double speed = settings.value(QStringLiteral("speed")).toString()
+                             .remove(QLatin1Char('x')).toDouble(&ok);
+    if (ok && speed > 0.0 && qAbs(speed - 1.0) > 0.001)
+        args << QStringLiteral("--speed=%1").arg(speed);
+    return args;
+}
+
+void YouTubeBackend::get_audio_languages() {
+    QVariantList options{QVariantMap{{QStringLiteral("id"), QStringLiteral("original")},
+                                     {QStringLiteral("label"), QStringLiteral("Original")}}};
+    options << languageOptions();
+    emit dynamicOptionsReady(QStringLiteral("audio_language"), options);
+}
+
+void YouTubeBackend::get_subtitle_languages() {
+    emit dynamicOptionsReady(QStringLiteral("subtitle_language"), languageOptions());
 }
 
 // ---------------------------------------------------------------------------

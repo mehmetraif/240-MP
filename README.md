@@ -299,8 +299,15 @@ Photos of an earlier version, before the menus above, on a CRT.
 - A video's info screen (channel, date, length, views, description), like the streaming catalogues'; right on it (or, with the info screen off, on the video) offers its options: add it to **Favorites**, or save it to a local **Watch Later** list
 - **Recently Watched** is your local watch history
 - Resume Playback
-- Set Playback Resolution: 480p (default and good for the RaspberryPi), 720p and 1080p
-- Choose to Display Shorts or not (default is On)
+- **Advanced** in its settings holds the details:
+    - **Playback Resolution**: 240p to 2160p. 480p, the default, suits a CRT and a Pi.
+    - **Video Codec**: H.264 first, which a Pi decodes in hardware, or **Any** for whatever looks best (VP9 or AV1, needed above 1080p).
+    - **Max Frame Rate**: Any, or 30 where a video also has 60.
+    - **Scaling**.
+    - **Audio Language**: the original track, or a dub where a video has one.
+    - **Subtitles** in a **Subtitle Language**: Off, On, or With Auto for YouTube's automatic captions too.
+    - **Playback Speed**: 0.75x to 2x.
+    - **Resume Playback**, and whether to **Display Shorts** (on by default).
 
 ## Install
 - [On a Raspberry Pi](INSTALL.md#on-a-raspberry-pi)

@@ -51,9 +51,25 @@ public:
     Q_INVOKABLE void load_playlists(bool forceRefresh = false);
     Q_INVOKABLE void load_playlist_videos(const QString &playlistId, bool forceRefresh = false);
 
-    // Maps the playback_resolution setting ("480p"/"720p"/"1080p", unknown → 480p)
-    // to a yt-dlp format string. H.264 is preferred first for RPi hardware decode.
-    Q_INVOKABLE QString ytdlFormatForResolution(const QString &resolution) const;
+    // The yt-dlp format the ADVANCED settings ask for: at most the
+    // playback_resolution's height (240p to 2160p, unknown → 480p) and, with
+    // max_frame_rate "30", 30 fps; H.264 first (video_codec "H.264", which the
+    // Pi decodes in hardware) or whatever looks best ("Any"); the audio track
+    // in audio_language ("original": the one the video was made in). Each
+    // falls back to what the video has, down to its best single file.
+    Q_INVOKABLE QString ytdlFormat(const QString &resolution, const QString &codec,
+                                   const QString &maxFrameRate, const QString &audioLanguage) const;
+
+    // mpv's arguments for a video from the ADVANCED settings, given as
+    // { resolution, codec, maxFrameRate, audioLanguage, subtitles,
+    // subtitleLanguage, speed }: the format above, the subtitles yt-dlp is to
+    // fetch ("On", or "With Auto" for the automatic captions too) and the
+    // speed ("1.25x"). Player.qml selects the subtitles (--slang).
+    Q_INVOKABLE QStringList playbackArgs(const QVariantMap &settings) const;
+
+    // ADVANCED's language lists (options_slot), by yt-dlp's language codes.
+    Q_INVOKABLE void get_audio_languages();
+    Q_INVOKABLE void get_subtitle_languages();
 
     // Watch history (youtube_history.json). A finished video stays in history
     // with pos 0 (so it lists under RECENTLY WATCHED but never prompts to resume);
@@ -97,6 +113,7 @@ public:
     QString problem() const { return m_problem; }
 
 signals:
+    void dynamicOptionsReady(const QString &key, const QVariant &options);
     void subscriptionsFeedLoaded(const QVariant &videos);
     void channelsLoaded(const QVariant &channels);
     void channelVideosLoaded(const QString &channelId, const QVariant &videos);
