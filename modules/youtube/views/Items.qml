@@ -8,8 +8,9 @@ import Components
 // Player.qml, and coming back reopens the same folders. Right on a video opens
 // its info screen (InfoPanel), the tree's last layer, as the cursor resting on
 // it does after the app's INFO SCREEN setting's seconds; right there offers
-// its options (EntryOptions: its favourite, Watch Later), as right on the
-// video does with the info screen off.
+// its options (EntryOptions: its favourite, PLAY AT STARTUP, Watch Later), as
+// right on the video does with the info screen off. Opened with the startup
+// favourite (navParams.startupPlay), it plays that at once.
 FocusScope {
     id: itemsRoot
 
@@ -29,6 +30,27 @@ FocusScope {
     readonly property bool showShorts: {
         var raw = appCore ? appCore.get_setting(moduleRoot.moduleId, "display_shorts") : undefined
         return raw === undefined || raw === null || raw === true || raw === "ON"
+    }
+
+    // The startup favourite, played as if chosen in FAVORITES, so coming back
+    // from it lands there. Only as the view first opens: coming back from the
+    // player brings navListState instead.
+    Component.onCompleted: {
+        if (navParams.startupPlay && !navParams.navListState)
+            Qt.callLater(playAtStartup, navParams.startupPlay)
+    }
+    function playAtStartup(entry) {
+        var favorites = appCore.get_list(moduleRoot.moduleId, "favorites")
+        if (!showShorts)
+            favorites = favorites.filter(function(e) { return !e.isShort })
+        for (var i = 0; i < favorites.length; ++i) {
+            if (favorites[i].path === entry.path) {
+                navigateTo("Player.qml", { item: favorites[i] },
+                           { trail: [{ path: "home", sel: 1, name: "", pushed: false },
+                                     { path: "favorites", sel: i, name: "Favorites", pushed: false }] })
+                return
+            }
+        }
     }
 
     AppBar {

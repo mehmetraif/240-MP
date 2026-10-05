@@ -4,9 +4,10 @@ import Components
 // Local Files browser: the media folder as a horizontal tree (see
 // TreeBrowser), led by RECENTLY WATCHED, FAVORITES and SEARCH (names under the
 // whole folder, typed on the on-screen keyboard). Select on a file plays it,
-// right on it offers its options (EntryOptions: its favourite), and the whole
-// tree is this one view: playing a file and coming back restores it from the
-// listState handed to navigateTo.
+// right on it offers its options (EntryOptions: its favourite, PLAY AT
+// STARTUP), and the whole tree is this one view: playing a file and coming
+// back restores it from the listState handed to navigateTo. Opened with the
+// startup favourite (navParams.startupPlay), it plays that at once.
 FocusScope {
     id: itemsRoot
 
@@ -24,6 +25,32 @@ FocusScope {
     signal goBack()
 
     focus: true
+
+    // Plays a file, putting it on RECENTLY WATCHED; trail is where coming back
+    // lands.
+    function play(item, trail) {
+        appCore.add_to_list(moduleRoot.moduleId, "recent",
+                            { name: item.name, path: item.path, isFolder: false }, 30)
+        itemsRoot.navigateTo("Player.qml", { filePath: item.path, title: item.name }, { trail: trail })
+    }
+
+    // The startup favourite, played as if chosen in FAVORITES, so coming back
+    // from it lands there. Only as the view first opens: coming back from the
+    // player brings navListState instead.
+    Component.onCompleted: {
+        if (navParams.startupPlay && !navParams.navListState)
+            Qt.callLater(playAtStartup, navParams.startupPlay)
+    }
+    function playAtStartup(entry) {
+        var favorites = localFilesBackend.existing(appCore.get_list(moduleRoot.moduleId, "favorites"))
+        for (var i = 0; i < favorites.length; ++i) {
+            if (favorites[i].path === entry.path) {
+                play(favorites[i], [{ path: itemsRoot.rootPath, sel: 1, name: "", pushed: false },
+                                    { path: "favorites", sel: i, name: "Favorites", pushed: false }])
+                return
+            }
+        }
+    }
 
     // The tree's own folders, ahead of the media folder's. Their paths aren't
     // file paths, which are absolute.
@@ -98,10 +125,7 @@ FocusScope {
                 osk.open("")
                 return
             }
-            appCore.add_to_list(moduleRoot.moduleId, "recent",
-                                { name: item.name, path: item.path, isFolder: false }, 30)
-            itemsRoot.navigateTo("Player.qml", { filePath: item.path, title: item.name },
-                                 { trail: tree.trailState() })
+            itemsRoot.play(item, tree.trailState())
         }
         onOptionsRequested: function(item) {
             if (!item.kind)

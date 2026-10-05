@@ -8,8 +8,9 @@ import QtQuick
 // coming back reopens the same folders. A title's info screen (InfoPanel) is
 // the tree's last layer: right on it, or the cursor resting on it as long as
 // the app's INFO SCREEN setting says. Right there offers the title's options
-// (EntryOptions: its favourite), as right on the title does with the info
-// screen off.
+// (EntryOptions: its favourite, PLAY AT STARTUP), as right on the title does
+// with the info screen off. Opened with the startup favourite
+// (navParams.startupPlay), it plays that at once.
 //
 // A module's Browse.qml is just this, with its backend and name:
 //     WebPlayerBrowse { backend: netflixBackend; serviceName: "Netflix" }
@@ -28,10 +29,31 @@ FocusScope {
 
     focus: true
 
-    function open(params) {
+    // Opens a title (params.item) or the service's home page; trail is where
+    // coming back lands, the tree as it is unless given.
+    function open(params, trail) {
         if (params.item && appCore)
             appCore.add_to_list(moduleRoot.moduleId, "recent", params.item, 30)
-        navigateTo("Launch.qml", params, { trail: tree.trailState() })
+        navigateTo("Launch.qml", params, { trail: trail || tree.trailState() })
+    }
+
+    // The startup favourite, opened as if chosen in FAVORITES, so coming back
+    // from it lands there. Only as the view first opens: coming back from the
+    // player brings navListState instead.
+    Component.onCompleted: {
+        if (navParams.startupPlay && !navParams.navListState)
+            Qt.callLater(playAtStartup, navParams.startupPlay)
+    }
+    function playAtStartup(entry) {
+        var favorites = appCore.get_list(moduleRoot.moduleId, "favorites")
+        for (var i = 0; i < favorites.length; ++i) {
+            if (favorites[i].path === entry.path) {
+                open({ item: favorites[i], name: favorites[i].name },
+                     [{ path: "home", sel: 1, name: "", pushed: false },
+                      { path: "favorites", sel: i, name: "Favorites", pushed: false }])
+                return
+            }
+        }
     }
 
     // The app's INFO SCREEN setting: "off", "key" (right only) or seconds.

@@ -47,6 +47,10 @@ public:
     Q_INVOKABLE QString homePath();
     Q_INVOKABLE QString localIpAddress() const;
     Q_INVOKABLE QString startupModuleEntryPoint() const;
+    // The QML entry point of an enabled module ("modules/<folder>/<entry>"),
+    // as startupModuleEntryPoint() gives the startup module's; "" for an
+    // unknown or disabled one. The startup favourite opens its module with it.
+    Q_INVOKABLE QString moduleEntryPoint(const QString &moduleId) const;
     Q_INVOKABLE QString get_module_auth_state(const QString &moduleId);
     // Enabled state of a module by id, resolved the same way the module list
     // resolves it (config override, else manifest default, else true). Unknown

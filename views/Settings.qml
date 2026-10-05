@@ -85,6 +85,22 @@ FocusScope {
             moduleId: ""
         })
 
+        // Play at Startup — a favourite played straight after the boot screen,
+        // ahead of Start on Module. It is chosen in its module (right on it,
+        // OPTIONS, PLAY AT STARTUP); here it can only be turned off.
+        var startupFav = appSettings["startup_favorite"]
+        var favName = startupFav && startupFav.path ? (startupFav.name || "Favorite") : ""
+        items.push({
+            type: "list_single",
+            key: "startup_favorite",
+            label: "Play at Startup",
+            options: favName !== "" ? ["None", favName] : ["None"],
+            values: favName !== "" ? ["", startupFav] : [""],
+            value: favName !== "" ? favName : "None",
+            description: "A favourite played straight after the boot screen, instead of opening a module\nChoose one with right on it in its module: OPTIONS, PLAY AT STARTUP",
+            moduleId: ""
+        })
+
         // Smooth Playback — only shown on devices whose smooth decode path can't
         // crop/zoom (the Pi 3 overlay path). Default ON; turning it off restores the
         // crop-capable video output. Takes effect on the next video.

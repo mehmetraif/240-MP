@@ -223,18 +223,37 @@ Window {
     property var appCurrentParams: ({})
     property bool _startupNavigated: false
 
-    // Opens the configured startup module, once per run.
+    // Opens the configured startup module, once per run. A favourite chosen to
+    // PLAY AT STARTUP (EntryOptions) comes first: its module opens and plays
+    // it straight away (navParams.startupPlay), as long as it is still one of
+    // that module's favourites.
     function openStartupModule() {
         if (root._startupNavigated) return
         root._startupNavigated = true
-        var entryPoint = appCore.startupModuleEntryPoint()
+        var params = { fromAppStartup: true }
+        var entryPoint = ""
+        var startup = appCore.get_setting("", "startup_favorite")
+        if (startup && startup.module && startup.path) {
+            var favorites = appCore.get_list(startup.module, "favorites")
+            for (var i = 0; i < favorites.length; ++i) {
+                if (favorites[i].path === startup.path) {
+                    entryPoint = appCore.moduleEntryPoint(startup.module)
+                    params.startupPlay = favorites[i]
+                    break
+                }
+            }
+        }
+        if (!entryPoint) {
+            delete params.startupPlay
+            entryPoint = appCore.startupModuleEntryPoint()
+        }
         if (entryPoint) {
             root.appNavStack.push({
                 source: moduleLoader.source,
                 params: root.appCurrentParams,
                 listState: {}
             })
-            moduleLoader.setSource(entryPoint, { "navParams": { fromAppStartup: true } })
+            moduleLoader.setSource(entryPoint, { "navParams": params })
         }
     }
 

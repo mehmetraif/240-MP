@@ -8,6 +8,7 @@
 #include <QDebug>
 #include <QRegularExpression>
 #include <QNetworkInterface>
+#include <QJSValue>
 #include <QQmlContext>
 
 AppCore::AppCore(const QString &appRoot, const QString &dataRoot, QObject *parent)
@@ -180,7 +181,11 @@ QVariant AppCore::get_setting(const QString &moduleId, const QString &key) {
     return target[key].toVariant();
 }
 
-void AppCore::save_setting(const QString &moduleId, const QString &key, const QVariant &value) {
+void AppCore::save_setting(const QString &moduleId, const QString &key, const QVariant &rawValue) {
+    // A JS object or array from QML arrives wrapped as a QJSValue, which
+    // QJsonValue::fromVariant() would store as null.
+    const QVariant value = rawValue.metaType() == QMetaType::fromType<QJSValue>()
+                               ? rawValue.value<QJSValue>().toVariant() : rawValue;
     QJsonObject config = loadConfig();
 
     // Navigate to the target section
@@ -496,12 +501,14 @@ QString AppCore::localIpAddress() const {
 }
 
 QString AppCore::startupModuleEntryPoint() const {
-    QJsonObject config = loadConfig();
     // Keyed by module id (robust to display-name changes); "None"/empty = disabled.
-    QString moduleId = config["app"].toObject()["startup_module"].toString();
+    QString moduleId = loadConfig()["app"].toObject()["startup_module"].toString();
     if (moduleId.isEmpty() || moduleId == "None") return {};
+    return moduleEntryPoint(moduleId);
+}
 
-    QJsonObject modulesConfig = config["modules"].toObject();
+QString AppCore::moduleEntryPoint(const QString &moduleId) const {
+    QJsonObject modulesConfig = loadConfig()["modules"].toObject();
     for (const auto &m : m_modules) {
         // Skip a disabled module so we never auto-launch into one that isn't
         // present in the module list (e.g. set as startup, then disabled later).
