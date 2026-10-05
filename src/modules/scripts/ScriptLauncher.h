@@ -28,6 +28,11 @@ public:
                             DisplayHandoff *handoff, QObject *parent = nullptr);
     ~ScriptLauncher() override;
 
+    // Who takes the screen when a takeover runs, for DisplayHandoff's one-owner
+    // check: "scripts" unless set. Another module that launches through its own
+    // ScriptLauncher names itself here, before its first start().
+    void setHandoffOwner(const QString &owner) { m_handoffOwner = owner; }
+
     bool    isRunning() const;
     // The script itself has exited but something it started is still alive, so the
     // display has not been handed back yet.
@@ -99,8 +104,8 @@ private:
     static constexpr int kGroupPollMs   = 250;
     static constexpr int kGroupWarnMs   = 5000;
     static constexpr int kStartWatchdogMs = 5000;
-    static constexpr const char *kHandoffOwner = "scripts";
 
+    QString         m_handoffOwner = QStringLiteral("scripts");
     QString         m_appRoot;
     QString         m_dataRoot;
     DisplayHandoff *m_handoff = nullptr;

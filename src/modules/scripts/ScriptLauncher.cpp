@@ -131,7 +131,7 @@ ScriptLauncher::~ScriptLauncher() {
     // Quitting while a takeover script has the screen would otherwise leave a Pi
     // on a blank VT with DRM master dropped. Synchronous: we're exiting.
     if (m_takeoverRun && m_handoff) {
-        m_handoff->releaseNow(QLatin1String(kHandoffOwner));
+        m_handoff->releaseNow(m_handoffOwner);
         m_takeoverRun = false;
     }
 }
@@ -202,7 +202,7 @@ bool ScriptLauncher::start(const ScriptEntry &entry, QString *errorOut) {
     bool takeover = entry.meta.isTakeover();
     int  vt = 0;
     if (takeover && m_handoff) {
-        vt = m_handoff->acquire(QLatin1String(kHandoffOwner));
+        vt = m_handoff->acquire(m_handoffOwner);
         if (vt < 0)
             return fail(QStringLiteral("The screen is in use"));
 
@@ -215,7 +215,7 @@ bool ScriptLauncher::start(const ScriptEntry &entry, QString *errorOut) {
             qWarning("[Scripts] Refusing takeover for '%s': display state could not "
                      "be saved, so it could not be restored. Running in console mode.",
                      qPrintable(entry.basename));
-            m_handoff->releaseNow(QLatin1String(kHandoffOwner));
+            m_handoff->releaseNow(m_handoffOwner);
             takeover     = false;
             vt           = 0;
             m_downgraded = true;
@@ -529,7 +529,7 @@ void ScriptLauncher::releaseDisplayAndReport() {
         report();
         return;
     }
-    m_handoff->releaseDeferred(QLatin1String(kHandoffOwner), [this]() {
+    m_handoff->releaseDeferred(m_handoffOwner, [this]() {
         m_takeoverRun = false;
         emit runningChanged();   // isBusy() finally false
         report();

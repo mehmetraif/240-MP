@@ -1,0 +1,226 @@
+import QtQuick
+import Components
+
+// Opens Netflix full screen and says how to come back. Netflix runs as its own
+// web player in Chromium (see NetflixBackend), which has the screen until it
+// is closed: with Ctrl+W, or by holding BACK here, since this view keeps
+// receiving keys while the browser is up (both read the input devices). On a
+// headless Pi this view is not drawn while the browser runs: Qt has handed the
+// screen over and its rendering is suspended, so what it shows just before
+// the hand-off is what the user reads.
+FocusScope {
+    id: launchRoot
+
+    property var navParams: ({})
+
+    signal navigateTo(string path, var params, var listState)
+    signal goBack()
+
+    focus: true
+
+    // "opening", "running", "error" (never started) or "failed" (closed badly).
+    property string phase: "opening"
+    property string message: ""
+    property string output: ""
+    readonly property bool running: netflixBackend ? netflixBackend.running : false
+
+    function isBack(key) {
+        return key === Qt.Key_Escape || key === Qt.Key_Backspace || key === Qt.Key_Back
+    }
+
+    // Long enough to read how to come back, and for a first frame to be on
+    // screen before a headless Pi saves it for the hand-off.
+    Timer {
+        id: launchTimer
+        interval: 1200
+        running: true
+        onTriggered: {
+            if (netflixBackend.launch()) {
+                launchRoot.phase = "running"
+            } else {
+                launchRoot.phase = "error"
+                launchRoot.message = netflixBackend.lastError()
+            }
+        }
+    }
+
+    // Holding BACK this long closes Netflix.
+    Timer {
+        id: holdTimer
+        interval: 2000
+        onTriggered: netflixBackend.close()
+    }
+
+    Connections {
+        target: netflixBackend
+        function onFinished(exitCode, reason) {
+            holdTimer.stop()
+            // Closed, either way round: back to the main menu, as after playback.
+            if (reason === "ok" || reason === "stopped") {
+                launchRoot.goBack()
+                return
+            }
+            launchRoot.phase = "failed"
+            launchRoot.message = reason === "failed_to_start" ? "The browser did not start"
+                                                               : "The browser closed with error " + exitCode
+            launchRoot.output = netflixBackend.output()
+        }
+    }
+
+    Keys.onPressed: function(event) {
+        // Every key is taken here: while the browser is open it belongs to the
+        // browser, and nothing may reach the main menu underneath.
+        event.accepted = true
+        if (!isBack(event.key)) return
+        if (launchRoot.running) {
+            if (!event.isAutoRepeat) holdTimer.restart()
+        } else if (launchTimer.running) {
+            launchTimer.stop()
+            launchRoot.goBack()
+        } else if (launchRoot.phase === "error" || launchRoot.phase === "failed") {
+            launchRoot.goBack()
+        }
+    }
+    Keys.onReleased: function(event) {
+        event.accepted = true
+        if (isBack(event.key) && !event.isAutoRepeat) holdTimer.stop()
+    }
+
+    // ---
+    // UI
+    // ---
+
+    AppBar {
+        iconSource: moduleRoot.moduleIcon
+        title: moduleRoot.moduleName
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.topMargin: root.sh * 0.125 //60
+        anchors.leftMargin: root.sw * 0.125 //80
+    }
+
+    Column {
+        x: root.sw * 0.125 //80
+        y: root.sh * 0.25 //120
+        width: root.sw * 0.75 //480
+        spacing: root.sh * 0.025 //12
+
+        // The deck's own display while a tape plays, as on the boot screen.
+        Row {
+            visible: launchRoot.phase === "opening" || launchRoot.phase === "running"
+            spacing: root.sw * 0.0125 //8
+            Text {
+                id: playLabel
+                text: "PLAY"
+                color: root.primaryColor
+                font.family: root.globalFont
+                font.pixelSize: root.sh * 0.05 //24
+            }
+            PixelIcon {
+                name: "play"
+                color: root.primaryColor
+                anchors.verticalCenter: playLabel.verticalCenter
+            }
+        }
+
+        Text {
+            width: parent.width
+            text: launchRoot.phase === "opening" ? "Opening Netflix"
+                : launchRoot.phase === "running" ? "Netflix has the screen"
+                : "Could not open Netflix"
+            color: root.primaryColor
+            font.family: root.globalFont
+            font.capitalization: Font.AllUppercase
+            font.pixelSize: root.sh * 0.05 //24
+            wrapMode: Text.WordWrap
+        }
+
+        // How to come back, in a box, the way a deck prints a notice.
+        Rectangle {
+            visible: launchRoot.phase === "opening" || launchRoot.phase === "running"
+            width: parent.width
+            height: howTo.height + 2 * root.sh * 0.025
+            color: "transparent"
+            border.width: root.px
+            border.color: root.primaryColor
+            antialiasing: false
+            Column {
+                id: howTo
+                x: root.sw * 0.0125 //8
+                y: root.sh * 0.025 //12
+                width: parent.width - 2 * x
+                spacing: root.sh * 0.0125 //6
+                Repeater {
+                    model: [
+                        "Hold " + root.hints.back + " for 2 seconds",
+                        "to come back to 240-MP",
+                        "or close Netflix with Ctrl+W"
+                    ]
+                    Text {
+                        required property string modelData
+                        width: parent.width
+                        text: modelData
+                        color: root.primaryColor
+                        font.family: root.globalFont
+                        font.capitalization: Font.AllUppercase
+                        font.pixelSize: root.sh * 0.0375 //18
+                        elide: Text.ElideRight
+                    }
+                }
+            }
+        }
+
+        // Why it did not open, and what the browser said.
+        Text {
+            visible: launchRoot.phase === "error" || launchRoot.phase === "failed"
+            width: parent.width
+            text: launchRoot.message
+            color: root.primaryColor
+            font.family: root.globalFont
+            font.capitalization: Font.AllUppercase
+            font.pixelSize: root.sh * 0.0375 //18
+            wrapMode: Text.WordWrap
+        }
+        Text {
+            visible: launchRoot.phase === "error"
+            width: parent.width
+            text: "On Raspberry Pi OS: sudo apt install chromium libwidevinecdm0 cage"
+            color: root.primaryColor
+            font.family: root.globalFont
+            font.pixelSize: root.sh * 0.0291667 //14
+            wrapMode: Text.WordWrap
+        }
+        Rectangle {
+            visible: launchRoot.phase === "failed" && launchRoot.output !== ""
+            width: parent.width
+            height: root.sh * 0.25 //120
+            color: "transparent"
+            border.width: root.px
+            border.color: root.primaryColor
+            antialiasing: false
+            clip: true
+            Text {
+                anchors.fill: parent
+                anchors.margins: root.sw * 0.0125 //8
+                text: launchRoot.output
+                textFormat: Text.PlainText
+                // The end of the output is where the error is.
+                verticalAlignment: Text.AlignBottom
+                color: root.primaryColor
+                font.family: root.globalFont
+                font.pixelSize: root.sh * 0.0291667 //14
+                wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+            }
+        }
+    }
+
+    HintBar {
+        text: launchRoot.phase === "error" || launchRoot.phase === "failed"
+            ? root.hints.back + ":BACK"
+            : root.hints.back + " HOLD:RETURN"
+        anchors.bottom: parent.bottom
+        anchors.left: parent.left
+        anchors.bottomMargin: root.sh * 0.1041667 //50
+        anchors.leftMargin: root.sw * 0.125 //80
+    }
+}

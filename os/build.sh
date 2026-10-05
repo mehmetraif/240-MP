@@ -16,6 +16,8 @@
 #   FIRST_USER_NAME   default "pi"; the user the app runs as
 #   MP240_DISPLAY     hdmi (default), crt-ntsc or crt-pal
 #   ENABLE_SSH        0 (default) or 1
+#   MP240_NETFLIX     1 (default) or 0: the browser the Netflix module opens
+#                     (Chromium with Widevine, and cage), about 400 MB
 #   TARGET_HOSTNAME   default "240mp"
 #   IMG_NAME          default "240mp-os"
 #   WPA_COUNTRY, LOCALE_DEFAULT, KEYBOARD_KEYMAP, KEYBOARD_LAYOUT,
@@ -75,6 +77,11 @@ touch "${PIGEN}/stage2/SKIP_IMAGES"
 # to live inside it.
 cp -a "${HERE}/stage-240mp" "${STAGE}"
 mkdir -p "${STAGE}/01-app/files"
+# Netflix's browser is the bulk of the image; MP240_NETFLIX=0 leaves it out
+# (the module then says what to install).
+if [ "${MP240_NETFLIX:-1}" = "0" ]; then
+    touch "${STAGE}/04-netflix/SKIP"
+fi
 # pi-gen silently skips a prerun.sh or NN-run.sh that isn't executable, which
 # would leave the stage without its root filesystem or the app. Don't rely on
 # the checkout having kept the bits (a ZIP download, a Windows clone).
