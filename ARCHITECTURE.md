@@ -35,6 +35,9 @@ The guiding idea: **browse structured content, then hand off to the right tool f
       VideoSurface.h/.cpp           # the QML item that shows EmbeddedMpv's picture
     boot/
       BootProgress.h/.cpp           # boot screen state on the 240-MP OS image (inert elsewhere)
+    bluetooth/
+      BluetoothManager.h/.cpp       # Settings → Bluetooth: BlueZ over D-Bus (Linux)
+      BluetoothAgent.h/.cpp         # the pairing agent BlueZ asks (org.bluez.Agent1)
   modules/                          # QML + assets per module (discovered at startup)
     plex/
       manifest.json                 # module identity and settings shape
@@ -48,7 +51,7 @@ The guiding idea: **browse structured content, then hand off to the right tool f
     ModuleList.qml
     Settings.qml
     ...
-    Components/                     # shared QML components (AppBar, HintBar, MenuRow, HelpLine, ScrollMarks, TreeBrowser, InfoPanel, EntryOptions, PlayerMenu, OnScreenKeyboard, WebPlayerBrowse, WebPlayerLaunch, the Osd* elements, ChoiceOverlay, qmldir)
+    Components/                     # shared QML components (AppBar, HintBar, MenuRow, HelpLine, ScrollMarks, TreeBrowser, InfoPanel, EntryOptions, PlayerMenu, MousePointer, OnScreenKeyboard, WebPlayerBrowse, WebPlayerLaunch, the Osd* elements, ChoiceOverlay, qmldir)
     BootScreen.qml                  # boot screen of the 240-MP OS image (see os/README.md)
   Main.qml                          # app root
   CMakeLists.txt
@@ -383,6 +386,22 @@ All input arrives in QML as **ordinary key events** — views bind `Keys.onPress
 ### Input survives a display hand-off
 
 On RPi/EGLFS, input keeps flowing while Qt is VT-switched away: Qt's libinput/evdev handlers and SDL both read `/dev/input/event*` directly, with no VT gating. **Only rendering is suspended.** That's why a Player view can forward keys to fullscreen mpv over IPC on the Pi.
+
+### The mouse pointer
+
+Qt's own pointer stays hidden (`main.cpp`): on EGLFS it is a hardware cursor, and `Qt::BlankCursor` didn't always keep it hidden after a display hand-off. The app draws its own instead, in the OSD's pixels (`Components/MousePointer.qml`). `Main.qml` lays a hover-only `MouseArea` over everything (`acceptedButtons: Qt.NoButton`, so clicks and the wheel still reach what is under it). As the mouse moves, the pointer follows it and shows, and it hides again after Settings → **Mouse Pointer** seconds without moving: `app.mouse_pointer`, which is `"off"`, `"always"` or a number of seconds (`5` when unset). Moving the mouse also resets the idle tracker and dismisses the screen saver. The menus still go by keys; the pointer is for seeing where a mouse is.
+
+## Bluetooth (BluetoothManager)
+
+Settings → **Bluetooth** (`views/Bluetooth.qml`) pairs a Bluetooth keyboard, gamepad or remote. It is backed by `BluetoothManager` (`src/bluetooth/`, the context property **`bluetoothManager`**), which talks to BlueZ, the Linux Bluetooth daemon, over D-Bus (`org.bluez` on the system bus).
+
+- **Optional, Linux only.** It is built when CMake finds Qt D-Bus (`qt6-base-dev` has it), with `MP240_BLUETOOTH` defined. On macOS, or without Qt D-Bus, `supported` is false and Settings leaves the row out.
+- **BlueZ is only called once it is on the bus.** A `QDBusServiceWatcher` follows `org.bluez` coming and going, and `GetManagedObjects` loads the adapter (the first one, `hci0` on a Pi) and its devices. `InterfacesAdded`/`InterfacesRemoved`/`PropertiesChanged` keep them up to date. On 240-MP OS `bluetooth.service` starts after the app is on screen (see [os/README.md](os/README.md)), and a call to `org.bluez` before then would start it early through D-Bus activation. A change to a property the list doesn't show (`RSSI`, with every answer while searching) doesn't touch it.
+- **Search** is `StartDiscovery` for a minute (`startSearch()`/`stopSearch()`, `searching`). `devices` lists the paired devices by name, then the devices found in the order they were found. A device that hasn't said its name is left out until it is paired. `kind` comes from the Class of Device (a keyboard with a touchpad is a "combo", which BlueZ has no icon for), else from BlueZ's `Icon`.
+- **Pairing** (`pair(path)`) stops the search, calls `Device1.Pair` (two minutes, enough to type a code), then sets `Trusted` so the device reconnects by itself after a restart, and calls `Connect`. `connectDevice`, `disconnectDevice` and `forget` (`Adapter1.RemoveDevice`) work on a paired device. `busy` marks the row while one of these runs, and `message` says how it went.
+- **The agent.** `BluetoothAgent` (`org.bluez.Agent1`) is exported at `/com/240mp/BluetoothAgent`, then registered as BlueZ's default agent with the `DisplayYesNo` capability. That covers a keyboard (BlueZ shows a passkey to type on it: `DisplayPasskey`, called again with the digits typed so far; or an older keyboard's PIN, `DisplayPinCode`/`RequestPinCode`), a phone (the same code on both: `RequestConfirmation`, answered with `answerPrompt`), and a pad or mouse with nothing to show (no question). What is to be shown is in `prompt` (`{ kind, name, code, entered }`), drawn by `views/BluetoothPrompt.qml` over the page; back cancels the pairing (`cancelPairing()`). A pairing nobody started here (`RequestAuthorization`) is refused. `AuthorizeService` lets a paired device in.
+- **Leaving the page** stops a search and cancels a pairing, since nothing would show the code any more.
+- **Permissions.** The app talks to BlueZ as the user it runs as. `install.sh` and the OS image add that user to the `bluetooth` group, which BlueZ's D-Bus policy lets in.
 
 ## C++ Backend Patterns
 

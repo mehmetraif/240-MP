@@ -77,6 +77,7 @@ add_executable(240mp
     src/input/IdleTracker.cpp
     src/update/UpdateManager.cpp
     src/boot/BootProgress.cpp
+    src/bluetooth/BluetoothManager.cpp
     $<$<BOOL:${APPLE}>:src/util/MacosUtils.mm>
 )
 
@@ -127,6 +128,19 @@ if(MPV_FOUND)
     target_include_directories(240mp PRIVATE ${MPV_INCLUDEDIR})
 else()
     message(STATUS "libmpv headers not found — Transparent Background will be unavailable")
+endif()
+
+# BlueZ over D-Bus for Settings → Bluetooth (src/bluetooth). Linux only: a Mac
+# pairs devices in its own settings. Without Qt D-Bus the row is left out.
+if(NOT APPLE)
+    find_package(Qt6 QUIET COMPONENTS DBus)
+endif()
+if(Qt6DBus_FOUND)
+    target_sources(240mp PRIVATE src/bluetooth/BluetoothAgent.cpp)
+    target_compile_definitions(240mp PRIVATE MP240_BLUETOOTH=1)
+    target_link_libraries(240mp PRIVATE Qt6::DBus)
+else()
+    message(STATUS "Qt D-Bus not found — Settings → Bluetooth will be unavailable")
 endif()
 
 target_include_directories(240mp PRIVATE

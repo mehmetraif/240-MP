@@ -17,6 +17,8 @@ On a Raspberry Pi, 240-MP can also be the whole system. The **240-MP OS** image 
 - **Info screens** for films and videos: the story, genre, director, cast and rating. One comes up when the cursor rests on a title (3 seconds by default), or straight away with ►.
 - **Options** on any entry, with ►: add it to **Favorites**, or have it **Play at Startup**, straight after the boot screen, where it was stopped or from the beginning (Settings → Startup From), without asking.
 - **Transparent Background.** Back from a video returns to the menus while the video keeps playing behind them, like a deck's menu over the tape, and the first row of the main menu takes it back to full screen. A Local Files or YouTube video first opens a menu of its own over the picture: its module's settings for it, Favorites, Browse, and Close Video. A slider from TRANSPARENT to SOLID sets how much of it shows through: at SOLID none, while it plays on, sound and all. Select on the setting turns it off. It needs libmpv (`libmpv2` on Raspberry Pi OS, part of Homebrew's mpv on macOS).
+- **Bluetooth** in Settings: search for a keyboard, gamepad or remote and pair it from the couch. A keyboard's pairing code comes up on screen, to type on it.
+- **A mouse pointer** (a mouse, or a keyboard's touchpad) that shows while the mouse moves and hides again after 5 seconds (Settings → Mouse Pointer).
 - **Scaling** for 16:9 pictures on a 4:3 screen: Letterbox, 14:9, Pan & Scan or Anamorphic. Set it for every module, or for one module in its own settings.
 - **Netflix and Prime Video** catalogues from TMDB in the same tree. A title plays in the service's own player.
 - **240-MP OS**, a Raspberry Pi OS Lite image that boots straight into 240-MP and shows a VHS boot screen while its services come up.
@@ -61,7 +63,7 @@ Every screen below is the app itself, running at 640×480. The film and YouTube 
 <table>
 <tr><th width="33%">Boot screen</th><th width="33%">Main menu</th><th width="33%">Quit</th></tr>
 <tr><td><img src="docs/screenshots/boot.png" width="100%" alt="Boot screen" /></td><td><img src="docs/screenshots/main-menu.png" width="100%" alt="Main menu" /></td><td><img src="docs/screenshots/quit.png" width="100%" alt="Quit" /></td></tr>
-<tr><td>On 240-MP OS, a cassette winds its tape from reel to reel while the services start, <code>[ OK ]</code> once each is up. It closes by itself when the last one has settled.</td><td>The modules, like the inputs on a deck. Select opens one; back opens Settings.</td><td>Settings → Quit. When 240-MP starts with the system, it offers Power Off or Exit to Terminal instead.</td></tr>
+<tr><td>On 240-MP OS, a cassette winds its tape from reel to reel while the services start, <code>[ OK ]</code> once each is up. It closes by itself when the last one has settled.</td><td>The modules, like the inputs on a deck. Select opens one; back opens Settings.</td><td>Settings → Quit. When 240-MP starts with the system, it offers Power Off, Restart or Exit to Terminal instead.</td></tr>
 </table>
 
 ### Local Files
@@ -166,6 +168,12 @@ Once signed in, each opens on the server's Continue Watching and its libraries. 
 <tr><th width="50%">A module's settings</th><th width="50%">Picking a folder</th></tr>
 <tr><td><img src="docs/screenshots/module-settings.png" width="100%" alt="A module's settings" /></td><td><img src="docs/screenshots/folder-picker.png" width="100%" alt="Picking a folder" /></td></tr>
 <tr><td>Local Files: its folder, looping, shuffle, resume, subtitles, and its own Scaling.</td><td>Folders are picked by browsing to them.</td></tr>
+</table>
+
+<table>
+<tr><th width="50%">Bluetooth</th><th width="50%">Pairing a keyboard</th></tr>
+<tr><td><img src="docs/screenshots/bluetooth.png" width="100%" alt="Bluetooth" /></td><td><img src="docs/screenshots/bluetooth-pairing.png" width="100%" alt="Pairing a keyboard" /></td></tr>
+<tr><td>Search finds what is in pairing mode nearby for a minute, keyboards, gamepads and the like. Select pairs one and connects it, and it comes back by itself after a restart. Select on a paired one connects, disconnects or forgets it.</td><td>A keyboard is paired by typing the code it asks for, then its Enter. The digits light up as they are typed.</td></tr>
 </table>
 
 <table>
@@ -354,7 +362,8 @@ Photos of an earlier version, before the menus above, on a CRT.
     - Yes! The UI was built to scale on modern televisions over HDMI as well.
     - Please make sure you use the config.txt I provide for HDMI and it will output at the proper resolution for a modern tv.
 - Does 240-MP support bluetooth keyboards/remotes/controllers?
-    - 240-MP is just an app that runs on top of an already configured Operating System. If your OS has a way to configure and set up bluetooh controllers then 240-MP will simply see them as controllers when it boots up.
+    - Yes. On Linux (a Raspberry Pi included) pair them in Settings → Bluetooth: SEARCH, then select the device. A keyboard shows a code on screen to type on it. Once paired, a device comes back by itself after a restart, and 240-MP sees it as it would a USB one.
+    - On a Mac, pair them in the Mac's own Bluetooth settings.
 
 ## Credits & Acknowledgments
 

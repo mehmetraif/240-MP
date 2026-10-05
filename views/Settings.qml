@@ -20,13 +20,16 @@ FocusScope {
     property int quitChoiceIndex: 0
 
     // Quit overlay choices. Under the autostart service (headless RPi) the quit menu has an
-    // "Exit to Terminal" option that drops to a tty1 login without powering off; that
-    // option is not needed on macOS/Desktop or when run by hand, so it's yes/no for that case.
+    // "Exit to Terminal" option that drops to a tty1 login without powering off, and a
+    // "Restart" that reboots (where the stop helper knows how, see canRestartSystem());
+    // they are not needed on macOS/Desktop or when run by hand, so it's yes/no for that case.
     property bool autostartSession: false
+    property bool canRestart: false
     property var quitOptions: settingsRoot.autostartSession
-        ? [{ label: "Power Off",        action: "quit"     },
-           { label: "Exit to Terminal", action: "terminal" },
-           { label: "Cancel",           action: "cancel"   }]
+        ? [{ label: "Power Off",        action: "quit"     }]
+          .concat(settingsRoot.canRestart ? [{ label: "Restart", action: "restart" }] : [])
+          .concat([{ label: "Exit to Terminal", action: "terminal" },
+                   { label: "Cancel",           action: "cancel"   }])
         : [{ label: "Yes", action: "quit" },
            { label: "No",  action: "cancel" }]
 
@@ -35,6 +38,7 @@ FocusScope {
         appSettings = cfg.app || {}
         installedModules = appCore.get_installed_modules()
         autostartSession = appCore.isAutostartSession()
+        canRestart = appCore.canRestartSystem()
 
         var items = []
 
@@ -204,6 +208,22 @@ FocusScope {
             moduleId: ""
         })
 
+        // MOUSE POINTER — drawn by Main.qml: it shows as the mouse moves and
+        // goes again after this many seconds without moving.
+        var pointerVals = ["off", "2", "5", "10", "30", "always"]
+        var pointerOpts = ["Off", "2 sec", "5 sec", "10 sec", "30 sec", "Always"]
+        var pointerIdx = pointerVals.indexOf(appSettings["mouse_pointer"] || "5")
+        items.push({
+            type: "list_single",
+            key: "mouse_pointer",
+            label: "Mouse Pointer",
+            options: pointerOpts,
+            values: pointerVals,
+            value: pointerOpts[pointerIdx < 0 ? pointerVals.indexOf("5") : pointerIdx],
+            description: "A mouse's pointer shows as it moves, and goes again after these seconds without moving\n[OFF] Never shown  [ALWAYS] Stays on screen",
+            moduleId: ""
+        })
+
         // INFO SCREEN — a film's details in the trees (Netflix, Prime Video,
         // YouTube): with right on it always, and with a number also on its own
         // once the cursor has rested on it that many seconds. One control, like
@@ -246,6 +266,15 @@ FocusScope {
             label: "Controls",
             moduleId: ""
         })
+        // Pairing a Bluetooth keyboard, gamepad or remote (BlueZ, so Linux).
+        if (bluetoothManager && bluetoothManager.supported) {
+            items.push({
+                type: "submenu",
+                key: "bluetooth",
+                label: "Bluetooth",
+                moduleId: ""
+            })
+        }
         items.push({
             type: "submenu",
             key: "software_update",
@@ -443,6 +472,8 @@ FocusScope {
                     settingsRoot.navigateTo("views/Update.qml", {}, { currentIndex: settingsList.currentIndex })
                 else if (row.key === "remap_controls")
                     settingsRoot.navigateTo("views/RemapControls.qml", {}, { currentIndex: settingsList.currentIndex })
+                else if (row.key === "bluetooth")
+                    settingsRoot.navigateTo("views/Bluetooth.qml", {}, { currentIndex: settingsList.currentIndex })
                 else
                     settingsRoot.navigateTo("views/ModuleSettings.qml", { moduleId: row.moduleId }, { currentIndex: settingsList.currentIndex })
             } else if (row && row.type === "quit") {
@@ -542,6 +573,7 @@ FocusScope {
         Keys.onReturnPressed: {
             var act = quitOptions[quitChoiceIndex].action
             if (act === "quit")          Qt.quit()
+            else if (act === "restart")  Qt.exit(12)   // 240mp-stop reboots on it
             else if (act === "terminal") Qt.exit(10)   // matches EXIT_STATUS check in 240mp-stop
             else { quitOverlayVisible = false; settingsList.forceActiveFocus() }
         }
@@ -557,7 +589,9 @@ FocusScope {
             color: root.surfaceColor
             anchors.centerIn: parent
             width: root.sw * 0.76875   //492
-            height: root.sh * 0.2833333 //136
+            // As tall as its lines, so it stays in the middle however many
+            // choices it has.
+            height: quitDialogColumn.implicitHeight
 
             Column {
                 id: quitDialogColumn

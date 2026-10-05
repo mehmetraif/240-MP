@@ -21,3 +21,4 @@ WebPlayerBrowse WebPlayerBrowse.qml
 InfoPanel InfoPanel.qml
 EntryOptions EntryOptions.qml
 PlayerMenu PlayerMenu.qml
+MousePointer MousePointer.qml
