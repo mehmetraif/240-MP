@@ -4,8 +4,8 @@ import Components
 // Boot screen of the 240-MP OS image (os/README.md). The image puts the app on
 // screen first and starts the services it held back afterwards, in the order
 // it lists them; this shows them coming up while the cassette plays — the tape
-// winds across in step with the progress bar. Any key closes it early, though
-// it doesn't say so; the services carry on in the background either way.
+// winds across in step with the progress bar. It stays until they have all
+// settled, or a minute has passed, whatever keys are pressed.
 //
 // Binds only to root.* (Main.qml mirrors bootProgress there), which stays
 // valid while this Loader-hosted view is torn down.
@@ -75,13 +75,11 @@ FocusScope {
         }
     }
 
+    // Keys go nowhere while it is up, so none reaches the view underneath.
     Keys.onPressed: function(event) {
         event.accepted = true
-        if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_Q) {
+        if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_Q)
             Qt.quit()
-            return
-        }
-        root.skipBootScreen()
     }
 
     Rectangle {

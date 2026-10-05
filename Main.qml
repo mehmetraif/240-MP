@@ -196,7 +196,6 @@ Window {
     readonly property real   bootValue:  bootProgress ? bootProgress.progress : 0
     readonly property var    bootSteps:  bootProgress ? bootProgress.steps : []
     readonly property string bootLabel:  bootProgress ? bootProgress.currentLabel : ""
-    function skipBootScreen() { if (bootProgress) bootProgress.skip() }
 
     // The startup module waits for the boot screen: most modules need the
     // network the boot screen is waiting on.

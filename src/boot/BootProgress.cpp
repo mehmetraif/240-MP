@@ -144,11 +144,6 @@ void BootProgress::markReady()
     file.write(QByteArray::number(QCoreApplication::applicationPid()) + '\n');
 }
 
-void BootProgress::skip()
-{
-    close("skipped");
-}
-
 void BootProgress::poll()
 {
     if (!m_active || m_closing)

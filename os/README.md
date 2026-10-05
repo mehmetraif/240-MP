@@ -10,7 +10,7 @@ Compared with flashing Raspberry Pi OS Lite and running `scripts/install.sh` ([I
 
 - **The app comes first.** `240mp.service` starts as soon as the display driver is up (after `basic.target`), not after every other service (`multi-user.target`).
 - **The rest waits for it.** Wi-Fi (NetworkManager), Bluetooth, mDNS (`avahi-daemon`) and, if enabled, SSH hold back until the app has drawn its first frame. Then they start one after another, in that order.
-- **The boot screen.** While those services start, the app shows a pixel-art VHS cassette: its reels turn, and the tape winds off the left reel onto the right one as the progress bar fills, plus a line per service (`[ OK ] WI-FI`, …). It ends with a check that the network is actually online. The startup module opens once it is done, so modules that need the network find it ready. Any key closes the boot screen early; the services carry on regardless.
+- **The boot screen.** While those services start, the app shows a pixel-art VHS cassette: its reels turn, and the tape winds off the left reel onto the right one as the progress bar fills, plus a line per service (`[ OK ] WI-FI`, …). It ends with a check that the network is actually online. The startup module opens once it is done, so modules that need the network find it ready. Keys do nothing while it is up.
 - **A quiet boot.** There is no rainbow splash, no one-second firmware delay (`boot_delay=0`), no kernel text, logo or cursor on `tty1`, and no login prompt on `tty1`.
 - **Less running.** The image has:
   - no apt, man-db, e2scrub or dpkg-backup timers (they wake the SD card at random times, mid-movie included);
@@ -86,7 +86,7 @@ The image lands in `os/work/pi-gen/deploy/`. `os/build.sh` fetches pi-gen at a p
    - `wait-for-app` returns as soon as the ready file exists, or after 20 seconds whatever happens.
    - It returns at once when the app isn't starting this boot at all.
    - It is a wait, not an `After=240mp.service` ordering, on purpose: the worst a wait can cost is its timeout, while an ordering cycle with an early-boot unit could stall the whole boot.
-6. **The boot screen follows them.** `BootProgress` (`src/boot/`) polls `systemctl` for the units in `MP240_BOOT_UNITS_FILE`. It closes once every one has settled (started, failed, or skipped because its condition failed), when a key is pressed, or after a minute.
+6. **The boot screen follows them.** `BootProgress` (`src/boot/`) polls `systemctl` for the units in `MP240_BOOT_UNITS_FILE`. It closes once every one has settled (started, failed, or skipped because its condition failed), or after a minute. Keys don't close it.
 
 Outside this image neither environment variable is set, so `BootProgress` does nothing and a normal install is unaffected. It also stays out of the way when the app restarts after the boot has finished.
 

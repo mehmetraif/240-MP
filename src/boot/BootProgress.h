@@ -40,9 +40,6 @@ public:
     // services start. Safe to call more than once; only the first call acts.
     void markReady();
 
-    // Close the boot screen now. The services keep starting regardless.
-    Q_INVOKABLE void skip();
-
 signals:
     void activeChanged();
     void progressChanged();
