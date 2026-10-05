@@ -185,14 +185,11 @@ FocusScope {
     }
 
     // Footer
-    Text {
+    HintBar {
         text: failed ? root.hints.back + ":RETRY" : root.hints.back + ":CANCEL"
-        color: root.tertiaryColor
-        font.family: root.globalFont
         anchors.bottom: parent.bottom
         anchors.left: parent.left
         anchors.bottomMargin: root.sh * 0.1041667  // 50
         anchors.leftMargin: root.sw * 0.125  // 80
-        font.pixelSize: root.sh * 0.0333333  // 16
     }
 }

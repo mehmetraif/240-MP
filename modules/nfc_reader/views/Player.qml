@@ -1,4 +1,5 @@
 import QtQuick
+import Components
 
 FocusScope {
     id: playerRoot
@@ -276,12 +277,9 @@ FocusScope {
                 anchors.horizontalCenter: parent.horizontalCenter
                 font.pixelSize: root.sh * 0.0375 //18
             }
-            Text {
+            HintBar {
                 text: root.hints.back + ":BACK " + root.hints.select + ":RETRY"
-                color: "#919191"
-                font.family: root.globalFont
                 anchors.horizontalCenter: parent.horizontalCenter
-                font.pixelSize: root.sh * 0.0333333 //16
             }
         }
     }
@@ -347,11 +345,8 @@ FocusScope {
                     }
                 }
 
-                Text {
+                HintBar {
                     text: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE " + root.hints.select + ":SELECT"
-                    color: root.tertiaryColor
-                    font.family: root.globalFont
-                    font.pixelSize: root.sh * 0.0333333 //16
                     anchors.horizontalCenter: parent.horizontalCenter
                 }
             }

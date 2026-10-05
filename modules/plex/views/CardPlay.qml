@@ -1,4 +1,5 @@
 import QtQuick
+import Components
 
 // NFC card deep-link target. Resolves the card's Plex ref, then replaces itself
 // with the view that plays it: a single item's guid is resolved and streamed
@@ -209,12 +210,9 @@ FocusScope {
                 anchors.horizontalCenter: parent.horizontalCenter
                 font.pixelSize: root.sh * 0.0375
             }
-            Text {
+            HintBar {
                 text: root.hints.back + ":BACK " + root.hints.select + ":RETRY"
-                color: "#919191"
-                font.family: root.globalFont
                 anchors.horizontalCenter: parent.horizontalCenter
-                font.pixelSize: root.sh * 0.0333333
             }
         }
     }
