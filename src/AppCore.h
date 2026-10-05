@@ -60,6 +60,19 @@ public:
     // "" for one of the app's own views.
     Q_INVOKABLE QString moduleIdForSource(const QString &source) const;
 
+    // A module's own lists of entries ({ name, path, … } maps, newest first),
+    // such as what was watched recently and the favourites, kept in
+    // <dataRoot>/lists.json. An entry is known by its path.
+    Q_INVOKABLE QVariantList get_list(const QString &moduleId, const QString &name) const;
+    // Puts the entry first, in place of an earlier one with its path, and
+    // keeps the newest `limit`.
+    Q_INVOKABLE void add_to_list(const QString &moduleId, const QString &name,
+                                 const QVariantMap &entry, int limit = 50);
+    Q_INVOKABLE void remove_from_list(const QString &moduleId, const QString &name,
+                                      const QString &path);
+    Q_INVOKABLE bool list_contains(const QString &moduleId, const QString &name,
+                                   const QString &path) const;
+
     // Registers a module backend: stores it for action routing, exposes it to QML under
     // contextProperty, and connects its optional signals/slots by introspection (only
     // those the backend actually declares). The module ID is stated once, here.
@@ -83,6 +96,8 @@ private slots:
 private:
     QJsonObject loadConfig() const;
     void saveConfig(const QJsonObject &config) const;
+    QJsonObject loadLists() const;
+    void saveLists(const QJsonObject &lists) const;
     QString moduleIdForBackend(QObject *backend) const;
     // Extra top-level menu rows a module's backend wants to contribute. Probed,
     // not connected — see the comment at the call site in scan_for_modules.

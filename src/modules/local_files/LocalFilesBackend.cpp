@@ -1,10 +1,13 @@
 #include "LocalFilesBackend.h"
 #include <QDir>
+#include <QDirIterator>
 #include <QFile>
 #include <QFileInfo>
 #include <QVariantMap>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QTimer>
+#include <algorithm>
 
 // supported image types
 static const QStringList kImageExts = {
@@ -19,6 +22,21 @@ static const QStringList kMediaExts =
     QStringList{ "mp4", "mkv", "avi", "mov", "m4v", "webm", "wmv", "flv", "f4v", "mpg", "mpeg", "vob" }
     + kImageExts
     + kPlaylistExts;
+
+// A search under way (search()).
+struct LocalFilesBackend::SearchRun {
+    QString path;
+    QStringList words;
+    std::unique_ptr<QDirIterator> it;
+    QVariantList found;
+};
+
+// No more matches than a tree column is good for: the first, by name.
+static constexpr int kSearchLimit = 200;
+// Entries looked at between two turns of the event loop.
+static constexpr int kSearchSlice = 400;
+
+LocalFilesBackend::~LocalFilesBackend() = default;
 
 LocalFilesBackend::LocalFilesBackend(const QString &appRoot, const QString &dataRoot, QObject *parent)
     : QObject(parent), m_appRoot(appRoot), m_dataRoot(dataRoot), m_mediaRoot(dataRoot + "/media")
@@ -174,6 +192,10 @@ void LocalFilesBackend::setMediaRoot(const QString &path) {
     // An empty (reset) setting means back to the dataRoot/media default.
     m_mediaRoot = path.isEmpty() ? m_dataRoot + "/media" : path;
     QDir().mkpath(m_mediaRoot);
+    // What was found was found in the old folder.
+    m_search.reset();
+    m_foundPath.clear();
+    m_found.clear();
     qDebug("[LocalFiles] media root: %s", qPrintable(m_mediaRoot));
 }
 
@@ -229,4 +251,91 @@ QVariantList LocalFilesBackend::getItems(const QString &path) {
         result.append(item);
     }
     return result;
+}
+
+// ---------------------------------------------------------------------------
+// Search: names under the media folder, walked a slice at a time.
+// ---------------------------------------------------------------------------
+
+// A tree entry for a name, as getItems() makes them; empty for a file that
+// isn't media.
+QVariantMap LocalFilesBackend::entryFor(const QString &dirPath, const QString &name, bool isDir) const {
+    const QString full = QDir(dirPath).absoluteFilePath(name);
+    QVariantMap item;
+    if (isDir) {
+        if (isPlaylist(name) && QFileInfo::exists(full + QLatin1Char('/') + name)) {
+            item["name"] = name;
+            item["path"] = full + QLatin1Char('/') + name;
+            item["isFolder"] = false;
+            return item;
+        }
+        item["name"] = name;
+        item["path"] = full;
+        item["isFolder"] = true;
+        return item;
+    }
+    if (!kMediaExts.contains(QFileInfo(name).suffix().toLower()))
+        return {};
+    item["name"] = name;
+    item["path"] = full;
+    item["isFolder"] = false;
+    return item;
+}
+
+QVariant LocalFilesBackend::search(const QString &path, const QString &words, bool fresh) {
+    if (!fresh && path == m_foundPath)
+        return m_found;
+    if (!fresh && m_search && m_search->path == path)
+        return QVariant();
+    m_foundPath.clear();
+    m_found.clear();
+    // A run under way always has its next slice waiting: one more would make two.
+    const bool running = m_search != nullptr;
+    m_search = std::make_unique<SearchRun>();
+    m_search->path = path;
+    m_search->words = words.simplified().toLower().split(QLatin1Char(' '), Qt::SkipEmptyParts);
+    // Not through symbolic links: one pointing back up would never end.
+    m_search->it = std::make_unique<QDirIterator>(
+        m_mediaRoot, QDir::Dirs | QDir::Files | QDir::NoDotAndDotDot, QDirIterator::Subdirectories);
+    if (!running)
+        QTimer::singleShot(0, this, &LocalFilesBackend::searchSlice);
+    return QVariant();
+}
+
+QVariantList LocalFilesBackend::existing(const QVariantList &entries) const {
+    QVariantList kept;
+    for (const QVariant &v : entries) {
+        if (QFileInfo::exists(v.toMap().value("path").toString()))
+            kept << v;
+    }
+    return kept;
+}
+
+void LocalFilesBackend::searchSlice() {
+    if (!m_search)
+        return;
+    SearchRun &run = *m_search;
+    for (int n = 0; n < kSearchSlice && run.it->hasNext(); ++n) {
+        run.it->next();
+        const QFileInfo info = run.it->fileInfo();
+        const QString name = info.fileName().toLower();
+        if (run.words.isEmpty() || !std::all_of(run.words.cbegin(), run.words.cend(),
+                                                [&name](const QString &w) { return name.contains(w); }))
+            continue;
+        const QVariantMap item = entryFor(info.absolutePath(), info.fileName(), info.isDir());
+        if (!item.isEmpty())
+            run.found.append(item);
+    }
+    if (run.it->hasNext()) {
+        QTimer::singleShot(0, this, &LocalFilesBackend::searchSlice);
+        return;
+    }
+    std::sort(run.found.begin(), run.found.end(), [](const QVariant &a, const QVariant &b) {
+        return QString::compare(a.toMap().value("name").toString(), b.toMap().value("name").toString(),
+                                Qt::CaseInsensitive) < 0;
+    });
+    m_foundPath = run.path;
+    m_found = run.found.mid(0, kSearchLimit);
+    m_search.reset();
+    emit searchReady(m_foundPath);
 }

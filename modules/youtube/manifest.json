@@ -48,7 +48,7 @@
     },
     {
       "key": "delete_history",
-      "label": "Delete History",
+      "label": "Delete Recently Watched",
       "type": "action",
       "action_slot": "delete_history"
     }

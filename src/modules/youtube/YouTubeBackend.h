@@ -56,7 +56,7 @@ public:
     Q_INVOKABLE QString ytdlFormatForResolution(const QString &resolution) const;
 
     // Watch history (youtube_history.json). A finished video stays in history
-    // with pos 0 (so it lists under History but never prompts to resume);
+    // with pos 0 (so it lists under RECENTLY WATCHED but never prompts to resume);
     // entries are pruned to the kMaxHistoryItems most recently played.
     Q_INVOKABLE QVariantMap  getSavedPosition(const QString &videoId);
     Q_INVOKABLE void         savePosition(const QString &videoId, int positionMs,
@@ -73,12 +73,14 @@ public:
     Q_INVOKABLE void         delete_watch_later(); // settings action slot
 
     // The module's tree, by path:
-    //   home             SEARCH, then SUBSCRIPTIONS, CHANNELS, PLAYLISTS,
-    //                    WATCH LATER and HISTORY, each where it has anything
+    //   home             SEARCH, then SUBSCRIPTIONS, CHANNELS, PLAYLISTS and
+    //                    WATCH LATER, each where it has anything (the view
+    //                    puts RECENTLY WATCHED and FAVORITES before them)
     //   subscriptions    the subscriptions feed, newest first
     //   channels         the subscribed channels: channel/<id> each
     //   playlists        youtube_playlists.txt's: playlist/<id> each
-    //   watchlater, history
+    //   watchlater
+    //   history          what was played, newest first (RECENTLY WATCHED)
     //   search/<words>   YouTube's matches for the words, MORE at the end
     // Videos carry what Player.qml plays (videoId, url, title, channelName)
     // and isShort. An invalid QVariant (undefined in QML) means the entries are

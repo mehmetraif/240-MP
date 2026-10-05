@@ -1,13 +1,15 @@
 import QtQuick
 import Components
 
-// YouTube in the tree, browsed like Local Files: SEARCH (on the on-screen
-// keyboard), the subscriptions feed, each channel and playlist, Watch Later and
-// History, from youtubeBackend.listing(). A video plays in Player.qml, and
-// coming back reopens the same folders. Right on a video opens its info screen
-// (InfoPanel), the tree's last layer, as the cursor resting on it does after
-// the app's INFO SCREEN setting's seconds; right there saves it to Watch Later,
-// or takes it off. With the info screen off, right on the video does that.
+// YouTube in the tree, browsed like Local Files: RECENTLY WATCHED (the
+// backend's history) and FAVORITES (the module's list in AppCore), then SEARCH
+// (on the on-screen keyboard), the subscriptions feed, each channel and
+// playlist, and Watch Later, from youtubeBackend.listing(). A video plays in
+// Player.qml, and coming back reopens the same folders. Right on a video opens
+// its info screen (InfoPanel), the tree's last layer, as the cursor resting on
+// it does after the app's INFO SCREEN setting's seconds; right there offers
+// its options (EntryOptions: its favourite, Watch Later), as right on the
+// video does with the info screen off.
 FocusScope {
     id: itemsRoot
 
@@ -49,9 +51,15 @@ FocusScope {
         previewDelay: (parseInt(itemsRoot.infoSetting) || 0) * 1000
         savedTrail: itemsRoot.navListState.trail || []
         fetch: function(path, preview) {
-            var entries = youtubeBackend.listing(path, preview)
+            if (!youtubeBackend || !appCore)
+                return []
+            var entries = path === "favorites" ? appCore.get_list(moduleRoot.moduleId, path)
+                                               : youtubeBackend.listing(path, preview)
             if (entries === undefined)
                 return null
+            if (path === "home")
+                entries = [{ name: "Recently Watched", path: "history", isFolder: true },
+                           { name: "Favorites", path: "favorites", isFolder: true }].concat(entries)
             return itemsRoot.showShorts ? entries : entries.filter(function(e) { return !e.isShort })
         }
         onActivated: function(item) {
@@ -69,7 +77,7 @@ FocusScope {
         }
         onOptionsRequested: function(item) {
             if (item.kind === "video")
-                watchLater.offer(item)
+                itemsRoot.offerOptions(item)
         }
         onPreviewRequested: function(item) {
             if (item.kind !== "video")
@@ -96,7 +104,7 @@ FocusScope {
     // no yt-dlp.
     HelpLine {
         id: problemLine
-        visible: !osk.visible && !watchLater.visible && !info.visible && text !== ""
+        visible: !osk.visible && !options.visible && !info.visible && text !== ""
         text: youtubeBackend ? youtubeBackend.problem : ""
         anchors.bottom: parent.bottom
         anchors.left: parent.left
@@ -105,15 +113,15 @@ FocusScope {
     }
 
     HintBar {
-        visible: !osk.visible && !watchLater.visible && !info.visible
+        visible: !osk.visible && !options.visible && !info.visible
         // What select does with the entry under the cursor: a video plays,
-        // and right opens its info (or saves it, with the info screen off)
+        // and right opens its info (or its options, with the info screen off)
         // rather than moving.
         readonly property var entry: tree.currentEntry
         readonly property bool onVideo: !!entry && entry.kind === "video"
         text: root.hints.back + ":BACK "
               + (onVideo ? String(root.hints.navigate).replace("]", "\u25C4]") + ":NAVIGATE "
-                           + root.hints.browse + (tree.preview ? ":INFO " : ":SAVE ")
+                           + root.hints.browse + (tree.preview ? ":INFO " : ":OPTIONS ")
                          : root.hints.arrows + ":NAVIGATE ")
               + root.hints.select
               + (onVideo ? ":PLAY"
@@ -137,44 +145,46 @@ FocusScope {
         onCanceled: tree.forceActiveFocus()
     }
 
-    // A video's info: the tree's last layer. Right there saves it.
+    // A video's info: the tree's last layer. Right there offers its options.
     InfoPanel {
         id: info
         anchors.fill: parent
-        saveHint: root.hints.browse + ":SAVE"
         onPlayRequested: function(item) {
             itemsRoot.navigateTo("Player.qml", { item: item }, { trail: tree.trailState() })
         }
-        onSaveRequested: function(item) { watchLater.offer(item) }
+        onOptionsRequested: function(item) { itemsRoot.offerOptions(item) }
         onMoveRequested: function(delta) { tree.move(delta) }
         onClosed: tree.forceActiveFocus()
     }
 
-    // Save to Watch Later, or take off it what is already there.
-    ChoiceOverlay {
-        id: watchLater
-        property var video: null
-        property bool saved: false
+    // A video as FAVORITES keeps it: what Player.qml plays it with, without
+    // the description and counts a list would carry along.
+    function offerOptions(item) {
+        options.watchLater = youtubeBackend.isInWatchLater(item.videoId)
+        options.offer({ name: item.name, path: item.path, isFolder: false, kind: "video",
+                        videoId: item.videoId, url: item.url, title: item.title,
+                        channelName: item.channelName || "", isShort: !!item.isShort })
+    }
 
-        function offer(item) {
-            video = item
-            saved = youtubeBackend.isInWatchLater(item.videoId)
-            open()
-        }
+    // Its favourite, and saving it to Watch Later or taking it off.
+    EntryOptions {
+        id: options
+        property bool watchLater: false
 
         anchors.fill: parent
-        promptText: saved ? "Remove from Watch Later?" : "Save to Watch Later?"
-        subtitleText: video ? video.title : ""
-        choices: [{ label: "Yes", action: "yes" }, { label: "No", action: "no" }]
+        moduleId: moduleRoot.moduleId
+        moreChoices: [{ label: watchLater ? "Remove from Watch Later" : "Save to Watch Later",
+                        action: "watchlater" }]
+        onFavoritesEdited: tree.refresh("favorites")
         // Back to the info screen when it was opened from there.
         onClosed: info.visible ? info.forceActiveFocus() : tree.forceActiveFocus()
         onActivated: function(action) {
-            if (action !== "yes" || !video)
+            if (action !== "watchlater" || !entry)
                 return
-            if (saved)
-                youtubeBackend.removeFromWatchLater(video.videoId)
+            if (watchLater)
+                youtubeBackend.removeFromWatchLater(entry.videoId)
             else
-                youtubeBackend.addToWatchLater(video.videoId, video.title || "", video.channelName || "")
+                youtubeBackend.addToWatchLater(entry.videoId, entry.title || "", entry.channelName || "")
             // WATCH LATER comes and goes with what is on it.
             tree.refresh("watchlater")
             tree.refresh("home")

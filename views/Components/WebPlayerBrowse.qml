@@ -1,12 +1,15 @@
 import QtQuick
 
 // A web player module's catalogue (Netflix, Prime Video), browsed in a
-// TreeBrowser before the service's own player opens: SEARCH, MOVIES and SERIES
-// by genre, and the service's home page. The entries come from the backend's
+// TreeBrowser before the service's own player opens: RECENTLY WATCHED and
+// FAVORITES (the module's lists in AppCore), then SEARCH, MOVIES and SERIES by
+// genre, and the service's home page. The catalogue comes from the backend's
 // TmdbCatalog. Choosing a title, or the home page, opens it in Launch.qml, and
 // coming back reopens the same folders. A title's info screen (InfoPanel) is
 // the tree's last layer: right on it, or the cursor resting on it as long as
-// the app's INFO SCREEN setting says.
+// the app's INFO SCREEN setting says. Right there offers the title's options
+// (EntryOptions: its favourite), as right on the title does with the info
+// screen off.
 //
 // A module's Browse.qml is just this, with its backend and name:
 //     WebPlayerBrowse { backend: netflixBackend; serviceName: "Netflix" }
@@ -26,6 +29,8 @@ FocusScope {
     focus: true
 
     function open(params) {
+        if (params.item && appCore)
+            appCore.add_to_list(moduleRoot.moduleId, "recent", params.item, 30)
         navigateTo("Launch.qml", params, { trail: tree.trailState() })
     }
 
@@ -52,7 +57,15 @@ FocusScope {
         previewDelay: (parseInt(browse.infoSetting) || 0) * 1000
         savedTrail: browse.navListState.trail || []
         fetch: function(path, preview) {
-            return browse.catalog ? browse.catalog.listing(path, preview) : []
+            if (!browse.catalog || !appCore)
+                return []
+            if (path === "recent" || path === "favorites")
+                return appCore.get_list(moduleRoot.moduleId, path)
+            var entries = browse.catalog.listing(path, preview)
+            if (path !== "home" || !entries)
+                return entries
+            return [{ name: "Recently Watched", path: "recent", isFolder: true },
+                    { name: "Favorites", path: "favorites", isFolder: true }].concat(entries)
         }
         onActivated: function(item) {
             switch (item.kind) {
@@ -77,6 +90,10 @@ FocusScope {
             info.loading = true
             browse.catalog.loadDetails(item)
         }
+        onOptionsRequested: function(item) {
+            if (item.kind === "title")
+                options.offer(item)
+        }
         onLeaveRequested: browse.goBack()
     }
 
@@ -95,7 +112,7 @@ FocusScope {
     // no network.
     HelpLine {
         id: problemLine
-        visible: !osk.visible && !info.visible && text !== ""
+        visible: !osk.visible && !info.visible && !options.visible && text !== ""
         text: browse.catalog ? browse.catalog.problem : ""
         anchors.bottom: parent.bottom
         anchors.left: parent.left
@@ -104,14 +121,15 @@ FocusScope {
     }
 
     HintBar {
-        visible: !osk.visible && !info.visible
+        visible: !osk.visible && !info.visible && !options.visible
         // What select does with the entry under the cursor: a title plays,
-        // and right on it opens its info rather than moving.
+        // and right on it opens its info (or its options, with the info
+        // screen off) rather than moving.
         readonly property var entry: tree.currentEntry
-        readonly property bool onTitle: !!entry && entry.kind === "title" && tree.preview
+        readonly property bool onTitle: !!entry && entry.kind === "title"
         text: root.hints.back + ":BACK "
               + (onTitle ? String(root.hints.navigate).replace("]", "\u25C4]") + ":NAVIGATE "
-                           + root.hints.browse + ":INFO "
+                           + root.hints.browse + (tree.preview ? ":INFO " : ":OPTIONS ")
                          : root.hints.arrows + ":NAVIGATE ")
               + root.hints.select
               + (!entry || entry.isFolder ? ":OPEN"
@@ -129,6 +147,7 @@ FocusScope {
         id: info
         anchors.fill: parent
         onPlayRequested: function(item) { browse.open({ item: item, name: item.name }) }
+        onOptionsRequested: function(item) { options.offer(item) }
         onMoveRequested: function(delta) { tree.move(delta) }
         onClosed: tree.forceActiveFocus()
     }
@@ -142,5 +161,14 @@ FocusScope {
             tree.openItem({ name: "Search: " + text, path: "search/" + text })
         }
         onCanceled: tree.forceActiveFocus()
+    }
+
+    EntryOptions {
+        id: options
+        anchors.fill: parent
+        moduleId: moduleRoot.moduleId
+        onFavoritesEdited: tree.refresh("favorites")
+        // Back to the info screen when it was opened from there.
+        onClosed: info.visible ? info.forceActiveFocus() : tree.forceActiveFocus()
     }
 }
