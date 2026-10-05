@@ -19,6 +19,9 @@
 #   MP240_STREAMING   1 (default) or 0: the browser the Netflix and Prime
 #                     Video modules open (Chromium with Widevine, and cage),
 #                     about 400 MB
+#   MP240_YOUTUBE     1 (default) or 0: the YouTube module's yt-dlp (its
+#                     latest nightly build, which then updates itself) and
+#                     Deno, the JavaScript runtime it needs, about 90 MB
 #   MP240_ROOT_SIZE   GiB the system keeps of the card, 8 by default; the rest
 #                     becomes the exFAT film partition on the first boot. 0: no
 #                     film partition, the system takes the whole card
@@ -85,6 +88,11 @@ mkdir -p "${STAGE}/01-app/files"
 # leaves it out (the modules then say what to install).
 if [ "${MP240_STREAMING:-1}" = "0" ]; then
     touch "${STAGE}/04-streaming/SKIP"
+fi
+# YouTube's yt-dlp and Deno; with MP240_YOUTUBE=0 the module says yt-dlp is
+# missing.
+if [ "${MP240_YOUTUBE:-1}" = "0" ]; then
+    touch "${STAGE}/06-youtube/SKIP"
 fi
 # The film partition, unless MP240_ROOT_SIZE=0 leaves the card to the system.
 case "${MP240_ROOT_SIZE:-8}" in

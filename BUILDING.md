@@ -131,6 +131,8 @@ sudo wget https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -O /u
 
 For full YouTube support, yt-dlp also uses an external JavaScript runtime; install the recommended Deno runtime by following yt-dlp's [EJS setup guide](https://github.com/yt-dlp/yt-dlp/wiki/EJS), and make sure `deno` is on the `PATH` of the user or systemd service that runs 240-MP.
 
+The [240-MP OS](os/README.md) image comes with both: yt-dlp's nightly build in the data directory (`~/.local/share/240-MP/bin/yt-dlp`), which a timer updates after each boot and once a day, and Deno in `/usr/local/bin`.
+
 If yt-dlp is current and Deno is detected but YouTube still returns `Sign in to confirm you're not a bot`, the response can be route-specific. On a system that already has working IPv6, compare:
 
 ```bash

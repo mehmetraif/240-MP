@@ -1,0 +1,7 @@
+# For the YouTube module's yt-dlp (see 00-run.sh), which runs on the system's
+# Python, with what the packaged yt-dlp depends on for speed: pycryptodome
+# decrypts the cookies of YouTube's sign-in in a fraction of the time yt-dlp's
+# own AES takes on a Pi, requests keeps its connections to YouTube open from
+# one request to the next, and brotli shrinks what YouTube sends. os/build.sh
+# skips all of it with MP240_YOUTUBE=0.
+python3 python3-pycryptodome python3-requests python3-brotli

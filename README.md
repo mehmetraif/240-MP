@@ -312,6 +312,7 @@ Photos of an earlier version, before the menus above, on a CRT.
 - **Sign in** in its settings, if you want to, opens Google's sign-in page full screen in Chromium, to sign in with a keyboard. yt-dlp then searches and plays as that account, which YouTube asks for fewer bot checks and lets play age-restricted videos. **Sign out** forgets it
     - YouTube can block an account used through yt-dlp, as [yt-dlp's wiki](https://github.com/yt-dlp/yt-dlp/wiki/Extractors#youtube) warns, so sign in with a spare one
     - Needs Chromium, with `cage` and `wtype` without a desktop (see Netflix and Prime Video), or Google Chrome on a Mac
+- Needs yt-dlp, and Deno for full YouTube support ([BUILDING.md](BUILDING.md)). The [240-MP OS](os/README.md) image comes with both and keeps yt-dlp up to date
 
 ## Install
 - [On a Raspberry Pi](INSTALL.md#on-a-raspberry-pi)
