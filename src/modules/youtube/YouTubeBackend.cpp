@@ -795,8 +795,6 @@ QVariant YouTubeBackend::listing(const QString &path, bool preview) {
             entries << treeFolder(QStringLiteral("Playlists"), QStringLiteral("playlists"));
         if (!loadWatchLater().isEmpty())
             entries << treeFolder(QStringLiteral("Watch Later"), QStringLiteral("watchlater"));
-        if (!getHistory().isEmpty())
-            entries << treeFolder(QStringLiteral("History"), QStringLiteral("history"));
         return entries;
     }
     if (path == QLatin1String("watchlater"))

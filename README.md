@@ -8,6 +8,12 @@ Playback experiences are handled via modules to enable new integrations without 
 
 It's built to work in conjuction with [MPV](https://github.com/anthonycaccese/240-MP/wiki/MPV) which will be installed (or updated) as a dependency during the [install](#Install) steps.  Some modules (like YouTube and NFC Reader) have additional dependencies which are covered on their associated wiki pages under the "To Enable" sections.
 
+On a 4:3 screen a 16:9 picture is letterboxed; Settings → **Scaling** picks **14:9**, **Pan & Scan** or **Anamorphic** instead, for every module or, in a module's own settings, for that one.
+
+With Settings → **Transparent Background**, back from a video returns to the menus and leaves it playing behind them, like a deck's menu over the tape. Its slider, the deck's tape bar, sets how much of the picture shows through them: ◄ ► move it from TRANSPARENT (all of it) toward SOLID (none, which turns the setting off). Choose it again to watch it full screen where it is; play/pause on the main menu stops it. It plays the video inside 240-MP's own window through libmpv (`libmpv2` on Raspberry Pi OS, part of Homebrew's mpv on macOS).
+
+A favourite can start the show: right on it, **Options** → **Play at Startup** plays it straight after the boot screen (Settings → Play at Startup turns it off).
+
 ## Video Overview
 
 Watch on YouTube: https://youtu.be/r-gylGDoELY
@@ -59,17 +65,19 @@ Watch on YouTube: https://youtu.be/r-gylGDoELY
 - Supported file types: `"mp4", "mkv", "avi", "mov", "m4v", "webm", "wmv", "flv", "f4v", "mpg", "mpeg", "vob"`
 - Playlist support using `m3u` and `m3u8` files
 - Folder browsing as a horizontal tree: the open folders run along a line across the screen, every folder in the current one branches off to a few of its own entries, and the folder under the cursor branches once more
+- **Recently Watched**, **Favorites** and **Search** lead the tree: what you played last, what you marked (right on a file, then **Add to Favorites**), and file and folder names anywhere in the media folder, typed on an on-screen keyboard
 - Loop playback
 - Shuffle playback
 - Playback history
 - Switch audio/subtitle tracks during playback
 
 ### Netflix and Prime Video
-- Browse what the service carries in your country in the same tree as Local Files: **Search** (on an on-screen keyboard), **Movies** and **Series** by Popular and by genre, a page of titles at a time with **More…** at the end
+- Browse what the service carries in your country in the same tree as Local Files: **Recently Watched** and **Favorites** first, then **Search** (on an on-screen keyboard), **Movies** and **Series** by Popular and by genre, a page of titles at a time with **More…** at the end
 - Select on a title plays it straight away in the service's own web player, full screen. It opens at the title's own page on the service where [Wikidata](https://www.wikidata.org) knows it (by its TMDB or IMDb id), and at the service's search for it otherwise. **Netflix Home** / **Prime Video Home** opens the service as it is. 240-MP comes back when the player closes, with the tree as you left it
 - The catalogue comes from [TMDB](https://www.themoviedb.org)'s API, which needs a free API key: put it (a v3 key or a v4 read access token) on the first line of `tmdb_api_key.txt` in the data folder. Each module's settings set the country and the language of the titles
 - Neither service has an API for a front end like this one, and their streams are DRM-protected, so playback is the official site in Chromium with Widevine, not a 240-MP view: use it with a keyboard (arrow keys move between titles) or a mouse
 - A title's info screen (story, genre, director or creator, cast, rating) comes up when the cursor has rested on it for 3 seconds, or at once with right; Settings → **Info Screen** sets the seconds, or **Key** for right only, or **Off**
+- Right on the info screen (or on the title, with the info screen off) offers its options: **Add to Favorites** or **Remove from Favorites**
 - Come back by holding back (`[ESC]` / `[B]`) for two seconds, or by closing the browser (`Ctrl+W`)
 - Each keeps its sign-in between visits; **Sign out** in its settings forgets it
 - Needs `chromium`, `libwidevinecdm0` and, without a desktop, `cage` (on Raspberry Pi OS: `sudo apt install chromium libwidevinecdm0 cage`); the 240-MP OS image has them
@@ -122,12 +130,12 @@ Watch on YouTube: https://youtu.be/r-gylGDoELY
 
 ### YouTube ([Wiki](https://github.com/anthonycaccese/240-MP/wiki/Module:-YouTube))
 - List content from YouTube RSS feeds and playback via mpv + yt-dl (no auth required)
-- Browse it all in the same tree as Local Files: **Search**, **Subscriptions**, **Channels**, **Playlists**, **Watch Later** and **History**
+- Browse it all in the same tree as Local Files: **Recently Watched**, **Favorites**, **Search**, **Subscriptions**, **Channels**, **Playlists** and **Watch Later**
 - Search YouTube on an on-screen keyboard (through yt-dlp), twenty matches at a time with **More…** at the end
 - View Subscriptions: Browse the latest videos from your configured channels as a reverse chronological list
 - Browse videos by Channel, and by Playlist
-- A video's info screen (channel, date, length, views, description), like the streaming catalogues'; save to a local Watch Later list from it with right (or, with the info screen off, with right on the video)
-- View your local Watch History
+- A video's info screen (channel, date, length, views, description), like the streaming catalogues'; right on it (or, with the info screen off, on the video) offers its options: add it to **Favorites**, or save it to a local **Watch Later** list
+- **Recently Watched** is your local watch history
 - Resume Playback
 - Set Playback Resolution: 480p (default and good for the RaspberryPi), 720p and 1080p
 - Choose to Display Shorts or not (default is On)

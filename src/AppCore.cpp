@@ -8,6 +8,7 @@
 #include <QDebug>
 #include <QRegularExpression>
 #include <QNetworkInterface>
+#include <QJSValue>
 #include <QQmlContext>
 
 AppCore::AppCore(const QString &appRoot, const QString &dataRoot, QObject *parent)
@@ -180,7 +181,11 @@ QVariant AppCore::get_setting(const QString &moduleId, const QString &key) {
     return target[key].toVariant();
 }
 
-void AppCore::save_setting(const QString &moduleId, const QString &key, const QVariant &value) {
+void AppCore::save_setting(const QString &moduleId, const QString &key, const QVariant &rawValue) {
+    // A JS object or array from QML arrives wrapped as a QJSValue, which
+    // QJsonValue::fromVariant() would store as null.
+    const QVariant value = rawValue.metaType() == QMetaType::fromType<QJSValue>()
+                               ? rawValue.value<QJSValue>().toVariant() : rawValue;
     QJsonObject config = loadConfig();
 
     // Navigate to the target section
@@ -496,12 +501,14 @@ QString AppCore::localIpAddress() const {
 }
 
 QString AppCore::startupModuleEntryPoint() const {
-    QJsonObject config = loadConfig();
     // Keyed by module id (robust to display-name changes); "None"/empty = disabled.
-    QString moduleId = config["app"].toObject()["startup_module"].toString();
+    QString moduleId = loadConfig()["app"].toObject()["startup_module"].toString();
     if (moduleId.isEmpty() || moduleId == "None") return {};
+    return moduleEntryPoint(moduleId);
+}
 
-    QJsonObject modulesConfig = config["modules"].toObject();
+QString AppCore::moduleEntryPoint(const QString &moduleId) const {
+    QJsonObject modulesConfig = loadConfig()["modules"].toObject();
     for (const auto &m : m_modules) {
         // Skip a disabled module so we never auto-launch into one that isn't
         // present in the module list (e.g. set as startup, then disabled later).
@@ -510,4 +517,80 @@ QString AppCore::startupModuleEntryPoint() const {
         }
     }
     return {};
+}
+
+QString AppCore::moduleIdForSource(const QString &source) const {
+    static const QRegularExpression folderRe(QStringLiteral("(?:^|/)modules/([^/]+)/"));
+    const QRegularExpressionMatch match = folderRe.match(source);
+    if (!match.hasMatch())
+        return {};
+    for (const auto &m : m_modules) {
+        if (m.folder == match.captured(1))
+            return m.id;
+    }
+    return {};
+}
+
+// ---------------------------------------------------------------------------
+// A module's lists: <dataRoot>/lists.json, { "<moduleId>": { "<name>": [entries] } }
+// ---------------------------------------------------------------------------
+
+QJsonObject AppCore::loadLists() const {
+    QFile f(m_dataRoot + QStringLiteral("/lists.json"));
+    if (!f.open(QIODevice::ReadOnly))
+        return {};
+    return QJsonDocument::fromJson(f.readAll()).object();
+}
+
+void AppCore::saveLists(const QJsonObject &lists) const {
+    QFile f(m_dataRoot + QStringLiteral("/lists.json"));
+    if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        qWarning("[AppCore] Could not write lists.json: %s", qPrintable(f.errorString()));
+        return;
+    }
+    f.write(QJsonDocument(lists).toJson(QJsonDocument::Compact));
+}
+
+QVariantList AppCore::get_list(const QString &moduleId, const QString &name) const {
+    return loadLists().value(moduleId).toObject().value(name).toArray().toVariantList();
+}
+
+void AppCore::add_to_list(const QString &moduleId, const QString &name,
+                          const QVariantMap &entry, int limit) {
+    const QString path = entry.value(QStringLiteral("path")).toString();
+    if (path.isEmpty())
+        return;
+    QJsonObject lists = loadLists();
+    QJsonObject module = lists.value(moduleId).toObject();
+    QJsonArray kept{ QJsonObject::fromVariantMap(entry) };
+    for (const QJsonValue &v : module.value(name).toArray()) {
+        if (kept.size() >= qMax(1, limit))
+            break;
+        if (v.toObject().value(QStringLiteral("path")).toString() != path)
+            kept.append(v);
+    }
+    module.insert(name, kept);
+    lists.insert(moduleId, module);
+    saveLists(lists);
+}
+
+void AppCore::remove_from_list(const QString &moduleId, const QString &name, const QString &path) {
+    QJsonObject lists = loadLists();
+    QJsonObject module = lists.value(moduleId).toObject();
+    QJsonArray kept;
+    for (const QJsonValue &v : module.value(name).toArray()) {
+        if (v.toObject().value(QStringLiteral("path")).toString() != path)
+            kept.append(v);
+    }
+    module.insert(name, kept);
+    lists.insert(moduleId, module);
+    saveLists(lists);
+}
+
+bool AppCore::list_contains(const QString &moduleId, const QString &name, const QString &path) const {
+    for (const QJsonValue &v : loadLists().value(moduleId).toObject().value(name).toArray()) {
+        if (v.toObject().value(QStringLiteral("path")).toString() == path)
+            return true;
+    }
+    return false;
 }

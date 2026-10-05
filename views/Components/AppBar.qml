@@ -22,6 +22,18 @@ Item {
     width: root.sw * 0.75 //480
     height: content.height + 2 * root.px
 
+    // The logo's own ground, the background colour: through the gaps in its
+    // drawing, a video playing behind the menus would show otherwise.
+    Rectangle {
+        visible: appBar.hasLogo
+        x: logo.x
+        y: logo.y
+        width: logo.width
+        height: logo.height
+        color: root.surfaceColor
+        antialiasing: false
+    }
+
     Image {
         id: logo
         visible: appBar.hasLogo
@@ -30,11 +42,11 @@ Item {
         height: appBar.logoHeight
         width: implicitWidth
         sourceSize.height: appBar.logoHeight
-        smooth: false
-        // Drawn by OsdIconProvider in the bar's colour, on the art-pixel grid.
-        // Resolved here, so a path relative to this file works as it always has.
+        // Drawn by OsdIconProvider in the bar's colour, from the original at
+        // this height. Resolved here, so a path relative to this file works as
+        // it always has.
         source: appBar.iconSource.toString() !== "" && appBar.logoHeight > 0
-                ? "image://osdicon/" + root.primaryColor.toString().replace("#", "") + "/" + root.px
+                ? "image://osdicon/" + root.primaryColor.toString().replace("#", "")
                   + "/" + Qt.resolvedUrl(appBar.iconSource)
                 : ""
     }

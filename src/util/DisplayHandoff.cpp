@@ -66,6 +66,9 @@ bool DisplayHandoff::savedStateValid() const {
 }
 
 int DisplayHandoff::acquire(const QString &owner) {
+    // On every platform, before anything else: what plays inside the app's
+    // window makes way (MpvController), whether or not the screen changes hands.
+    emit handingOff(owner);
     if (!m_owner.isEmpty() && m_owner != owner) {
         qWarning("[DisplayHandoff] %s requested the screen but %s holds it",
                  qPrintable(owner), qPrintable(m_owner));

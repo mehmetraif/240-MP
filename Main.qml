@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Window
+import MP240.Video
 
 Window {
     id: root
@@ -104,6 +105,8 @@ Window {
         function onAppSettingChanged(key, value) {
             if (key === "color_scheme") {
                 root.currentTheme = value
+            } else if (key === "transparent_background") {
+                root.backdropSolidity = root.solidityOf(value)
             } else if (key === "screensaver_timeout") {
                 var sec = parseInt(value)
                 if (sec > 0) {
@@ -144,6 +147,7 @@ Window {
             savedTheme = "Video 1"
         }
         root.currentTheme = savedTheme
+        root.backdropSolidity = root.solidityOf(cfg.app && cfg.app.transparent_background)
 
         // Screensaver: the tracker starts disabled; this is the single place the
         // saved setting is applied (live changes land in onAppSettingChanged above,
@@ -223,18 +227,37 @@ Window {
     property var appCurrentParams: ({})
     property bool _startupNavigated: false
 
-    // Opens the configured startup module, once per run.
+    // Opens the configured startup module, once per run. A favourite chosen to
+    // PLAY AT STARTUP (EntryOptions) comes first: its module opens and plays
+    // it straight away (navParams.startupPlay), as long as it is still one of
+    // that module's favourites.
     function openStartupModule() {
         if (root._startupNavigated) return
         root._startupNavigated = true
-        var entryPoint = appCore.startupModuleEntryPoint()
+        var params = { fromAppStartup: true }
+        var entryPoint = ""
+        var startup = appCore.get_setting("", "startup_favorite")
+        if (startup && startup.module && startup.path) {
+            var favorites = appCore.get_list(startup.module, "favorites")
+            for (var i = 0; i < favorites.length; ++i) {
+                if (favorites[i].path === startup.path) {
+                    entryPoint = appCore.moduleEntryPoint(startup.module)
+                    params.startupPlay = favorites[i]
+                    break
+                }
+            }
+        }
+        if (!entryPoint) {
+            delete params.startupPlay
+            entryPoint = appCore.startupModuleEntryPoint()
+        }
         if (entryPoint) {
             root.appNavStack.push({
                 source: moduleLoader.source,
                 params: root.appCurrentParams,
                 listState: {}
             })
-            moduleLoader.setSource(entryPoint, { "navParams": { fromAppStartup: true } })
+            moduleLoader.setSource(entryPoint, { "navParams": params })
         }
     }
 
@@ -252,10 +275,51 @@ Window {
             }
         }
         function onPlaybackEnded(finalPositionMs, finalDurationMs, reason) {
-            idleTracker.mpvActive = false
+            // A video left playing behind the menus is still playing.
+            idleTracker.mpvActive = mpvController.videoActive
             idleTracker.resetActivity()
             root.dismissScreenSaver()
         }
+        function onVideoActiveChanged() {
+            idleTracker.mpvActive = mpvController.videoActive
+            idleTracker.resetActivity()
+        }
+    }
+
+    // --- VIDEO PLAYED INSIDE THIS WINDOW (Transparent Background) ---
+    // MpvController plays it here rather than in an mpv window of its own
+    // while the setting is on: its picture lies over everything while it
+    // plays full screen, and under the menus once back has returned to them,
+    // where it goes on playing (videoBehind). The menus draw no background of
+    // their own, so the picture is theirs then; full-screen dialogs keep
+    // theirs. The setting's slider says how solid their ground is over it.
+    readonly property bool videoActive: mpvController ? mpvController.videoActive : false
+    readonly property bool videoBehind: mpvController ? mpvController.background : false
+    property int backdropSolidity: 100
+
+    // "transparent_background": how solid the menus' ground is over a video
+    // behind them, 0 (TRANSPARENT) to 100 (SOLID, which is off: back stops
+    // the video, as it always has). Its first values were words.
+    function solidityOf(raw) {
+        var s = String(raw === undefined || raw === null ? "" : raw).toLowerCase()
+        if (s === "on") return 0
+        if (s === "dim") return 60
+        var n = parseInt(s)
+        return isNaN(n) ? 100 : Math.max(0, Math.min(100, n))
+    }
+
+    VideoSurface {
+        anchors.fill: parent
+        controller: mpvController
+        visible: root.videoActive
+        z: root.videoBehind ? -2 : 5000
+    }
+    Rectangle {
+        anchors.fill: parent
+        z: -1
+        visible: root.videoBehind && root.backdropSolidity > 0
+        color: root.surfaceColor
+        opacity: root.backdropSolidity / 100
     }
 
     // A running user script suppresses the screen saver too — a takeover script
@@ -278,6 +342,10 @@ Window {
         anchors.fill: parent;
         focus: true;
         source: "views/ModuleList.qml";
+
+        // Playback follows the open module's own settings where it has them
+        // (its Scaling).
+        onSourceChanged: mpvController.setActiveModule(appCore.moduleIdForSource(source.toString()))
 
         Keys.onPressed: (event) => {
             if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_Q) {

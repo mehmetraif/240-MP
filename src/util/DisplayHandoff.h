@@ -93,6 +93,12 @@ public:
     // would receive it is being torn down).
     void releaseNow(const QString &owner);
 
+signals:
+    // At the start of every acquire(), on every platform (where nothing is
+    // handed over too): something is about to take the screen. A video left
+    // playing behind the menus ends then (MpvController).
+    void handingOff(const QString &owner);
+
 private:
     int  getActiveVt() const;
     // Never returns activeVt — switching to the VT we are already on is a silent

@@ -1,4 +1,5 @@
 #include "MpvController.h"
+#include "EmbeddedMpv.h"
 #include "../AppCore.h"
 #include "../util/YtDlpLocator.h"
 #include "../util/MpvLocator.h"
@@ -16,6 +17,8 @@
 #include <QDateTime>
 #include <QRegularExpression>
 #include <QDebug>
+#include <algorithm>
+#include <cmath>
 
 MpvController::MpvController(const QString &appRoot, const QString &dataRoot,
                              AppCore *appCore, DisplayHandoff *handoff,
@@ -43,6 +46,31 @@ MpvController::MpvController(const QString &appRoot, const QString &dataRoot,
         f.write("BS quit\n");
         f.write("ENTER cycle pause\n");
         f.close();
+    }
+    // Transparent Background: back returns to the menus and leaves the video
+    // playing (detachToMenus). The deck's own menu still takes back first
+    // while it is open (its bindings are forced).
+    m_embeddedInputConfPath = QDir::tempPath() + "/240mp-input-embedded.conf";
+    QFile ef(m_embeddedInputConfPath);
+    if (ef.open(QFile::WriteOnly | QFile::Text)) {
+        ef.write("ESC script-message 240mp-menu\n");
+        ef.write("BS script-message 240mp-menu\n");
+        ef.write("ENTER cycle pause\n");
+        ef.close();
+    }
+    // A video left playing behind the menus ends when anything else takes the
+    // screen (a takeover script, a web player), or the setting is turned off.
+    if (m_handoff) {
+        connect(m_handoff, &DisplayHandoff::handingOff, this, [this](const QString &owner) {
+            if (owner != QLatin1String(kHandoffOwner) && m_background)
+                endEmbedded();
+        });
+    }
+    if (m_appCore) {
+        connect(m_appCore, &AppCore::appSettingChanged, this, [this](const QString &key, const QString &) {
+            if (key == QLatin1String("transparent_background") && !transparentBackground())
+                stopBackground();
+        });
     }
 
     m_hasMpvOscScript     = QFile::exists(m_appRoot + "/scripts/mpv-osc.lua");
@@ -84,6 +112,9 @@ MpvController::MpvController(const QString &appRoot, const QString &dataRoot,
 }
 
 MpvController::~MpvController() {
+    // An embedded session ends first, while everything it reports to is still here.
+    if (m_embedded)
+        m_embedded->stop();
     if (m_process && m_process->state() != QProcess::NotRunning) {
         m_process->terminate();
         m_process->waitForFinished(2000);
@@ -97,68 +128,21 @@ MpvController::~MpvController() {
         m_handoff->releaseNow(QLatin1String(kHandoffOwner));
 }
 
-void MpvController::loadAndPlay(const QString &url, float startSeconds,
-                                 int audioTrack, int subTrack,
-                                 const QStringList &subFiles,
-                                 const QStringList &subLangs, bool loop,
-                                 int playlistStart, float transcodeOffsetSec,
-                                 const QString &plexToken, bool muteAudio,
-                                 const QString &oscMode, bool shuffle,
-                                 const QStringList &subTitles, float imageDurationSec,
-                                 bool imageContent, const QStringList &extraArgs, const QString &jellyfinToken,
-                                 const QStringList &extraUrls) {
-    if (m_process) {
-        m_process->disconnect();
-        if (m_process->state() != QProcess::NotRunning) {
-            m_process->terminate();
-            m_process->waitForFinished(1000);
-        }
-        m_process->deleteLater();
-        m_process = nullptr;
-    }
-    m_watchdogTimer->stop();
-    m_ipc->abort();
-    QFile::remove(m_socketPath);
-    m_position    = 0;
-    m_duration    = 0;
-    m_playlistPos = -1;
-    m_paused      = false;
-    m_lastEndFileReason.clear();
-    m_pendingStartClear = false;
-
-    // Bundled sibling first, then PATH — see util/MpvLocator.h. Shared with the
-    // audio-only spawners so a bundled-mpv or user-drop-in change lands in one
-    // place.
-    const QString bin = mpvbin::locate();
-    if (bin.isEmpty()) {
-        qWarning("[MpvController] mpv not found (no bundled sibling, none on PATH)");
-        QTimer::singleShot(0, this, [this]() {
-            emit playbackEnded(0, 0, QStringLiteral("stopped"));
-        });
-        return;
-    }
-
+QStringList MpvController::sessionArgs(const QString &url, float startSeconds,
+                                       int audioTrack, int subTrack,
+                                       const QStringList &subFiles,
+                                       const QStringList &subLangs, bool loop,
+                                       int playlistStart, float transcodeOffsetSec,
+                                       const QString &plexToken, bool muteAudio,
+                                       const QString &oscMode, bool shuffle,
+                                       const QStringList &subTitles, float imageDurationSec,
+                                       bool imageContent, const QStringList &extraArgs,
+                                       const QString &jellyfinToken,
+                                       const QStringList &extraUrls, bool embedded) {
+    // The Pi 3 overlay plane can't crop; a picture drawn inside the app can.
+    const bool noCrop = !embedded && cropUnavailable();
     const bool hasOscScript = (oscMode == "ambient") ? m_hasAmbientOscScript : m_hasMpvOscScript;
     const QString oscScript = m_appRoot + "/scripts/" + ((oscMode == "ambient") ? "mpv-osc-ambient.lua" : "mpv-osc.lua");
-
-    // Stamp the log file so each session is identifiable when tailing over SSH.
-    // Owner-only perms: mpv logs its command line (incl. auth headers) at verbose
-    // level into --log-file, and it truncates rather than recreates the file — so
-    // permissions set here survive the mpv session.
-    {
-        QFile lf(m_logFilePath);
-        if (lf.open(QFile::Append | QFile::Text)) {
-            lf.setPermissions(QFile::ReadOwner | QFile::WriteOwner);
-            QString safeUrl = url;
-            safeUrl.replace(QRegularExpression("Api[_-]?Key=[^&\\s]+", QRegularExpression::CaseInsensitiveOption), "ApiKey=REDACTED");
-            safeUrl.replace(QRegularExpression("X-Plex-Token[=:][^&\\s]+"), "X-Plex-Token=REDACTED");
-            safeUrl.replace(QRegularExpression("Token=\"[^\"]+\""), "Token=\"REDACTED\"");
-            lf.write(QString("\n=== 240-MP session start %1 ===\n    url: %2\n\n")
-                         .arg(QDateTime::currentDateTime().toString(Qt::ISODate))
-                         .arg(safeUrl)
-                         .toUtf8());
-        }
-    }
 
     QStringList args;
     args << url;
@@ -205,10 +189,8 @@ void MpvController::loadAndPlay(const QString &url, float startSeconds,
 
     if (playlistStart >= 0)
         args << QString("--playlist-start=%1").arg(playlistStart);
-    if (startSeconds > 0.5f) {
+    if (startSeconds > 0.5f)
         args << QString("--start=%1").arg(double(startSeconds), 0, 'f', 3);
-        m_pendingStartClear = true;
-    }
     if (audioTrack > 0)
         args << QString("--aid=%1").arg(audioTrack);
     for (const QString &sf : subFiles)
@@ -248,7 +230,7 @@ void MpvController::loadAndPlay(const QString &url, float startSeconds,
         scriptOpts << QString("screensaver_timeout=%1").arg(screensaverTimeout);
     // Tell the OSC scripts to hide their CROP button on decode paths where
     // --panscan would blank the video (Pi 3 overlay path, 1080p Playback ON).
-    if (cropUnavailable())
+    if (noCrop)
         scriptOpts << QStringLiteral("hide-crop=1");
 
     // Hand the OSC a map of external sub-file URL -> friendly track name so it can show
@@ -313,11 +295,22 @@ void MpvController::loadAndPlay(const QString &url, float startSeconds,
     if (QUrl(url).host().endsWith(QStringLiteral(".plex.direct")))
         args << QStringLiteral("--tls-verify=no");
 
-    // Auto Crop: start with panscan=1 unless the current decode path can't crop.
-    // The Pi3 overlay (smooth) path blanks video under panscan, so suppress there —
-    // matching the 1080p Playback trade-off. The OSC CROP button still toggles live.
-    if (autoCropEnabled() && !cropUnavailable())
-        args << QStringLiteral("--panscan=1");
+    // Scaling: how a picture of another shape fills the screen, a 16:9 film on
+    // a 4:3 tube above all. 14:9 crops a little of the sides (panscan 0.43 is
+    // 14:9 for a 16:9 picture), Pan & Scan all the bars' worth, and Anamorphic
+    // squeezes the picture to fill the screen, for a TV set to 16:9. The
+    // cropping ones need panscan, which the Pi3 overlay (smooth) path blanks
+    // video under, so it keeps the whole picture there, matching the 1080p
+    // Playback trade-off. The OSC CROP button still toggles panscan live.
+    const QString scaling = videoScaling();
+    if (scaling == QLatin1String("Anamorphic")) {
+        args << QStringLiteral("--keepaspect=no");
+    } else if (!noCrop) {
+        if (scaling == QLatin1String("Pan & Scan"))
+            args << QStringLiteral("--panscan=1");
+        else if (scaling == QLatin1String("14:9"))
+            args << QStringLiteral("--panscan=0.43");
+    }
 
     // Video Levels: the RGB range mpv converts YUV into. Emitted only when the
     // user has overridden it, so "Auto" leaves both mpv's own default and
@@ -327,6 +320,102 @@ void MpvController::loadAndPlay(const QString &url, float startSeconds,
     const QString outputLevels = videoOutputLevels();
     if (!outputLevels.isEmpty())
         args << QStringLiteral("--video-output-levels=%1").arg(outputLevels);
+
+    return args;
+}
+
+void MpvController::loadAndPlay(const QString &url, float startSeconds,
+                                 int audioTrack, int subTrack,
+                                 const QStringList &subFiles,
+                                 const QStringList &subLangs, bool loop,
+                                 int playlistStart, float transcodeOffsetSec,
+                                 const QString &plexToken, bool muteAudio,
+                                 const QString &oscMode, bool shuffle,
+                                 const QStringList &subTitles, float imageDurationSec,
+                                 bool imageContent, const QStringList &extraArgs, const QString &jellyfinToken,
+                                 const QStringList &extraUrls) {
+    // Transparent Background plays inside the app's own window, where the
+    // menus can lie over the picture.
+    const bool embedded = transparentBackground();
+    QStringList args = sessionArgs(url, startSeconds, audioTrack, subTrack, subFiles, subLangs, loop,
+                                   playlistStart, transcodeOffsetSec, plexToken, muteAudio, oscMode,
+                                   shuffle, subTitles, imageDurationSec, imageContent, extraArgs,
+                                   jellyfinToken, extraUrls, embedded);
+    if (embedded) {
+        args << QString("--input-conf=%1").arg(m_embeddedInputConfPath)
+             << QStringLiteral("--video-sync=audio");
+        appendEmbeddedVideoArgs(args);
+        // Chosen again while it plays behind the menus: the same session goes
+        // on, full screen again. Its start is the module's resume point,
+        // which reattach() weighs.
+        auto withoutStart = [](QStringList a) {
+            a.erase(std::remove_if(a.begin(), a.end(), [](const QString &x) {
+                        return x.startsWith(QLatin1String("--start="));
+                    }), a.end());
+            return a;
+        };
+        if (m_background && m_embedded && m_embedded->running()
+                && withoutStart(args) == withoutStart(m_sessionArgs)) {
+            reattach(startSeconds);
+            return;
+        }
+    }
+
+    if (m_process) {
+        m_process->disconnect();
+        if (m_process->state() != QProcess::NotRunning) {
+            m_process->terminate();
+            m_process->waitForFinished(1000);
+        }
+        m_process->deleteLater();
+        m_process = nullptr;
+    }
+    endEmbedded();
+    m_watchdogTimer->stop();
+    m_ipc->abort();
+    QFile::remove(m_socketPath);
+    m_position    = 0;
+    m_duration    = 0;
+    m_playlistPos = -1;
+    m_paused      = false;
+    m_lastEndFileReason.clear();
+    m_pendingStartClear = startSeconds > 0.5f;
+
+    // Stamp the log file so each session is identifiable when tailing over SSH.
+    // Owner-only perms: mpv logs its command line (incl. auth headers) at verbose
+    // level into --log-file, and it truncates rather than recreates the file — so
+    // permissions set here survive the mpv session.
+    {
+        QFile lf(m_logFilePath);
+        if (lf.open(QFile::Append | QFile::Text)) {
+            lf.setPermissions(QFile::ReadOwner | QFile::WriteOwner);
+            QString safeUrl = url;
+            safeUrl.replace(QRegularExpression("Api[_-]?Key=[^&\\s]+", QRegularExpression::CaseInsensitiveOption), "ApiKey=REDACTED");
+            safeUrl.replace(QRegularExpression("X-Plex-Token[=:][^&\\s]+"), "X-Plex-Token=REDACTED");
+            safeUrl.replace(QRegularExpression("Token=\"[^\"]+\""), "Token=\"REDACTED\"");
+            lf.write(QString("\n=== 240-MP session start %1 ===\n    url: %2\n\n")
+                         .arg(QDateTime::currentDateTime().toString(Qt::ISODate))
+                         .arg(safeUrl)
+                         .toUtf8());
+        }
+    }
+
+    if (embedded) {
+        startEmbedded(args);
+        return;
+    }
+
+    // Bundled sibling first, then PATH — see util/MpvLocator.h. Shared with the
+    // audio-only spawners so a bundled-mpv or user-drop-in change lands in one
+    // place.
+    const QString bin = mpvbin::locate();
+    if (bin.isEmpty()) {
+        qWarning("[MpvController] mpv not found (no bundled sibling, none on PATH)");
+        QTimer::singleShot(0, this, [this]() {
+            emit playbackEnded(0, 0, QStringLiteral("stopped"));
+        });
+        return;
+    }
 
     m_process = new QProcess(this);
     m_process->setProcessChannelMode(QProcess::MergedChannels);
@@ -470,6 +559,11 @@ void MpvController::loadAndPlay(const QString &url, float startSeconds,
 }
 
 void MpvController::stop() {
+    if (m_embedded && m_embedded->running()) {
+        // finished() follows, as a process's exit does.
+        m_embedded->quit();
+        return;
+    }
     if (m_ipc->state() == QLocalSocket::ConnectedState) {
         sendCommand({"quit"});
     } else if (m_process && m_process->state() != QProcess::NotRunning) {
@@ -532,6 +626,8 @@ void MpvController::onIpcReadyRead() {
                     const QString msg = args[0].toString();
                     if (msg == "skip-segment")
                         emit skipRequested();
+                    else if (msg == "240mp-menu")
+                        detachToMenus();
                     else if (msg == "cycle-sub")
                         emit subtitleCycleRequested();
                     else if (msg == "cycle-audio")
@@ -551,15 +647,20 @@ void MpvController::onIpcReadyRead() {
             continue;
         }
         const double val = data.toDouble();
+        // Behind the menus the session is no module's any more: it goes on
+        // being followed, unreported, should it be chosen again.
         if (name == "time-pos") {
             m_position = int(val * 1000.0);
-            emit positionChanged(m_position);
+            if (!m_background)
+                emit positionChanged(m_position);
         } else if (name == "duration") {
             m_duration = int(val * 1000.0);
-            emit durationChanged(m_duration);
+            if (!m_background)
+                emit durationChanged(m_duration);
         } else if (name == "playlist-pos") {
             m_playlistPos = int(val);
-            emit playlistPosChanged(m_playlistPos);
+            if (!m_background)
+                emit playlistPosChanged(m_playlistPos);
         }
     }
 }
@@ -740,6 +841,20 @@ bool MpvController::autoCropEnabled() const {
     return v.toString().compare(QStringLiteral("On"), Qt::CaseInsensitive) == 0;
 }
 
+QString MpvController::videoScaling() const {
+    if (!m_appCore)
+        return QStringLiteral("Letterbox");
+    if (!m_activeModule.isEmpty()) {
+        const QString own = m_appCore->get_setting(m_activeModule, "video_scaling").toString();
+        if (!own.isEmpty() && own.compare(QStringLiteral("Default"), Qt::CaseInsensitive) != 0)
+            return own;
+    }
+    const QString app = m_appCore->get_setting(QString(), "video_scaling").toString();
+    if (!app.isEmpty())
+        return app;
+    return autoCropEnabled() ? QStringLiteral("Pan & Scan") : QStringLiteral("Letterbox");
+}
+
 QString MpvController::videoOutputLevels() const {
     // Default "Auto" → no flag at all, leaving mpv's own default (full-range RGB
     // out) and anything the user set in mpv.conf in place. Stored by Settings as
@@ -769,3 +884,178 @@ bool MpvController::hasSmoothPlaybackTradeoff() const {
     return m_videoProfile == VideoProfile::Pi3;
 }
 
+// ---------------------------------------------------------------------------
+// Transparent Background: sessions played inside the app's own window
+// ---------------------------------------------------------------------------
+
+bool MpvController::embeddedAvailable() const {
+    return EmbeddedMpv::available();
+}
+
+bool MpvController::transparentBackground() const {
+    if (!m_appCore)
+        return false;
+    // How solid the menus' ground is over the picture, 0 to 100, Settings'
+    // TRANSPARENT … SOLID slider. SOLID (100, the default) is off. Its first
+    // values were words: On (clear) and Dim (60).
+    const QString v = m_appCore->get_setting(QString(), "transparent_background").toString().trimmed();
+    int solidity = 100;
+    if (v.compare(QStringLiteral("On"), Qt::CaseInsensitive) == 0) {
+        solidity = 0;
+    } else if (v.compare(QStringLiteral("Dim"), Qt::CaseInsensitive) == 0) {
+        solidity = 60;
+    } else {
+        bool ok = false;
+        const int n = v.toInt(&ok);
+        if (ok)
+            solidity = n;
+    }
+    return solidity < 100 && EmbeddedMpv::available();
+}
+
+bool MpvController::videoActive() const {
+    return m_embedded && m_embedded->running();
+}
+
+QImage MpvController::videoFrame() const {
+    return m_embedded ? m_embedded->frame() : QImage();
+}
+
+void MpvController::setVideoTargetSize(const QSize &size) {
+    m_videoTargetSize = size;
+    if (m_embedded)
+        m_embedded->setTargetSize(size);
+}
+
+void MpvController::stopBackground() {
+    if (m_background)
+        stop();
+}
+
+void MpvController::appendEmbeddedVideoArgs(QStringList &args) const {
+    // The mpv_video_args override is for mpv's own outputs, so not used here.
+    switch (m_videoProfile) {
+    case VideoProfile::Pi4:
+        args << QStringLiteral("--hwdec=drm-copy,v4l2m2m-copy");
+        break;
+    case VideoProfile::Pi3:
+        args << QStringLiteral("--hwdec=v4l2m2m-copy");
+        break;
+    case VideoProfile::PiFullKms:
+        args << QStringLiteral("--hwdec=auto-copy-safe");
+        break;
+    case VideoProfile::Generic:
+#if defined(Q_OS_MACOS)
+        args << QStringLiteral("--hwdec=videotoolbox-copy")
+             << QString("--osd-fonts-dir=%1").arg(m_appRoot + "/assets/fonts");
+#elif defined(Q_OS_LINUX)
+        args << QStringLiteral("--hwdec=vaapi-copy,nvdec-copy,no");
+#endif
+        break;
+    }
+}
+
+void MpvController::startEmbedded(QStringList args) {
+    if (!m_embedded) {
+        m_embedded = new EmbeddedMpv(this);
+        m_embedded->setTargetSize(m_videoTargetSize);
+        connect(m_embedded, &EmbeddedMpv::frameReady, this, &MpvController::videoFrameReady);
+        connect(m_embedded, &EmbeddedMpv::finished, this, &MpvController::onEmbeddedFinished);
+    }
+#ifdef Q_OS_LINUX
+    // mpv draws its OSD (the deck's menu) in the app's VCR font: libass finds
+    // it through fontconfig, set up as for an mpv process of its own. Only
+    // fontconfig set up afterwards reads this; Qt's own already is.
+    const QString fcConf = fcoverride::write(m_appRoot + "/assets/fonts");
+    if (!fcConf.isEmpty())
+        qputenv("FONTCONFIG_FILE", fcConf.toUtf8());
+#endif
+    // The screen stays the app's, even headless: nothing to hand over.
+    m_headlessMode = false;
+    QString safeCmd = args.join(" ");
+    safeCmd.replace(QRegularExpression("Api[_-]?Key=[^&\\s]+", QRegularExpression::CaseInsensitiveOption), "ApiKey=REDACTED");
+    safeCmd.replace(QRegularExpression("X-Plex-Token[=:][^&\\s]+"), "X-Plex-Token=REDACTED");
+    safeCmd.replace(QRegularExpression("Token=\"[^\"]+\""), "Token=\"REDACTED\"");
+    qDebug("[MpvController] embedded launch: mpv %s", qPrintable(safeCmd));
+    if (!m_embedded->start(args)) {
+        qWarning("[MpvController] Cannot start playback: libmpv could not be set up");
+        QTimer::singleShot(0, this, [this]() {
+            emit playbackEnded(0, 0, QStringLiteral("failed"));
+        });
+        return;
+    }
+    m_sessionArgs = args;
+    emit videoActiveChanged();
+    m_connectTimer->start();
+}
+
+void MpvController::endEmbedded() {
+    if (!m_embedded || !m_embedded->running())
+        return;
+    m_embedded->stop();
+    m_sessionArgs.clear();
+    if (m_background) {
+        m_background = false;
+        emit backgroundChanged();
+    }
+    emit videoActiveChanged();
+}
+
+void MpvController::onEmbeddedFinished(const QString &lastEndReason) {
+    m_connectTimer->stop();
+    m_watchdogTimer->stop();
+    // As for a process: the last events may still sit unread on the socket.
+    if (m_ipc->state() == QLocalSocket::ConnectedState)
+        onIpcReadyRead();
+    m_ipc->abort();
+    QFile::remove(m_socketPath);
+    const int pos = m_position;
+    const int dur = m_duration;
+    m_position = 0;
+    m_duration = 0;
+    m_sessionArgs.clear();
+    const bool wasBackground = m_background;
+    if (wasBackground) {
+        m_background = false;
+        emit backgroundChanged();
+    }
+    emit videoActiveChanged();
+    // Its module took it as stopped already, when back left it behind the menus.
+    if (wasBackground)
+        return;
+    // The same reasons as a process's: a file mpv couldn't play is "failed",
+    // the playlist played out "eof", anything else (quit) "stopped".
+    QString reason;
+    if (lastEndReason == QLatin1String("error"))    reason = QStringLiteral("failed");
+    else if (lastEndReason == QLatin1String("eof")) reason = QStringLiteral("eof");
+    else                                            reason = QStringLiteral("stopped");
+    emit playbackEnded(pos, dur, reason);
+}
+
+void MpvController::detachToMenus() {
+    if (!m_embedded || !m_embedded->running() || m_background)
+        return;
+    m_background = true;
+    m_detachPositionMs = m_position;
+    emit backgroundChanged();
+    // The deck's own menu, if it is open, goes with the full-screen view.
+    sendCommand({"script-message", "240mp-osd-menu-hide"});
+    // For its module, playback stopped here: it saves where it got to and
+    // goes back to the menus, which now lie over the picture.
+    emit playbackEnded(m_position, m_duration, QStringLiteral("stopped"));
+}
+
+void MpvController::reattach(float startSeconds) {
+    m_background = false;
+    emit backgroundChanged();
+    // The module asks to resume where back left it (the point it saved then):
+    // that is carrying on where it is now. Anything else, from the start say,
+    // it gets.
+    const double start = startSeconds > 0.5f ? double(startSeconds) : 0.0;
+    if (std::abs(start * 1000.0 - m_detachPositionMs) > 1500.0)
+        sendCommand({"seek", start, "absolute"});
+    emit durationChanged(m_duration);
+    if (m_playlistPos >= 0)
+        emit playlistPosChanged(m_playlistPos);
+    emit positionChanged(m_position);
+}

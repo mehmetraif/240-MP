@@ -47,6 +47,10 @@ public:
     Q_INVOKABLE QString homePath();
     Q_INVOKABLE QString localIpAddress() const;
     Q_INVOKABLE QString startupModuleEntryPoint() const;
+    // The QML entry point of an enabled module ("modules/<folder>/<entry>"),
+    // as startupModuleEntryPoint() gives the startup module's; "" for an
+    // unknown or disabled one. The startup favourite opens its module with it.
+    Q_INVOKABLE QString moduleEntryPoint(const QString &moduleId) const;
     Q_INVOKABLE QString get_module_auth_state(const QString &moduleId);
     // Enabled state of a module by id, resolved the same way the module list
     // resolves it (config override, else manifest default, else true). Unknown
@@ -56,6 +60,22 @@ public:
     // or empty when the module is unknown. Lets one module route into another
     // without hardcoding a path across module boundaries.
     Q_INVOKABLE QString module_entry_point(const QString &moduleId) const;
+    // The module a view's source belongs to (".../modules/<folder>/..."), or
+    // "" for one of the app's own views.
+    Q_INVOKABLE QString moduleIdForSource(const QString &source) const;
+
+    // A module's own lists of entries ({ name, path, … } maps, newest first),
+    // such as what was watched recently and the favourites, kept in
+    // <dataRoot>/lists.json. An entry is known by its path.
+    Q_INVOKABLE QVariantList get_list(const QString &moduleId, const QString &name) const;
+    // Puts the entry first, in place of an earlier one with its path, and
+    // keeps the newest `limit`.
+    Q_INVOKABLE void add_to_list(const QString &moduleId, const QString &name,
+                                 const QVariantMap &entry, int limit = 50);
+    Q_INVOKABLE void remove_from_list(const QString &moduleId, const QString &name,
+                                      const QString &path);
+    Q_INVOKABLE bool list_contains(const QString &moduleId, const QString &name,
+                                   const QString &path) const;
 
     // Registers a module backend: stores it for action routing, exposes it to QML under
     // contextProperty, and connects its optional signals/slots by introspection (only
@@ -80,6 +100,8 @@ private slots:
 private:
     QJsonObject loadConfig() const;
     void saveConfig(const QJsonObject &config) const;
+    QJsonObject loadLists() const;
+    void saveLists(const QJsonObject &lists) const;
     QString moduleIdForBackend(QObject *backend) const;
     // Extra top-level menu rows a module's backend wants to contribute. Probed,
     // not connected — see the comment at the call site in scan_for_modules.

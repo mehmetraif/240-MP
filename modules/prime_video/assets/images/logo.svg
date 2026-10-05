@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-  <path d="M 3 3 H 7 V 17 H 3 Z M 6 3 H 15 V 5 H 6 Z M 13 4 H 17 V 9 H 13 Z M 13 8 H 15 V 10 H 13 Z M 6 9 H 15 V 11 H 6 Z" style="fill: rgb(255, 255, 255);"/>
+<!-- A P: a stem and a round bowl, drawn to scale cleanly to any size. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 20">
+  <path fill-rule="evenodd" d="M 0 0 H 8 A 6 6 0 0 1 8 12 H 4.5 V 20 H 0 Z M 4.5 3.5 V 8.5 H 8 A 2.5 2.5 0 0 0 8 3.5 Z" style="fill: rgb(255, 255, 255);"/>
 </svg>

@@ -7,8 +7,8 @@ import QtQuick
 // parent below the title bar.
 //
 // Select plays the film, up/down close it and move on through the list (the
-// host moves its tree), and left or back close it. With saveHint set, right
-// asks to save the film (YouTube's Watch Later).
+// host moves its tree), and left or back close it. Right asks for the film's
+// options (optionsRequested): its favourite, YouTube's Watch Later.
 //
 //     InfoPanel { anchors.fill: parent; onPlayRequested: (item) => … }
 FocusScope {
@@ -20,11 +20,11 @@ FocusScope {
     // the entry's own name and a "loading…" story.
     property var details: ({})
     property bool loading: false
-    // "" or the hint for right, e.g. "[►]:SAVE".
-    property string saveHint: ""
+    // The hint for right; "" when the host has no options.
+    property string optionsHint: root.hints.browse + ":OPTIONS"
 
     signal playRequested(var item)
-    signal saveRequested(var item)
+    signal optionsRequested(var item)
     signal moveRequested(int delta)
     signal closed()
 
@@ -59,7 +59,7 @@ FocusScope {
             info.moveRequested(1)
             return
         case Qt.Key_Right:
-            if (info.saveHint !== "" && !event.isAutoRepeat) info.saveRequested(info.item)
+            if (info.optionsHint !== "" && !event.isAutoRepeat) info.optionsRequested(info.item)
             return
         case Qt.Key_Left:
         case Qt.Key_Escape:
@@ -189,7 +189,7 @@ FocusScope {
 
     HintBar {
         text: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE "
-              + (info.saveHint !== "" ? info.saveHint + " " : "")
+              + (info.optionsHint !== "" ? info.optionsHint + " " : "")
               + root.hints.select + ":PLAY"
         anchors.bottom: parent.bottom
         anchors.left: parent.left

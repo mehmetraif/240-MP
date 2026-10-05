@@ -42,6 +42,14 @@
       "description": "The language of titles and genres in the catalogue"
     },
     {
+      "key": "video_scaling",
+      "label": "Scaling",
+      "type": "list_single",
+      "options": ["Default", "Letterbox", "14:9", "Pan & Scan", "Anamorphic"],
+      "default": "Default",
+      "description": "How a 16:9 picture fills the 4:3 screen in this module\n[DEFAULT] As Settings' Scaling says"
+    },
+    {
       "key": "sign_out",
       "label": "Sign out",
       "type": "action",

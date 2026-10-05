@@ -64,6 +64,7 @@ FocusScope {
     }
 
     Component.onCompleted: {
-        navigateTo("Items.qml", {})
+        // The startup favourite, when the app opens on one (Main.qml).
+        navigateTo("Items.qml", { startupPlay: navParams.startupPlay })
     }
 }

@@ -12,7 +12,7 @@ Think of 240-MP as a **browsing shell** that hands off to **purpose-built tools*
 
 - The app shell handles browsing, auth, and settings
 - **Modules** are self-contained media integrations (Local Files, Plex, Ambient Mode, etc...) that the shell discovers and loads at startup.
-- When a user picks something to play, the shell hands off to a dedicated fullscreen tool and resumes when that tool exits. For video, that tool is **mpv**, launched as a subprocess by `MpvController`. mpv is installed separately (`apt install mpv` / `brew install mpv`).  240-MP does not link against libmpv.
+- When a user picks something to play, the shell hands off to a dedicated fullscreen tool and resumes when that tool exits. For video, that tool is **mpv**, launched as a subprocess by `MpvController`. mpv is installed separately (`apt install mpv` / `brew install mpv`).  240-MP does not link against libmpv. The one exception is the **Transparent Background** setting, which plays video inside the app's own window through libmpv, opened at run time (see [Transparent Background](#transparent-background-video-inside-the-app)).
 
 The guiding idea: **browse structured content, then hand off to the right tool for the job** rather than bundling everything into one binary.
 
@@ -31,6 +31,8 @@ The guiding idea: **browse structured content, then hand off to the right tool f
       ...
     player/
       MpvController.h/.cpp          # mpv subprocess controller: QProcess launch + IPC socket
+      EmbeddedMpv.h/.cpp            # mpv inside the app's window (Transparent Background), libmpv opened at run time
+      VideoSurface.h/.cpp           # the QML item that shows EmbeddedMpv's picture
     boot/
       BootProgress.h/.cpp           # boot screen state on the 240-MP OS image (inert elsewhere)
   modules/                          # QML + assets per module (discovered at startup)
@@ -46,7 +48,7 @@ The guiding idea: **browse structured content, then hand off to the right tool f
     ModuleList.qml
     Settings.qml
     ...
-    Components/                     # shared QML components (AppBar, HintBar, MenuRow, HelpLine, ScrollMarks, TreeBrowser, InfoPanel, OnScreenKeyboard, WebPlayerBrowse, WebPlayerLaunch, the Osd* elements, ChoiceOverlay, qmldir)
+    Components/                     # shared QML components (AppBar, HintBar, MenuRow, HelpLine, ScrollMarks, TreeBrowser, InfoPanel, EntryOptions, OnScreenKeyboard, WebPlayerBrowse, WebPlayerLaunch, the Osd* elements, ChoiceOverlay, qmldir)
     BootScreen.qml                  # boot screen of the 240-MP OS image (see os/README.md)
   Main.qml                          # app root
   CMakeLists.txt
@@ -140,7 +142,11 @@ A real example (Plex) — note `requires_auth`, dynamic options, and apply slots
 | `get_settings()` | Returns entire `config.json` as a map |
 | `get_setting(moduleId, key)` | Returns a single setting value |
 | `save_setting(moduleId, key, value)` | Writes to `config.json`; supports dot-notation keys |
+| `get_list(moduleId, name)` | One of a module's lists of entries (`recent`, `favorites`), newest first, from `lists.json` |
+| `add_to_list(moduleId, name, entry, limit)` | Puts an entry first, in place of one with its `path`, and keeps the newest `limit` (50 unless given) |
+| `remove_from_list(moduleId, name, path)` / `list_contains(moduleId, name, path)` | Takes an entry off a list / says whether one is on it |
 | `get_module_info(moduleId)` | Returns `{name, icon}` for a module |
+| `moduleEntryPoint(moduleId)` | An enabled module's QML entry point (`startupModuleEntryPoint()` is the startup module's) |
 | `get_module_settings_schema(moduleId)` | Returns the module's settings array |
 | `invoke_module_action(moduleId, slotName)` | Routes to the registered backend via `QMetaObject::invokeMethod` |
 | `get_module_auth_state(moduleId)` | Returns the module's auth state (for `requires_auth` settings) |
@@ -200,6 +206,8 @@ The current MPV implementation is a good reference implementation of the "browse
 
     **The baseline for every module to keep in mind:** by the time `playbackEnded` fires, mpv has already exited, so a handler that returns without either calling `goBack()` or starting fresh playback (`loadAndPlay`, e.g. in an autoplay/retry scenario) will leave the now-defunct Player view focused over a dead subprocess which will cause the app to freeze. So please handle the one signal, then branch on `reason` only where you have special behavior, and make sure no branch falls through.
 
+    With Transparent Background on, back from a video fires `playbackEnded(…, "stopped")` while the picture goes on behind the menus (see below): handled as above, it returns to the menus over it.
+
 ### Per-device video decode profiles
 
 The `--vo`/`--hwdec` flags mpv launches with are auto-selected per device to try to target hardware-decodes efficiently per device without the need for user setup. `MpvController::detectVideoProfile()` reads `/proc/device-tree/model` once at startup; `appendVideoArgs()` then picks the flag set:
@@ -243,17 +251,30 @@ app constants →
 |---|---|---|---|
 | **App constants** | `--input-ipc-server`, `--input-conf`, `--osc`, `--script`, `--log-file`, `--no-input-terminal` | App only | command-line |
 | **App per-playback** | `--start`, `--aid`, `--sub-file`, `--http-header-fields` (stream URL, tokens) | App only | command-line |
-| **App presentation** | `--panscan` (Auto Crop), `--video-output-levels` (Video Levels) | User, via a Settings row | command-line |
+| **App presentation** | `--panscan` / `--keepaspect=no` (Scaling), `--video-output-levels` (Video Levels) | User, via a Settings row; Scaling also per module | command-line |
 | **Device decode** | `--vo` / `--gpu-context` / `--hwdec` | App auto-detects; user may override via `mpv_video_args` | command-line |
 | **User prefs** | `deinterlace`, `cache`, `sub-scale`, `audio-device`, profiles | User | `mpv.conf` |
 
-- The first four layers are app-owned and the first two are load-bearing because they wire the IPC control channel, the input/OSC bridge, and (headless) the DRM/VT hand-off. Changing them would break functionality in the app, not just playback, so they are never user-overridable. The last two app layers are the ones the user can steer: *app presentation* through a Settings row (Auto Crop, Video Levels) for the knobs worth reaching without a keyboard, and *device decode* through the `mpv_video_args` override if per device tweaks are needed.
-- A presentation setting left at its default emits **no flag at all** (Video Levels on `Auto`, Auto Crop `Off`), so a `video-output-levels=` line in someone's `mpv.conf` still applies; picking Limited/Full puts it on the command line, where it wins.
+- The first four layers are app-owned and the first two are load-bearing because they wire the IPC control channel, the input/OSC bridge, and (headless) the DRM/VT hand-off. Changing them would break functionality in the app, not just playback, so they are never user-overridable. The last two app layers are the ones the user can steer: *app presentation* through a Settings row (Scaling, Video Levels) for the knobs worth reaching without a keyboard, and *device decode* through the `mpv_video_args` override if per device tweaks are needed.
+- A presentation setting left at its default emits **no flag at all** (Video Levels on `Auto`, Scaling on `Letterbox`), so a `video-output-levels=` line in someone's `mpv.conf` still applies; picking Limited/Full puts it on the command line, where it wins.
+- **Scaling** is how a picture of another shape fills the screen, a 16:9 film on a 4:3 tube above all: `Letterbox` (all of it, bars above and below), `14:9` (`--panscan=0.43`: a little of the sides cut, thinner bars), `Pan & Scan` (`--panscan=1`: fills the screen, the sides cut) and `Anamorphic` (`--keepaspect=no`: fills it squeezed, for a TV switched to 16:9). It is the app's `video_scaling`, unless the playing module's own `video_scaling` (every video module's manifest has one, `Default` first) says otherwise: `MpvController::videoScaling()`, with the module from `setActiveModule()`, which Main.qml calls as its module loader changes (`AppCore::moduleIdForSource`). The older `auto_crop` `On` reads as Pan & Scan until a Scaling is chosen. The cropping modes need panscan, so the Pi 3 overlay path keeps the whole picture. The web players take the same setting to `web-player.sh`, which applies it with a small Chromium extension: a stylesheet transforming the player's `<video>` (8/7 larger, 4/3 larger, or 4/3 taller).
 - And all app layers are command-line, so they all win over `mpv.conf`. I do pass no `--no-config`, so mpv will look to read `~/.config/mpv/mpv.conf` on launch, which means users can add anything the app doesn't set explicitly direclty in their MPV config.
 
 ### Custom OSC (Lua)
 
 The on-screen controls mpv shows during playback are custom Lua scripts in `scripts/` (`mpv-osc.lua` for normal playback, `mpv-osc-ambient.lua` for Ambient Mode), loaded via mpv's `--script=` flag. Options are passed in with `--script-opts=` (e.g. `transcode-offset=<sec>`). The remote's key events reach these scripts through the `keypress` IPC bridge described above.
+
+### Transparent Background: video inside the app
+
+With Settings → **Transparent Background** (`app.transparent_background`: how solid the menus' ground is over the picture, `0` to `100`; `100`, the default, is off), `loadAndPlay()` plays the video inside the app's own window instead of starting an mpv process over it, so the menus can be drawn over the picture. Back from a video then returns to the menus and leaves it playing behind them, the way a deck's menu lies over the tape.
+
+- **`EmbeddedMpv`** (`src/player/EmbeddedMpv.h/.cpp`) is mpv as a library. libmpv is opened at run time with `QLibrary` (`libmpv.so.2`, or `libmpv.2.dylib` in Homebrew's prefixes), never linked, so the app runs where it is missing; `mpvController.embeddedAvailable()` says whether it loaded, and Settings offers the row only then. Its headers are optional at build time (`pkg-config mpv`, so `libmpv-dev` / Homebrew's mpv); without them `MP240_EMBEDDED_MPV` is left undefined and it is never available.
+- **The same session.** `sessionArgs()` builds the command line the subprocess gets, and `EmbeddedMpv::start()` turns it into options and a playlist: `--x=y` is option `x`, a repeated list option (`--script`, `--sub-file`, `--http-header-fields`) is gathered and set whole as a node array, so an item keeps any character, and an option this libmpv doesn't know is skipped with a warning where the mpv command line would refuse to start. On top: `vo=libmpv`, `idle=once` (it quits when its playlist has played out, as the process exits), `input-default-bindings=yes` (libmpv leaves them off). Decoding uses each profile's copy-back mode (Pi 4 `drm-copy,v4l2m2m-copy`, Pi 3 `v4l2m2m-copy`, Pi 5 `auto-copy-safe`, desktop Linux `vaapi-copy,nvdec-copy,no`, macOS `videotoolbox-copy`), the `mpv_video_args` override is not used, and libmpv reads no `mpv.conf`. The IPC socket, the OSC scripts and every signal work as for the process; there is no `DisplayHandoff`, since the app keeps the screen.
+- **The picture** comes from libmpv's software renderer (`MPV_RENDER_API_TYPE_SW`), on a thread of its own, at the pixel size of the **`VideoSurface`** item (`src/player/VideoSurface.h/.cpp`, `import MP240.Video`) that shows it: the same CPU colour conversion and scaling `--vo=drm` does on a Pi 4, into memory rather than a KMS buffer. It works on every scene graph backend. On a Pi 3 the CPU is short for it.
+- **Back** is mapped by the session's input.conf to `script-message 240mp-menu` (the OSC's own menu, while open, still takes it first). `detachToMenus()` then emits `playbackEnded(pos, dur, "stopped")`: the module saves where it got to, reports it stopped, and goes back, while the session goes on (`mpvController.background`). Its position is followed but no longer reported. `Main.qml` puts the `VideoSurface` over everything while a session plays full screen and under the views while `background` (`root.videoBehind`); the views draw no background of their own, so the picture is theirs, and the background colour lies between them at the setting's solidity (`root.backdropSolidity`). Full-screen dialogs keep their own background, and the title bar's logo gets a box of it.
+- **The setting** is a slider in Settings: its line, `ON` or `OFF`, with the deck's tape bar (`OsdTapeBar`) under it from TRANSPARENT to SOLID, which ◄ ► move by 10 and save at once, so the menus over a video show each step. The bar takes whole lines under its own, so the list scrolls by lines as before. Its first values, `On` and `Dim`, read as `0` and `60`.
+- **Chosen again** (the same command line apart from `--start`), the session is not reloaded: `reattach()` brings it back full screen. A module resuming at the point it saved when back left it carries on where the picture is now; any other start (from the beginning, say) is sought.
+- **It ends** when its playlist plays out, with play/pause on the main menu (`stopBackground()`, `[SPACE]:STOP` in its footer), with any other playback, when something else takes the screen (`DisplayHandoff::handingOff`, emitted at every `acquire()`: a takeover script, a web player) and when the setting is turned off. Behind the menus no `playbackEnded` follows: its module took it as stopped already. A server told the stream stopped (a Plex, Jellyfin or Emby transcode) may end it sooner.
 
 ### Raspberry Pi headless hand-off (EGLFS)
 
@@ -560,7 +581,7 @@ Shared QML components live in `views/Components/` (registered via `qmldir`, impo
 | `title` | `string` | Module name — use `moduleRoot.moduleName` |
 | `subtitle` | `string` | Optional context label (hidden when empty) |
 
-The module's logo stands at its left end, in the theme's text colour, a fifth taller than the bar so it stands out of it above and below, an art pixel clear of it on each side. Then comes a solid bar in the same colour with the title and subtitle in the background colour, the way a deck's on-screen menu starts. The logo is drawn by `OsdIconProvider` (`src/util/`, `image://osdicon/<rrggbb>/<px>/<url>`): trimmed to its shape, in one colour, on the art-pixel grid. It does not use a shader effect, which the software scene graph draws as nothing.
+The module's logo stands at its left end, in the theme's text colour, a fifth taller than the bar so it stands out of it above and below, an art pixel clear of it on each side. Then comes a solid bar in the same colour with the title and subtitle in the background colour, the way a deck's on-screen menu starts. The logo is drawn by `OsdIconProvider` (`src/util/`, `image://osdicon/<rrggbb>/<url>`): trimmed to its shape and drawn from the original at the bar's size (a vector is rendered at that height, not scaled from a bitmap), in one colour with its own smooth edges. It does not use a shader effect, which the software scene graph draws as nothing.
 
 ### VCR OSD elements
 
@@ -584,7 +605,7 @@ Pixel-drawn pieces of a deck's on-screen menu, built on `root.px` (one pixel of 
 | `OsdBar` | The VOLUME bar: an outline with a solid fill inside. |
 | `OsdSlider` | The TRACKING slider: a double outline with a mark that moves out from the middle. |
 | `OsdChoices` | A row of settings like `SP EP SLP`, with the one in force inverted. |
-| `OsdTapeBar` | The tape position bar: a ▼ over the position, a ruled bar filled up to it, and BEGIN and END under its ends. |
+| `OsdTapeBar` | The tape position bar: a ▼ over the position, a ruled bar filled up to it, and the names of its ends under them: BEGIN and END, or a setting's own (`startText`, `endText`), as Settings' TRANSPARENT … SOLID slider. |
 
 ### TreeBrowser (`views/Components/TreeBrowser.qml`)
 
@@ -600,16 +621,22 @@ Anything shaped like folders, browsed as a horizontal tree, the way Local Files,
 | `activated(item)` | Select on an entry that isn't a folder |
 | `preview`, `previewDelay` | Whether an entry that isn't a folder has an info screen, and how long (ms) the cursor rests on one before asking for it on its own; `0` asks only on Right or the INFO key (Space, which is the play/pause button) |
 | `previewRequested(item)` | Right on an entry that isn't a folder, with `preview` on, or the cursor resting on one: show its info (the tree's last layer, an `InfoPanel`) |
-| `optionsRequested(item)` | Right on an entry that isn't a folder, with `preview` off (YouTube's Watch Later) |
+| `optionsRequested(item)` | Right on an entry that isn't a folder, with `preview` off: offer its options (an `EntryOptions`) |
 | `leaveRequested()` | Back with no folder left to close |
 
 `openItem({ name, path })` opens a folder that isn't an entry of the current one, like a search's results; `folderName` is the open folder's name, for the `AppBar` subtitle, and `currentEntry` the entry under the cursor, for a footer that says what select will do (`[ENTER]:OPEN` on a folder, `:PLAY` on a film). A key already held as the tree appears (Back held to close a player) does not repeat into it.
 
 ### InfoPanel (`views/Components/InfoPanel.qml`)
 
-A film's info, the way a deck's INFO key puts up what is on the tape, laid out like Plex's detail page: the PLAY box, the name, a line of facts (`1997 - 2HR:29MIN`), the story (scrolling through when long), then its details as `MenuRow` lines (`GENRE······DRAMA`). It is a tree's last layer: the Netflix, Prime Video and YouTube views open it on `previewRequested` with `show(item)`, then set `details` (`{ title, facts, summary, rows: [{ label, value }] }`) from their backend: `TmdbCatalog.loadDetails` (TMDB details and credits, the story in English when TMDB has none in the chosen language), `YouTubeBackend.loadDetails` (what the list knows at once, then yt-dlp's length, views and description). Select plays (`playRequested`), up/down close it and move on through the list (`moveRequested`), left or back close it; with `saveHint` set, right asks to save (`saveRequested`, YouTube's Watch Later).
+A film's info, the way a deck's INFO key puts up what is on the tape, laid out like Plex's detail page: the PLAY box, the name, a line of facts (`1997 - 2HR:29MIN`), the story (scrolling through when long), then its details as `MenuRow` lines (`GENRE······DRAMA`). It is a tree's last layer: the Netflix, Prime Video and YouTube views open it on `previewRequested` with `show(item)`, then set `details` (`{ title, facts, summary, rows: [{ label, value }] }`) from their backend: `TmdbCatalog.loadDetails` (TMDB details and credits, the story in English when TMDB has none in the chosen language), `YouTubeBackend.loadDetails` (what the list knows at once, then yt-dlp's length, views and description). Select plays (`playRequested`), up/down close it and move on through the list (`moveRequested`), left or back close it, and right asks for its options (`optionsRequested`: an `EntryOptions`), `optionsHint` being the footer's hint for that (`""` for a host with none).
 
 When it comes up is the app's **INFO SCREEN** setting (`app.info_screen`): `off`, `key` (Right on a film, or INFO), or `1`, `2`, `3` (the default) or `5` seconds the cursor rests on a film before it comes up on its own.
+
+### Recently Watched and Favorites
+
+The tree modules (Local Files, Netflix, Prime Video, YouTube) begin with **RECENTLY WATCHED** and **FAVORITES**, then **SEARCH** and their own folders. Both are the module's lists in AppCore (`get_list(moduleId, "recent" | "favorites")`, kept in `lists.json` in the data folder), holding entries as the tree had them, so one plays from there as it would from anywhere else: a view puts an entry on `recent` as it plays it (the newest 30), and on `favorites` from its options (`EntryOptions`). YouTube's RECENTLY WATCHED is its own watch history (`history`), which keeps the resume positions too. Local Files leaves out the entries whose file has gone (`existing()`, a drive taken out, say), and its SEARCH walks the whole media folder a slice at a time, so a big library never holds the screen still: `search(path, words)` gives what the last search for that folder found, or starts it and `searchReady(path)` follows, keeping the first 200 names that hold every word.
+
+One favourite can **PLAY AT STARTUP**: chosen in its options (`EntryOptions`, which puts it on FAVORITES too), it is the app setting `startup_favorite` (`{ module, path, name }`). After the boot screen `Main.qml`'s `openStartupModule()` opens its module, ahead of Start on Module, with `navParams.startupPlay` set to the entry, as long as it is still one of that module's favourites; the module's router passes it on to its tree view, which plays it as if chosen in FAVORITES (a trail into that folder, so back from it lands there). Only as the view first opens: a view coming back gets `navListState` instead. Settings → Play at Startup can only turn it off. `AppCore::save_setting` takes a JS object for this (QML hands it over as a `QJSValue`).
 
 ### OnScreenKeyboard (`views/Components/OnScreenKeyboard.qml`)
 
@@ -626,6 +653,10 @@ Full-screen keyboard-driven chooser: a prompt, the thing being acted on, and a s
 | `choices` | `var` | List of `{ label, action }` maps |
 
 Call `open()` to show it. It emits `activated(action)` when the user picks one and `closed()` once it hides (bind `onClosed: <host>.forceActiveFocus()`); Up/Down wrap, Esc/Back cancels. As with NfcCardWriter, **behaviour keys off `action`, never the label text** — labels are free to change with state (`"Resume Next Episode"` vs `"Play Next Episode"`) without touching the handler.
+
+### EntryOptions (`views/Components/EntryOptions.qml`)
+
+An entry's options, as a `ChoiceOverlay`: **Add to Favorites** or **Remove from Favorites** (the module's `favorites` list, `moduleId`), **Play at Startup** or **Don't Play at Startup** (see above), then whatever the host adds in `moreChoices` and acts on in its own `onActivated` (YouTube's **Save to Watch Later**). A tree view opens it with `offer(entry)` on Right on an entry (`optionsRequested`, from the tree or its `InfoPanel`), and refreshes its FAVORITES folder on `favoritesEdited()`.
 
 ### NfcCardWriter (`views/Components/NfcCardWriter.qml`)
 
@@ -662,4 +693,4 @@ User configuration is stored in `config.json` in the app's data directory:
 }
 ```
 
-Each module's settings live under `modules.<id>`. Use `save_setting` / `get_setting` (which support dot-notation keys) rather than writing the file directly. The data directory is created on first run and is separate from the app itself, so rebuilding never wipes user settings. For the exact per-OS path (macOS vs Raspberry Pi OS), see [BUILDING.md](BUILDING.md#configuration).
+Each module's settings live under `modules.<id>`. Use `save_setting` / `get_setting` (which support dot-notation keys) rather than writing the file directly. A module's lists (RECENTLY WATCHED, FAVORITES) are in `lists.json` beside it, through `get_list` / `add_to_list` / `remove_from_list`. The data directory is created on first run and is separate from the app itself, so rebuilding never wipes user settings. For the exact per-OS path (macOS vs Raspberry Pi OS), see [BUILDING.md](BUILDING.md#configuration).

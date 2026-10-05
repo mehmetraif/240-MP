@@ -2,7 +2,7 @@
 # Opens a streaming service's own web player full screen, for 240-MP's Netflix
 # and Prime Video modules (src/modules/web_player/WebPlayerBackend.h):
 #
-#   web-player.sh <service> <url>
+#   web-player.sh <service> <url> [letterbox|14:9|panscan|anamorphic]
 #
 # The module runs this as a takeover: on a headless Pi the app has handed the
 # screen over before this starts, and takes it back once everything this
@@ -13,16 +13,21 @@
 # On Raspberry Pi OS: `sudo apt install chromium libwidevinecdm0`, and `cage`
 # to give the browser a screen when there is no desktop.
 #
+# The third argument is the module's Scaling setting: how a 16:9 picture fills
+# a 4:3 screen (letterbox by default). Chromium only; Safari and Google Chrome
+# on a Mac keep the player's own letterbox.
+#
 # Environment (optional):
 #   MP240_WEB_PLAYER_UA  the browser's user agent (default: see below)
 set -u
 
-if [ $# -ne 2 ]; then
-    echo "usage: $0 <service> <url>"
+if [ $# -lt 2 ] || [ $# -gt 3 ]; then
+    echo "usage: $0 <service> <url> [letterbox|14:9|panscan|anamorphic]"
     exit 2
 fi
 SERVICE=$1
 URL=$2
+SCALING=${3:-letterbox}
 DATA=${DATA_ROOT:-${XDG_DATA_HOME:-$HOME/.local/share}/240-MP}
 # The browser's own profile for this service, so its sign-in survives between
 # runs. WebPlayerBackend::signOut() deletes it.
@@ -62,6 +67,36 @@ set -- \
     --autoplay-policy=no-user-gesture-required \
     --ozone-platform-hint=auto \
     --enable-spatial-navigation
+
+# Scaling: a stylesheet on the player's picture, through a small extension made
+# for this run. Transforms rather than object-fit, so it works whether a player
+# sizes its video element to the window or to the picture: for a 16:9 picture,
+# 14:9 is 8/7 larger (thinner bars, a little of the sides cut), pan & scan 4/3
+# (the sides cut), and anamorphic 4/3 taller only (squeezed to fill, for a TV
+# set to 16:9).
+CSS=
+case "$SCALING" in
+    14:9)       CSS='video { transform: scale(1.142857) !important; }' ;;
+    panscan)    CSS='video { transform: scale(1.333333) !important; }' ;;
+    anamorphic) CSS='video { transform: scaleY(1.333333) !important; }' ;;
+esac
+SCALER=$DATA/$SERVICE/scaling
+rm -rf "$SCALER"
+if [ -n "$CSS" ]; then
+    mkdir -p "$SCALER"
+    cat > "$SCALER/manifest.json" <<'MANIFEST'
+{
+  "manifest_version": 3,
+  "name": "240-MP scaling",
+  "version": "1",
+  "content_scripts": [
+    { "matches": ["<all_urls>"], "css": ["scaling.css"], "all_frames": true }
+  ]
+}
+MANIFEST
+    printf '%s\n' "$CSS" > "$SCALER/scaling.css"
+    set -- "$@" --load-extension="$SCALER"
+fi
 
 # These players play on an Arm Linux browser only when it says it is ChromeOS,
 # as Raspberry Pi OS's Chromium already does; say so here too, with the

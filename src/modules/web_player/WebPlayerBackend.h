@@ -74,6 +74,9 @@ signals:
 
 private:
     QString browserProfile() const;
+    // The module's Scaling, or the app's when it is "Default", as
+    // web-player.sh takes it: letterbox, 14:9, panscan or anamorphic.
+    QString scaling() const;
     QString moduleId() const { return QStringLiteral("com.240mp.") + m_service; }
     void    applySetting(const QString &key, const QVariant &value);
 
