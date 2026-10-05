@@ -31,6 +31,8 @@ The guiding idea: **browse structured content, then hand off to the right tool f
       ...
     player/
       MpvController.h/.cpp          # mpv subprocess controller: QProcess launch + IPC socket
+    boot/
+      BootProgress.h/.cpp           # boot screen state on the 240-MP OS image (inert elsewhere)
   modules/                          # QML + assets per module (discovered at startup)
     plex/
       manifest.json                 # module identity and settings shape
@@ -45,8 +47,10 @@ The guiding idea: **browse structured content, then hand off to the right tool f
     Settings.qml
     ...
     Components/                     # shared QML components (AppBar, ChoiceOverlay, qmldir)
+    BootScreen.qml                  # boot screen of the 240-MP OS image (see os/README.md)
   Main.qml                          # app root
   CMakeLists.txt
+  os/                               # 240-MP OS image: a pi-gen stage on Raspberry Pi OS Lite
 ```
 
 There are three modules today: `local_files`, `plex`, and `ambient_mode`. `plex` is a helpful reference when building something new as it covers a more complex use case (connecting to a 3rd party API with auth)

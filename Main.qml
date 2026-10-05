@@ -182,6 +182,22 @@ Window {
     readonly property var hints: inputManager ? inputManager.hints : ({})
     readonly property string appVersion: appCore ? appCore.appVersion : ""
 
+    // --- BOOT SCREEN (240-MP OS image only, see os/README.md) ---
+    // bootProgress mirrors, for the same teardown-safety reason as above.
+    readonly property bool   bootActive: bootProgress ? bootProgress.active : false
+    readonly property real   bootValue:  bootProgress ? bootProgress.progress : 0
+    readonly property var    bootSteps:  bootProgress ? bootProgress.steps : []
+    readonly property string bootLabel:  bootProgress ? bootProgress.currentLabel : ""
+    function skipBootScreen() { if (bootProgress) bootProgress.skip() }
+
+    // The startup module waits for the boot screen: most modules need the
+    // network the boot screen is waiting on.
+    onBootActiveChanged: {
+        if (bootActive) return
+        if (moduleLoader.item) moduleLoader.item.forceActiveFocus()
+        openStartupModule()
+    }
+
     // --- SCREEN SAVER STATE ---
     property bool screenSaverActive: false
 
@@ -199,6 +215,21 @@ Window {
     property var appNavStack: []
     property var appCurrentParams: ({})
     property bool _startupNavigated: false
+
+    // Opens the configured startup module, once per run.
+    function openStartupModule() {
+        if (root._startupNavigated) return
+        root._startupNavigated = true
+        var entryPoint = appCore.startupModuleEntryPoint()
+        if (entryPoint) {
+            root.appNavStack.push({
+                source: moduleLoader.source,
+                params: root.appCurrentParams,
+                listState: {}
+            })
+            moduleLoader.setSource(entryPoint, { "navParams": { fromAppStartup: true } })
+        }
+    }
 
     // --- MPV PLAYBACK TRACKING ---
     // Block the screen saver while mpv is playing so it never flashes during or
@@ -248,19 +279,12 @@ Window {
         }
 
         onLoaded: {
+            // While the boot screen is up it keeps the focus; QML gives no
+            // order between this and its own onLoaded, so don't race it.
+            if (root.bootActive)
+                return
             item.forceActiveFocus()
-            if (!root._startupNavigated) {
-                root._startupNavigated = true
-                var entryPoint = appCore.startupModuleEntryPoint()
-                if (entryPoint) {
-                    root.appNavStack.push({
-                        source: moduleLoader.source,
-                        params: root.appCurrentParams,
-                        listState: {}
-                    })
-                    moduleLoader.setSource(entryPoint, { "navParams": { fromAppStartup: true } })
-                }
-            }
+            root.openStartupModule()
         }
 
         Connections {
@@ -289,8 +313,9 @@ Window {
         function onActiveChanged() {
             // Only show on active → true; never hide here — the overlay's
             // key handler owns dismissal, preventing the C++ event filter's
-            // synchronous reset from stealing the key from QML.
-            if (idleTracker.active && idleTracker.enabled) {
+            // synchronous reset from stealing the key from QML. Never over the
+            // boot screen, which would lose focus to it.
+            if (idleTracker.active && idleTracker.enabled && !root.bootActive) {
                 if (!screenSaverActive) {
                     var usableW = screenSaverOverlay.width - bounceLogo.width
                     var usableH = screenSaverOverlay.height - bounceLogo.height
@@ -303,6 +328,17 @@ Window {
                 }
             }
         }
+    }
+
+    // Above the module views, below the screen saver. Declared after
+    // moduleLoader so its focus grab wins over the first view's.
+    Loader {
+        id: bootScreenLoader
+        anchors.fill: parent
+        z: 9000
+        active: root.bootActive
+        source: "views/BootScreen.qml"
+        onLoaded: item.forceActiveFocus()
     }
 
     Item {
