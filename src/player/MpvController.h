@@ -97,9 +97,13 @@ public:
     Q_INVOKABLE void noteSession(const QVariantMap &note);
     QVariantMap backgroundNote() const { return m_background ? m_sessionNote : QVariantMap(); }
     // A player with a playback menu of its own says so in its note (menu:
-    // true): back then has it open the menu over the picture
-    // (playerMenuRequested), the session staying its player's, where any
-    // other player takes back as stopped and goes back to its menus. Its end
+    // true): back then has it open the menu (playerMenuRequested), the
+    // session staying its player's, where any other player takes back as
+    // stopped and goes back to its menus. Played inside the window
+    // (Transparent Background), the video goes on under the menu. Played by
+    // an mpv process, which has the screen while it plays, it ends for the
+    // menu (backFromProcess), nothing playing under it: videoActive is false,
+    // and the player starts it again where it was as the menu closes. Its end
     // still comes as playbackEnded, while the menu is open too.
     // closePlayerMenu() takes the picture back to full screen;
     // leavePlayerMenu() does what back always did, for the menu's way to its
@@ -181,6 +185,9 @@ private:
     void onEmbeddedFinished(const QString &lastEndReason);
     // Back during an embedded session: the menus come back over the picture.
     void detachToMenus();
+    // Back during a session in an mpv process: it ends, its player's menu
+    // opening in its place if it has one.
+    void backFromProcess();
     // The session behind the menus chosen again: full screen, where it is.
     void reattach(float startSeconds);
     VideoProfile detectVideoProfile() const;
@@ -216,8 +223,14 @@ private:
     // The embedded session's command line, to know it when it is asked for again.
     QStringList     m_sessionArgs;
     QVariantMap     m_sessionNote;
-    // Back has its player's menu open over the picture (see closePlayerMenu).
+    // Back has its player's menu open over the picture (see closePlayerMenu),
+    // or where its process ended for it (m_playerMenu without videoActive()).
     bool            m_playerMenu   = false;
+    // The process is quitting for its player's menu (backFromProcess)...
+    bool            m_menuOnExit   = false;
+    // ...and where it had got to then, for the menu's way out.
+    int             m_menuPositionMs = 0;
+    int             m_menuDurationMs = 0;
     QSize           m_videoTargetSize { 640, 480 };
     QString         m_embeddedInputConfPath;
     DisplayHandoff *m_handoff      = nullptr;

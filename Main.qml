@@ -290,6 +290,12 @@ Window {
             idleTracker.mpvActive = mpvController.videoActive
             idleTracker.resetActivity()
         }
+        // A player's menu where its mpv process ended for it: nothing plays
+        // under it (over a video inside the window, it still does).
+        function onPlayerMenuRequested() {
+            idleTracker.mpvActive = mpvController.videoActive
+            idleTracker.resetActivity()
+        }
     }
 
     // --- VIDEO PLAYED INSIDE THIS WINDOW (Transparent Background) ---

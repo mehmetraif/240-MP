@@ -27,10 +27,12 @@ FocusScope {
     property int    lastKnownPositionMs: 0
     property int    lastKnownDurationMs: 0
 
-    // Back during the video opens its menu over the picture (PlayerMenu),
-    // the video playing on behind it. A change the video can't take as it
-    // plays (its format, its audio, its subtitles) reloads it where it is as
-    // the menu closes; CLOSE VIDEO goes back to the main menu.
+    // Back during the video opens its menu (PlayerMenu): over the picture,
+    // the video playing on behind it, with Transparent Background; without,
+    // the video ends for it (mpv has the screen) and starts again where it
+    // was as the menu closes. A change the video can't take as it plays (its
+    // format, its audio, its subtitles) reloads it where it is as the menu
+    // closes; CLOSE VIDEO goes back to the main menu.
     property bool   reloadOnClose:   false
     property bool   closeToMainMenu: false
 
@@ -144,12 +146,13 @@ FocusScope {
         playerMenu.refresh()
     }
     // Back in the menu: the video full screen again, reloaded where it is if
-    // a setting asks for it.
+    // a setting asks for it, or started again there if it ended for the menu.
     function backToVideo() {
         playerMenu.close()
         playerRoot.forceActiveFocus()
+        var ended = !mpvController.videoActive
         mpvController.closePlayerMenu()
-        if (reloadOnClose) {
+        if (reloadOnClose || ended) {
             reloadOnClose = false
             readSettings()
             playbackStarted = false

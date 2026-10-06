@@ -40,16 +40,18 @@ MpvController::MpvController(const QString &appRoot, const QString &dataRoot,
         : m_videoProfile == VideoProfile::PiFullKms ? "Pi 5 (Full KMS) — drm + auto-safe"
                                                     : "generic");
 
+    // Back ends the video (backFromProcess), and opens its player's menu if
+    // it has one. The deck's own menu still takes back first while it is
+    // open (its bindings are forced).
     QFile f(m_inputConfPath);
     if (f.open(QFile::WriteOnly | QFile::Text)) {
-        f.write("ESC quit\n");
-        f.write("BS quit\n");
+        f.write("ESC script-message 240mp-menu\n");
+        f.write("BS script-message 240mp-menu\n");
         f.write("ENTER cycle pause\n");
         f.close();
     }
     // Transparent Background: back returns to the menus and leaves the video
-    // playing (detachToMenus). The deck's own menu still takes back first
-    // while it is open (its bindings are forced).
+    // playing (detachToMenus), the deck's menu first here too.
     m_embeddedInputConfPath = QDir::tempPath() + "/240mp-input-embedded.conf";
     QFile ef(m_embeddedInputConfPath);
     if (ef.open(QFile::WriteOnly | QFile::Text)) {
@@ -336,6 +338,12 @@ void MpvController::loadAndPlay(const QString &url, float startSeconds,
                                  const QStringList &extraUrls) {
     // Its player notes the new session afresh (noteSession), or leaves none.
     m_sessionNote.clear();
+    // A player's menu where its process ended: this is the video again, or
+    // another taking its place. (Over an embedded session, endEmbedded()
+    // below tells its player.)
+    m_menuOnExit = false;
+    if (m_playerMenu && !videoActive())
+        m_playerMenu = false;
     // Transparent Background plays inside the app's own window, where the
     // menus can lie over the picture.
     const bool embedded = transparentBackground();
@@ -561,6 +569,18 @@ void MpvController::loadAndPlay(const QString &url, float startSeconds,
 }
 
 void MpvController::stop() {
+    // Its player's menu, where its process ended (backFromProcess): nothing
+    // plays, so it has stopped. Told as a process's exit is, not from inside
+    // the player's own call.
+    if (m_playerMenu && !videoActive()) {
+        m_playerMenu = false;
+        const int pos = m_menuPositionMs;
+        const int dur = m_menuDurationMs;
+        QTimer::singleShot(0, this, [this, pos, dur]() {
+            emit playbackEnded(pos, dur, QStringLiteral("stopped"));
+        });
+        return;
+    }
     if (m_embedded && m_embedded->running()) {
         // finished() follows, as a process's exit does.
         m_embedded->quit();
@@ -629,7 +649,7 @@ void MpvController::onIpcReadyRead() {
                     if (msg == "skip-segment")
                         emit skipRequested();
                     else if (msg == "240mp-menu")
-                        detachToMenus();
+                        videoActive() ? detachToMenus() : backFromProcess();
                     else if (msg == "cycle-sub")
                         emit subtitleCycleRequested();
                     else if (msg == "cycle-audio")
@@ -704,17 +724,31 @@ void MpvController::onProcessFinished() {
     else if (m_lastEndFileReason == "eof") reason = QStringLiteral("eof");
     else                                   reason = QStringLiteral("stopped");
 
+    // Quit for its player's menu (backFromProcess): the menu, once the screen
+    // is the app's again. A video that ended on its own meanwhile ends as any.
+    const bool menu = m_menuOnExit && reason == QLatin1String("stopped");
+    m_menuOnExit = false;
+    auto finish = [this, pos, dur, reason, menu]() {
+        if (menu) {
+            m_playerMenu = true;
+            m_menuPositionMs = pos;
+            m_menuDurationMs = dur;
+            emit playerMenuRequested();
+        } else {
+            emit playbackEnded(pos, dur, reason);
+        }
+    };
     if (m_headlessMode && m_handoff) {
         // DisplayHandoff defers the DRM restore and VT switch (200 ms by
         // default) because mpv's last KMS atomic commit may still be pending in
         // the vc4 driver at the moment the process exits.
         m_handoff->releaseDeferred(QLatin1String(kHandoffOwner),
-                                   [this, pos, dur, reason]() {
+                                   [this, finish]() {
             m_headlessMode = false;
-            emit playbackEnded(pos, dur, reason);
+            finish();
         });
     } else {
-        emit playbackEnded(pos, dur, reason);
+        finish();
     }
 }
 
@@ -931,9 +965,9 @@ void MpvController::stopBackground() {
 }
 
 void MpvController::noteSession(const QVariantMap &note) {
-    // Only a session played inside the window can be left behind the menus.
-    if (videoActive())
-        m_sessionNote = note;
+    // Only a session played inside the window is left behind the menus
+    // (backgroundNote), but a process's says whether back opens a menu.
+    m_sessionNote = note;
 }
 
 void MpvController::appendEmbeddedVideoArgs(QStringList &args) const {
@@ -1067,6 +1101,15 @@ void MpvController::detachToMenus() {
     emit playbackEnded(m_position, m_duration, QStringLiteral("stopped"));
 }
 
+void MpvController::backFromProcess() {
+    // mpv has the screen while it plays, so nothing of the app's can lie over
+    // the picture: the video ends, and its player's menu, if it has one,
+    // opens in its place (onProcessFinished). Its player starts it again where
+    // it was as the menu closes.
+    m_menuOnExit = m_sessionNote.value(QStringLiteral("menu")).toBool();
+    stop();
+}
+
 void MpvController::closePlayerMenu() {
     if (!m_playerMenu)
         return;
@@ -1079,6 +1122,11 @@ void MpvController::leavePlayerMenu() {
     if (!m_playerMenu)
         return;
     m_playerMenu = false;
+    // Its process ended for the menu: where it had got to then.
+    if (!videoActive()) {
+        emit playbackEnded(m_menuPositionMs, m_menuDurationMs, QStringLiteral("stopped"));
+        return;
+    }
     // As back without a menu: its player takes it as stopped, saves where it
     // is now, and goes back to its module's menus, the picture going on
     // behind them. Chosen again from there, it carries on (reattach()).
@@ -1087,6 +1135,10 @@ void MpvController::leavePlayerMenu() {
 }
 
 void MpvController::setVideoProperty(const QString &name, const QVariant &value) {
+    // No session (its player's menu where its process ended): the next one
+    // starts with the setting.
+    if (m_ipc->state() != QLocalSocket::ConnectedState)
+        return;
     sendCommand({"set_property", name, QJsonValue::fromVariant(value)});
 }
 

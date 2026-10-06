@@ -241,7 +241,7 @@ Photos of an earlier version, before the menus above, on a CRT.
 - Shuffle playback
 - Playback history
 - Switch audio/subtitle tracks during playback
-- With Transparent Background, back during a video opens its menu over it: subtitles, looping and Scaling, then Favorites, Play at Startup, Browse Local Files and Close Video. Looping and Scaling change as it plays; the subtitles reload it from where it is when you go back to it
+- Back during a video opens its menu: subtitles, looping and Scaling, then Favorites, Play at Startup, Browse Local Files and Close Video. With Transparent Background it lies over the picture, which plays on: looping and Scaling change as it plays, and the subtitles reload it from where it is when you go back to it. Without, the video stops for the menu and starts again from where it was when you go back to it, with the settings as you left them
 
 ### Netflix and Prime Video
 - Browse what the service carries in your country in the same tree as Local Files: **Recently Watched** and **Favorites** first, then **Search** (on an on-screen keyboard), **Movies** and **Series** by Popular and by genre, a page of titles at a time with **More…** at the end
@@ -318,7 +318,7 @@ Photos of an earlier version, before the menus above, on a CRT.
     - **Subtitles** in a **Subtitle Language**: Off, On, or With Auto for YouTube's automatic captions too.
     - **Playback Speed**: 0.75x to 2x.
     - **Resume Playback**, and whether to **Display Shorts** (on by default).
-- With Transparent Background, back during a video opens its menu over it: the Advanced settings for it, then Favorites, Play at Startup, Watch Later, Browse YouTube and Close Video. Speed and Scaling change as it plays; the others reload it from where it is when you go back to it
+- Back during a video opens its menu: the Advanced settings for it, then Favorites, Play at Startup, Watch Later, Browse YouTube and Close Video. With Transparent Background it lies over the picture, which plays on: speed and Scaling change as it plays, and the others reload it from where it is when you go back to it. Without, the video stops for the menu and starts again from where it was when you go back to it, with the settings as you left them
 - **Sign in** in its settings, if you want to, opens Google's sign-in page full screen in Chromium, to sign in with a keyboard. yt-dlp then searches and plays as that account, which YouTube asks for fewer bot checks and lets play age-restricted videos. **Sign out** forgets it
     - YouTube can block an account used through yt-dlp, as [yt-dlp's wiki](https://github.com/yt-dlp/yt-dlp/wiki/Extractors#youtube) warns, so sign in with a spare one
     - Needs Chromium, with `cage` and `wtype` without a desktop (see Netflix and Prime Video), or Google Chrome on a Mac
