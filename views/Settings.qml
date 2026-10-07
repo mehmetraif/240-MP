@@ -220,6 +220,18 @@ FocusScope {
             moduleId: ""
         })
 
+        // HINT BAR — the key hints on the bar at the foot of every screen
+        // (Components/HintBar). Read in Main.qml.
+        items.push({
+            type: "list_single",
+            key: "hint_bar",
+            label: "Hint Bar",
+            options: ["On", "Off"],
+            value: appSettings["hint_bar"] === "Off" ? "Off" : "On",
+            description: "The key hints on the bar at the foot of every screen\n[OFF] No bar; the keys work as they do",
+            moduleId: ""
+        })
+
         // SCREEN SAVER section — single control: OFF disables, a number sets the
         // timeout for both menu idle and playback pause (handled inside mpv).
         items.push({
