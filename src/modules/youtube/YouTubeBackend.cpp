@@ -736,6 +736,15 @@ QStringList YouTubeBackend::playbackArgs(const QVariantMap &settings) const {
     return args;
 }
 
+QStringList YouTubeBackend::downloadArgs(const QVariantMap &settings) const {
+    return QStringList{QStringLiteral("-f"),
+                       ytdlFormat(settings.value(QStringLiteral("resolution")).toString(),
+                                  settings.value(QStringLiteral("codec")).toString(),
+                                  settings.value(QStringLiteral("maxFrameRate")).toString(),
+                                  settings.value(QStringLiteral("audioLanguage")).toString())}
+           + cookieArgs();
+}
+
 void YouTubeBackend::get_audio_languages() {
     QVariantList options{QVariantMap{{QStringLiteral("id"), QStringLiteral("original")},
                                      {QStringLiteral("label"), QStringLiteral("Original")}}};

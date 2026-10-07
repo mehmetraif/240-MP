@@ -169,6 +169,51 @@ int JellyfinBackend::videoQualityMaxHeight() const {
 // HTTP helpers
 // ---------------------------------------------------------------------------
 
+QNetworkRequest JellyfinBackend::downloadRequest(const QString &itemId) const {
+    QNetworkRequest req = jellyfinRequest(QUrl(m_serverUrl + QStringLiteral("/Items/") + itemId
+                                            + QStringLiteral("/Download")));
+    req.setRawHeader("Accept", "*/*");
+    req.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
+                     QNetworkRequest::NoLessSafeRedirectPolicy);
+    return req;
+}
+
+QString JellyfinBackend::streamUrl(const QString &itemId) const {
+    QUrl url(m_serverUrl + QStringLiteral("/Videos/") + itemId + QStringLiteral("/stream"));
+    QUrlQuery query;
+    query.addQueryItem(QStringLiteral("static"), QStringLiteral("true"));
+    query.addQueryItem(QStringLiteral("ApiKey"), m_accessToken);
+    query.addQueryItem(QStringLiteral("api_key"), m_accessToken);
+    url.setQuery(query);
+    return url.toString(QUrl::FullyEncoded);
+}
+
+QNetworkRequest JellyfinBackend::browseRequest(const QString &parentId) const {
+    QUrl url;
+    QUrlQuery query;
+    if (parentId.isEmpty()) {
+        url = QUrl(m_serverUrl + QStringLiteral("/Users/") + m_userId + QStringLiteral("/Views"));
+    } else if (parentId == QLatin1String("resume")) {
+        url = QUrl(m_serverUrl + QStringLiteral("/Users/") + m_userId + QStringLiteral("/Items/Resume"));
+        query.addQueryItem(QStringLiteral("Limit"), QStringLiteral("50"));
+        query.addQueryItem(QStringLiteral("MediaTypes"), QStringLiteral("Video"));
+    } else if (parentId == QLatin1String("nextup")) {
+        url = QUrl(m_serverUrl + QStringLiteral("/Shows/NextUp"));
+        query.addQueryItem(QStringLiteral("UserId"), m_userId);
+        query.addQueryItem(QStringLiteral("Limit"), QStringLiteral("50"));
+    } else {
+        url = QUrl(m_serverUrl + QStringLiteral("/Users/") + m_userId + QStringLiteral("/Items"));
+        query.addQueryItem(QStringLiteral("ParentId"), parentId);
+        // Seasons and episodes by their numbers, anything else by name.
+        query.addQueryItem(QStringLiteral("SortBy"), QStringLiteral("ParentIndexNumber,IndexNumber,SortName"));
+        query.addQueryItem(QStringLiteral("SortOrder"), QStringLiteral("Ascending"));
+    }
+    query.addQueryItem(QStringLiteral("EnableImages"), QStringLiteral("false"));
+    query.addQueryItem(QStringLiteral("EnableUserData"), QStringLiteral("false"));
+    url.setQuery(query);
+    return jellyfinRequest(url);
+}
+
 QNetworkRequest JellyfinBackend::jellyfinRequest(const QUrl &url) const {
     QNetworkRequest req(url);
     req.setRawHeader("Accept", "application/json");

@@ -24,6 +24,7 @@
 #include "modules/weather/WeatherBackend.h"
 #include "modules/scripts/ScriptsBackend.h"
 #include "modules/web_player/WebPlayerBackend.h"
+#include "modules/playlists/PlaylistsBackend.h"
 #include "player/MpvController.h"
 #include "player/VideoSurface.h"
 #include "player/VhsNoise.h"
@@ -196,6 +197,10 @@ int main(int argc, char *argv[]) {
           QStringLiteral("https://www.primevideo.com/search/ref=atv_nb_sr?phrase=%1"),
           QStringLiteral("P14440") } },
         appRoot, dataRoot, &displayHandoff);
+    // Lists of videos from the modules above, downloaded through them for
+    // the offline ones.
+    PlaylistsBackend    playlistsBackend(appRoot, dataRoot, &appCore, &localFiles,
+                                         &youtubeBackend, &jellyfinBackend, &embyBackend);
     MpvController       mpvController(appRoot, dataRoot, &appCore, &displayHandoff);
     InputManager        inputManager(dataRoot, &appCore);
     IdleTracker         idleTracker(60);   // disabled until Main.qml applies the saved setting
@@ -227,6 +232,7 @@ int main(int argc, char *argv[]) {
     appCore.registerModule("com.240mp.scripts",      "scriptsBackend",     &scriptsBackend, ctx);
     appCore.registerModule("com.240mp.netflix",      "netflixBackend",     &netflixBackend, ctx);
     appCore.registerModule("com.240mp.prime_video",  "primeVideoBackend",  &primeVideoBackend, ctx);
+    appCore.registerModule("com.240mp.playlists",    "playlistsBackend",   &playlistsBackend, ctx);
 
     ctx->setContextProperty("idleTracker",   &idleTracker);
     ctx->setContextProperty("appCore",       &appCore);

@@ -85,6 +85,11 @@ public:
     // subtitles (--slang).
     Q_INVOKABLE QStringList playbackArgs(const QVariantMap &settings) const;
 
+    // yt-dlp's options for downloading a video the way it would play (the
+    // Playlists module's offline lists), from the same settings: the format
+    // above, and the account once signed in.
+    QStringList downloadArgs(const QVariantMap &settings) const;
+
     // ADVANCED's language lists (options_slot), by yt-dlp's language codes.
     Q_INVOKABLE void get_audio_languages();
     Q_INVOKABLE void get_subtitle_languages();

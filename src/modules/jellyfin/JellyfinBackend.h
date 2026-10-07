@@ -56,6 +56,20 @@ public:
     // URL helpers for QML
     Q_INVOKABLE QString get_access_token() const { return m_accessToken; }
 
+    // For the Playlists module. The item's original file, as the server lets
+    // this user download it (/Items/{id}/Download, which answers 401/403
+    // otherwise). And a URL mpv can stream it from with the token in its
+    // query rather than a header, so that in a playlist mixing sources the
+    // token goes to this server and nowhere else.
+    bool signedIn() const { return !m_serverUrl.isEmpty() && !m_accessToken.isEmpty(); }
+    QNetworkRequest downloadRequest(const QString &itemId) const;
+    QString streamUrl(const QString &itemId) const;
+    // A folder's children (a library's, a show's, a season's), this user's
+    // libraries (""), or what they are watching ("resume") and the episodes
+    // next in their shows ("nextup"): the Playlists module's own tree, kept
+    // apart from this module's views' signals.
+    QNetworkRequest browseRequest(const QString &parentId) const;
+
     // Settings
     Q_INVOKABLE QString get_auth_state();
     Q_INVOKABLE void getLibraries();
