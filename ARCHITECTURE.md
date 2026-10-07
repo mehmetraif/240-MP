@@ -60,6 +60,7 @@ The guiding idea: **browse structured content, then hand off to the right tool f
   views/                            # app-level QML
     ModuleList.qml
     Settings.qml
+    About.qml                       # Settings → About: the credits, and the licence's text
     ...
     Components/                     # shared QML components (AppBar, HintBar, MenuRow, MenuList, HelpLine, ScrollMarks, TreeBrowser, InfoPanel, EntryOptions, PlaylistAdder, PlayerMenu, LoadingScreen, PromptScreen, OsdGround, MousePointer, OnScreenKeyboard, WebPlayerBrowse, WebPlayerLaunch, the Osd* elements, ChoiceOverlay, qmldir)
     BootScreen.qml                  # boot screen of the OSD/OS image (see os/README.md)
@@ -172,6 +173,7 @@ A real example (Plex) — note `requires_auth`, dynamic options, and apply slots
 | `get_module_auth_state(moduleId)` | Returns the module's auth state (for `requires_auth` settings) |
 | `getCustomColorScheme()` | Returns the user's custom color scheme |
 | `listDirectories(path)` / `parentDirectory(path)` / `homePath()` | Helpers for `directory_browser` |
+| `licenseText()` | The licence's text (`LICENSE` next to the app), its paragraphs each on one line, for Settings → About |
 
 ### Signals
 
@@ -432,6 +434,12 @@ Settings → **Bluetooth** (`views/Bluetooth.qml`) pairs a Bluetooth keyboard, g
 - **Turning it on** (`setPowered`, and SEARCH while off) is tried once more 2 s later when BlueZ refuses, as bluetoothd may still be setting the adapter up. A second refusal sets `powerFailed`, and the page then offers DETAILS. An adapter that rfkill blocks (its switch in `/sys/class/rfkill`, named after it) isn't tried again: BlueZ only answers "Failed" for it, so `message` says rfkill blocks it. `collectDetails()` puts into `details` the adapter's state as BlueZ has it, rfkill's switches and the system log's last Bluetooth lines (`journalctl`, which the app's user reads as a member of `adm`), each line once with how many times it came, so a photo of the screen shows what went wrong without a terminal. On OSD/OS image the image unblocks Bluetooth as bluetoothd starts, which the Pi's own adapter needs to turn on at all (see [os/README.md](os/README.md)).
 - **Permissions.** The app talks to BlueZ as the user it runs as. `install.sh` and the OS image add that user to the `bluetooth` group, which BlueZ's D-Bus policy lets in.
 
+## About (views/About.qml)
+
+Settings → **About** says what OSD/OS is, who makes it, what it is made of and under which licence, as menu lines (`MenuList`) whose `HelpLine` carries each one's detail: the version, the developer, 240-MP that it is a modified version of, the licence, the source, the fonts and the libraries with their licences. Its help line is set `always`, so it stays when Settings' Help Line is off: these lines are the page.
+
+Behind the LICENSE line is the licence itself, below the title bar in place of the lines: the notice the GNU GPL asks an interactive program to show (whose copyright it is, that it comes with no warranty, that it may be passed on under the licence, and where the licence is), then the licence's text, a page at a time with ▲ ▼. The text is `LICENSE` next to the app, which CMake installs with `Main.qml` into every build (the GPL asks that every copy carry it), read through `appCore.licenseText()`, which puts each paragraph on one line for the view to wrap. The developer's name and the year are properties at the top of the view.
+
 ## C++ Backend Patterns
 
 Backends are `QObject` subclasses registered via `registerModule(...)` before the engine loads.
@@ -682,7 +690,7 @@ Pixel-drawn pieces of a deck's on-screen menu, built on `root.px` (one pixel of 
 | `MenuRow` | A settings line the way a camcorder's menu lays one out, `DISPLAY······ON`: `label`, a dot per character cell, then `value` against the line's right end (none for a submenu), with `selected` as a solid bar. With `heading` it heads a group instead: the label and a rule to the line's end (`MODULES ─────`). A value too long for the line is cut short; with `keepValue` the label is instead, two dots before a value that always shows whole (a playlist's videos, `TEEN TITANS GO!… ··READY`). Settings, every module's settings, Controls and the Playlists module use it. |
 | `ScrollMarks` | The ▲ above a list while lines are hidden above it and the ▼ below while lines are hidden below. Laid over a list (`anchors.fill` and `list`); the main menu and the settings menus use it. |
 | `MenuList` | A view's menu of `MenuRow`s in the place every view's list has (under the title bar, one row short of the help line), with `ScrollMarks` and a cursor (`step(delta)`, Up and Down) that steps over section headings (rows whose `type` is `"section"`), round the ends. The host gives it `model` (a list) and `delegate`, and keys it; `currentIndex`, `count` and `contentY` are the list's. The Playlists module's pages use it. |
-| `HelpLine` | The help line under a settings menu: the focused line's description in an outlined box, on one line. A description too long for the box scrolls through it like a ticker; one written as several lines reads as one, joined with `•`. |
+| `HelpLine` | The help line under a settings menu: the focused line's description in an outlined box, on one line. A description too long for the box scrolls through it like a ticker; one written as several lines reads as one, joined with `•`. Settings → **Help Line** (`app.help_line`, `"On"` when unset, or `"Off"`; `root.helpLine`) hides every one at once, by its `opacity`, so a host's own `visible` binding holds and its menu keeps its shape; one whose lines are the page itself sets `always` (About's). |
 | `Dither` | A checkerboard of background-colour art pixels laid over an area: the two-colour way to dim it. |
 | `PixelIcon` | A symbol from a small bitmap: `play`, `left`, `up`, `down`, `ff`, `rew`, `pause`, `stop`, `rec`, `eject`, plus the `ok` key and `tape` badges. |
 | `OsdTicks` | The segment bar, `||||----`: a tick per filled step and a dash per empty one. The boot screen's progress bar. |

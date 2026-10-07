@@ -184,7 +184,8 @@ if(APPLE)
 
     # Use a hardcoded relative path — $<TARGET_BUNDLE_CONTENT_DIR> resolves to
     # the build tree, not the install prefix, inside install() rules.
-    install(FILES "${CMAKE_SOURCE_DIR}/Main.qml"
+    # LICENSE goes with every copy, as the GPL asks; Settings → About shows it.
+    install(FILES "${CMAKE_SOURCE_DIR}/Main.qml" "${CMAKE_SOURCE_DIR}/LICENSE"
         DESTINATION "240mp.app/Contents/Resources"
         COMPONENT Runtime)
 
@@ -211,7 +212,8 @@ else()
         RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
         COMPONENT Runtime)
 
-    install(FILES "${CMAKE_SOURCE_DIR}/Main.qml"
+    # LICENSE goes with every copy, as the GPL asks; Settings → About shows it.
+    install(FILES "${CMAKE_SOURCE_DIR}/Main.qml" "${CMAKE_SOURCE_DIR}/LICENSE"
         DESTINATION "${CMAKE_INSTALL_DATADIR}/240mp"
         COMPONENT Runtime)
 

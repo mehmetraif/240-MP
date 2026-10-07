@@ -52,6 +52,10 @@ public:
     Q_INVOKABLE QString parentDirectory(const QString &path);
     Q_INVOKABLE QString homePath();
     Q_INVOKABLE QString localIpAddress() const;
+    // The licence's text (LICENSE next to the app, the GNU GPL v3), its
+    // paragraphs each on one line so a view wraps them to its width; "" when
+    // the file is missing.
+    Q_INVOKABLE QString licenseText() const;
     Q_INVOKABLE QString startupModuleEntryPoint() const;
     // The QML entry point of an enabled module ("modules/<folder>/<entry>"),
     // as startupModuleEntryPoint() gives the startup module's; "" for an

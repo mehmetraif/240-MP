@@ -154,6 +154,8 @@ Window {
                 root.loadingEffect = value !== "Off"
             } else if (key === "hint_bar") {
                 root.hintBar = value !== "Off"
+            } else if (key === "help_line") {
+                root.helpLine = value !== "Off"
             } else if (key === "osd_background") {
                 root.osdBackground = root.osdBackgroundOf(value)
             } else if (key === "mouse_pointer") {
@@ -204,6 +206,7 @@ Window {
         root.pointerSetting = String((cfg.app && cfg.app.mouse_pointer) || "5")
         root.loadingEffect = !(cfg.app && cfg.app.loading_effect === "Off")
         root.hintBar = !(cfg.app && cfg.app.hint_bar === "Off")
+        root.helpLine = !(cfg.app && cfg.app.help_line === "Off")
         root.osdBackground = root.osdBackgroundOf(cfg.app && cfg.app.osd_background)
 
         // Screensaver: the tracker starts disabled; this is the single place the
@@ -367,6 +370,9 @@ Window {
     // "hint_bar": the key hints on the bar at the foot of every screen
     // (HintBar), "On" (the default, when unset) or "Off".
     property bool hintBar: true
+    // "help_line": the line about the selected row in the box under a menu
+    // (HelpLine), "On" (the default, when unset) or "Off".
+    property bool helpLine: true
 
     // "transparent_background": how solid the menus' ground is over a video
     // behind them, 0 (TRANSPARENT) to 100 (SOLID: none of it shows, but it

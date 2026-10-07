@@ -232,6 +232,18 @@ FocusScope {
             moduleId: ""
         })
 
+        // HELP LINE — the line about the selected row in the box under a
+        // menu, this one (Components/HelpLine). Read in Main.qml.
+        items.push({
+            type: "list_single",
+            key: "help_line",
+            label: "Help Line",
+            options: ["On", "Off"],
+            value: appSettings["help_line"] === "Off" ? "Off" : "On",
+            description: "The box under a menu with a line about the selected row, this one\n[OFF] No box",
+            moduleId: ""
+        })
+
         // SCREEN SAVER section — single control: OFF disables, a number sets the
         // timeout for both menu idle and playback pause (handled inside mpv).
         items.push({
@@ -315,6 +327,15 @@ FocusScope {
             type: "submenu",
             key: "software_update",
             label: "Update",
+            moduleId: ""
+        })
+        // ABOUT — what OSD/OS is, who makes it, what it is made of and under
+        // which licence (views/About.qml).
+        items.push({
+            type: "submenu",
+            key: "about",
+            label: "About",
+            description: "What OSD/OS is, who makes it, what it is made of and under which license",
             moduleId: ""
         })
         items.push({ type: "quit", label: "Quit" })
@@ -510,6 +531,8 @@ FocusScope {
                     settingsRoot.navigateTo("views/RemapControls.qml", {}, { currentIndex: settingsList.currentIndex })
                 else if (row.key === "bluetooth")
                     settingsRoot.navigateTo("views/Bluetooth.qml", {}, { currentIndex: settingsList.currentIndex })
+                else if (row.key === "about")
+                    settingsRoot.navigateTo("views/About.qml", {}, { currentIndex: settingsList.currentIndex })
                 else
                     settingsRoot.navigateTo("views/ModuleSettings.qml", { moduleId: row.moduleId }, { currentIndex: settingsList.currentIndex })
             } else if (row && row.type === "quit") {
