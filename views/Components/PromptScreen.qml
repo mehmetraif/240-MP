@@ -31,6 +31,9 @@ Rectangle {
     // The answers: labels, or maps with a label ({ label, action }).
     property var choices: []
     property int currentIndex: 0
+    // More answers than this show a window of them that follows the cursor,
+    // with ▲ / ▼ while some are hidden above or below it.
+    property int maxChoices: 5
     // The hint line.
     property string hint: ""
 
@@ -38,6 +41,25 @@ Rectangle {
 
     anchors.fill: parent
     color: root.surfaceColor
+
+    // The first answer in the window.
+    property int firstShown: 0
+    readonly property bool windowed: choices.length > maxChoices
+    onCurrentIndexChanged: keepShown()
+    onChoicesChanged: keepShown()
+    onMaxChoicesChanged: keepShown()
+    function keepShown() {
+        if (!windowed) {
+            firstShown = 0
+            return
+        }
+        var first = firstShown
+        if (currentIndex < first)
+            first = currentIndex
+        else if (currentIndex >= first + maxChoices)
+            first = currentIndex - maxChoices + 1
+        firstShown = Math.max(0, Math.min(first, choices.length - maxChoices))
+    }
 
     AppBar {
         id: titleBar
@@ -87,16 +109,28 @@ Rectangle {
             visible: prompt.choices.length > 0
             width: parent.width
 
+            Text {
+                visible: prompt.windowed
+                opacity: prompt.firstShown > 0 ? 1 : 0
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: "\u25B2"
+                color: root.tertiaryColor
+                font.family: root.globalFont
+                font.pixelSize: root.sh * 0.0333333 //16
+            }
+
             Repeater {
-                model: prompt.choices
+                model: prompt.windowed ? prompt.choices.slice(prompt.firstShown, prompt.firstShown + prompt.maxChoices)
+                                       : prompt.choices
                 delegate: Item {
+                    readonly property bool current: index + prompt.firstShown === prompt.currentIndex
                     width: parent.width
                     height: root.sh * 0.0583333 //28
 
                     Rectangle {
                         anchors.fill: label
                         color: root.accentColor
-                        visible: index === prompt.currentIndex
+                        visible: parent.current
                     }
 
                     Text {
@@ -104,7 +138,7 @@ Rectangle {
                         anchors.centerIn: parent
                         width: Math.min(implicitWidth, parent.width)
                         text: typeof modelData === "string" ? modelData : (modelData.label || "")
-                        color: index === prompt.currentIndex ? root.surfaceColor : root.primaryColor
+                        color: parent.current ? root.surfaceColor : root.primaryColor
                         font.family: root.globalFont
                         font.capitalization: Font.AllUppercase
                         font.pixelSize: root.sh * 0.05 //24
@@ -115,6 +149,16 @@ Rectangle {
                         bottomPadding: root.sh * 0.00625 //3
                     }
                 }
+            }
+
+            Text {
+                visible: prompt.windowed
+                opacity: prompt.firstShown + prompt.maxChoices < prompt.choices.length ? 1 : 0
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: "\u25BC"
+                color: root.tertiaryColor
+                font.family: root.globalFont
+                font.pixelSize: root.sh * 0.0333333 //16
             }
         }
     }
