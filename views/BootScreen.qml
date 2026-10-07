@@ -3,9 +3,9 @@ import Components
 
 // Boot screen of the OSD/OS image (os/README.md). The image puts the app on
 // screen first and starts the services it held back afterwards, in the order
-// it lists them; this shows them coming up while the cassette plays — the tape
-// winds across in step with the progress bar. It stays until they have all
-// settled, or a minute has passed, whatever keys are pressed.
+// it lists them; this shows them coming up under the cassette, the bar filling
+// as they do. It stays until they have all settled, or a minute has passed,
+// whatever keys are pressed.
 //
 // Binds only to root.* (Main.qml mirrors bootProgress there), which stays
 // valid while this Loader-hosted view is torn down.
@@ -14,7 +14,7 @@ FocusScope {
 
     focus: true
 
-    // Smoothed copy of the boot progress that drives both the bar and the tape.
+    // Smoothed copy of the boot progress that drives the bar.
     property real shownProgress: root.bootValue
     Behavior on shownProgress { NumberAnimation { duration: 450; easing.type: Easing.OutCubic } }
 
@@ -120,7 +120,6 @@ FocusScope {
         ink: root.primaryColor
         x: Math.round((root.sw - width) / 2)
         y: bootRoot.blockY
-        progress: bootRoot.shownProgress
     }
 
     // The deck's segment bar, across the column.
