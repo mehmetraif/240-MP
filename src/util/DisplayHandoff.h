@@ -51,9 +51,16 @@ struct DrmSavedState {
 // returns 0 and every other call short-circuits.
 class DisplayHandoff : public QObject {
     Q_OBJECT
+    // True while a child has the screen (a hand-off is held, so only ever on
+    // headless Linux): nothing Qt draws meanwhile reaches it. QML reads it as
+    // root.screenHandedOff (Main.qml), so that animations rest until it is
+    // back, leaving the CPU to the child (LoadingScreen).
+    Q_PROPERTY(bool held READ held NOTIFY heldChanged)
 public:
     explicit DisplayHandoff(QObject *parent = nullptr);
     ~DisplayHandoff() override;
+
+    bool held() const { return !m_owner.isEmpty(); }
 
     // True when Qt owns the display directly (EGLFS/DRM) rather than through a
     // compositor, which is the only case that needs a hand-off.
@@ -98,6 +105,7 @@ signals:
     // handed over too): something is about to take the screen. A video left
     // playing behind the menus ends then (MpvController).
     void handingOff(const QString &owner);
+    void heldChanged();
 
 private:
     int  getActiveVt() const;

@@ -15,7 +15,7 @@
       "label": "Scripts Directory",
       "type": "directory_browser",
       "default": "",
-      "description": "Folder holding your .sh files\nDefault: user_scripts in the 240-MP data directory"
+      "description": "Folder holding your .sh files\nDefault: user_scripts in the app's data directory"
     },
     {
       "key": "startup_script",
@@ -24,7 +24,7 @@
       "options_source": "dynamic",
       "options_slot": "getStartupScriptOptions",
       "default": "None",
-      "description": "Runs automatically when 240-MP starts on this module\nSet START ON MODULE to Scripts in app settings"
+      "description": "Runs automatically when OSD/OS starts on this module\nSet START ON MODULE to Scripts in app settings"
     },
     {
       "key": "rescan",

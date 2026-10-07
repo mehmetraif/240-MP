@@ -10,7 +10,7 @@ Item {
 
     // Custom Properties
     property url iconSource: "../../assets/images/logo.svg"
-    property string title: "240-MP"
+    property string title: "OSD/OS"
     property string subtitle: ""
 
     readonly property bool hasLogo: iconSource.toString() !== "" && logo.status === Image.Ready

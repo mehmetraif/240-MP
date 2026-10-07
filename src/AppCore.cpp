@@ -463,6 +463,26 @@ QString AppCore::homePath() {
 // Docker/Flatpak bridges; macOS: en0 plus awdl/bridge/utun VPN interfaces), so pick
 // rather than take the first: skip loopback, virtual/tunnel and down interfaces, keep
 // only routable IPv4, and prefer wired over wireless over anything else.
+QString AppCore::licenseText() const {
+    QFile f(m_appRoot + "/LICENSE");
+    if (!f.open(QIODevice::ReadOnly | QIODevice::Text))
+        return QString();
+    // The file is wrapped at 70 columns. A paragraph is its lines up to a
+    // blank one; each becomes one line, for the view to wrap to its width.
+    static const QRegularExpression blank(QStringLiteral("\n[ \t]*\n"));
+    static const QRegularExpression wrap(QStringLiteral("[ \t]*\n[ \t]*"));
+    QStringList paragraphs;
+    const QStringList blocks = QString::fromUtf8(f.readAll()).split(blank, Qt::SkipEmptyParts);
+    for (const QString &block : blocks) {
+        QString p = block;
+        p.replace(wrap, QStringLiteral(" "));
+        p = p.trimmed();
+        if (!p.isEmpty())
+            paragraphs << p;
+    }
+    return paragraphs.join(QStringLiteral("\n\n"));
+}
+
 QString AppCore::localIpAddress() const {
     // Interface names that are virtual/tunnel/link-local by convention on the three
     // targets. Qt's type() misses some of these (Docker bridges report as Ethernet).

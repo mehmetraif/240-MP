@@ -222,23 +222,13 @@ FocusScope {
             event.accepted = true
         }
 
-        Column {
-            anchors.centerIn: parent
-            spacing: root.sh * 0.025 //12
-
-            Text {
-                text: remapRoot.captureIndex >= 0
-                      ? ("PRESS A NEW BUTTON FOR [" + remapRoot.actions[remapRoot.captureIndex].label.toUpperCase() + "]")
-                      : ""
-                color: root.accentColor
-                font.family: root.globalFont
-                font.pixelSize: root.sh * 0.05 //24
-                anchors.horizontalCenter: parent.horizontalCenter
-            }
-            HintBar {
-                text: root.hints.back + ":CANCEL"
-                anchors.horizontalCenter: parent.horizontalCenter
-            }
+        PromptScreen {
+            kind: "notice"
+            title: "New button"
+            message: remapRoot.captureIndex >= 0
+                     ? "Press a new button for [" + remapRoot.actions[remapRoot.captureIndex].label + "]"
+                     : ""
+            hint: root.hints.back + ":CANCEL"
         }
     }
 }

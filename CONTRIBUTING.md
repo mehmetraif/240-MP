@@ -1,6 +1,6 @@
-# Contributing to 240-MP
+# Contributing to OSD/OS
 
-Thank you for considering contributing to 240-MP!  I originally built this as a personal project for watching video content on a CRT but I'm also stoked to see what ideas you might want to add.  So with that in mind I'll try to make contributing to this project as easy and transparent as possible.  If you have any questions on the below please create a post in [Discussions > Q&A](https://github.com/anthonycaccese/240-MP/discussions/categories/q-a).
+Thank you for considering contributing to OSD/OS!  I originally built this as a personal project for watching video content on a CRT but I'm also stoked to see what ideas you might want to add.  So with that in mind I'll try to make contributing to this project as easy and transparent as possible.  If you have any questions on the below please create a post in [Discussions > Q&A](https://github.com/anthonycaccese/240-MP/discussions/categories/q-a).
 
 ## Non-code contributions
 
@@ -24,13 +24,13 @@ The most useful community contributions are often not code, items like the follo
 
 1. **Baseline on remote control as an input device**: All experiences should be built so they can be interacted with via up/down/left/right enter and esc/backspace.  More complex inputs should be avoided so that users can navigate via a simple usb remote.
 2. **Lay out screens for 240p/480i on a CRT**: Design layouts and size elements to display well on a CRT TV.  Consider overscan when placing elements on screen.  If you leverage the `root.sh` and `root.sw` properties for sizing you'll get responsive display for LCD tvs out of the box.
-3. **Keep modules self contained**:  If your module just relies on QML then you can simply add your module in a `/modules/[module name]` directory with a `manifest.json` and 240-MP will pick it up for display.  If your module requires a backend then you'll also need to register it in `/src/main.cpp`.  But other than that please keep all of your module source in a `/src/modules/[module name]` folder.  See [Anatomy of a Module](ARCHITECTURE.md#anatomy-of-a-module) for the full layout.
-4. **Don't add tracking or analytics**: Do not include any mechanisms for tracking or reporting usage to an external source that you maintain.  A module should only ever write details to the local 240-MP configuration directory.  If a module relies on connecting to a 3rd party API (example: the Plex module) then it should only communicate with that API directly.
-5. **Browse & Hand-off**: Think of 240-MP and its modules as a way to browse structured content (either on a filesystem or via an API response) and to hand-off to a purpose built tool for an action (like how it relies on MPV for video playback which is purpose built for that ask).  The approach is to leverage existing, purpose built applications that exist on a system and not bundle everything into 240-MP.
+3. **Keep modules self contained**:  If your module just relies on QML then you can simply add your module in a `/modules/[module name]` directory with a `manifest.json` and OSD/OS will pick it up for display.  If your module requires a backend then you'll also need to register it in `/src/main.cpp`.  But other than that please keep all of your module source in a `/src/modules/[module name]` folder.  See [Anatomy of a Module](ARCHITECTURE.md#anatomy-of-a-module) for the full layout.
+4. **Don't add tracking or analytics**: Do not include any mechanisms for tracking or reporting usage to an external source that you maintain.  A module should only ever write details to the app's local configuration directory.  If a module relies on connecting to a 3rd party API (example: the Plex module) then it should only communicate with that API directly.
+5. **Browse & Hand-off**: Think of OSD/OS and its modules as a way to browse structured content (either on a filesystem or via an API response) and to hand-off to a purpose built tool for an action (like how it relies on MPV for video playback which is purpose built for that ask).  The approach is to leverage existing, purpose built applications that exist on a system and not bundle everything into OSD/OS.
 
 ### Understanding the codebase
 
-240-MP is a **browsing shell** plus a set of **self-contained modules**. The shell (`AppCore`) discovers modules at startup, exposes settings, and routes actions; each module owns its own QML views and, optionally, a C++ backend. When the user plays something, the shell hands off to a purpose-built tool (mpv for video).
+OSD/OS is a **browsing shell** plus a set of **self-contained modules**. The shell (`AppCore`) discovers modules at startup, exposes settings, and routes actions; each module owns its own QML views and, optionally, a C++ backend. When the user plays something, the shell hands off to a purpose-built tool (mpv for video).
 
 For the full reference — module anatomy, `manifest.json` setting types, `AppCore` / `registerModule`, backend patterns, and the QML view/navigation contract — see **[ARCHITECTURE.md](ARCHITECTURE.md)**.
 
@@ -54,6 +54,7 @@ A pure-QML module needs **no C++ changes** — the shell discovers it from its m
 - **Preserve the manifest contract.** If you add a setting, follow the existing [setting types](ARCHITECTURE.md#setting-types); if it needs dynamic options, wire up the `dynamicOptionsReady` / `apply_slot` pattern rather than inventing a new mechanism.
 - **Follow the existing view and navigation patterns** in that module — the `navigateTo` / `goBack` contract and `navListState` position restoration. Don't introduce a different nav style.
 - **Reuse shared `Components`** (e.g. `AppBar`) instead of re-implementing them.
+- **Keep the window standard.** The title bar at the top, the `HintBar` in its fixed place at the foot, whatever is between them. A question or a notice is a `PromptScreen`: the question in the title bar behind a ? (a notice's behind a !), never a small line in the middle with the hint line under it. A layer that hides the whole view draws its ground with `OsdGround`, never a `Rectangle` of `root.surfaceColor`, so Settings' OSD Background (its window, or black) holds under it too.
 - **Keep it self-contained** — module source stays under `modules/[name]` and `src/modules/[name]`.
 
 ### Use a Consistent Coding Style
@@ -76,7 +77,7 @@ Sorry I've not made time yet to work on automated tests so for now testing is ma
 
 ### Note on AI Use
 
-- I used (and will continue to use) AI tools when building 240-MP so leveraging AI tools for development is very much allowed. With that in mind, contributors are expected to own and understand the code they submit and any communication in a PR (including code, code comments, and GitHub comments) must come from a human contributor, not an AI agent acting autonomously.
+- I used (and will continue to use) AI tools when building OSD/OS so leveraging AI tools for development is very much allowed. With that in mind, contributors are expected to own and understand the code they submit and any communication in a PR (including code, code comments, and GitHub comments) must come from a human contributor, not an AI agent acting autonomously.
 - Pull requests should include a detailed description that outlines the scope of AI involvement (e.g. which parts were AI-generated and what human testing or review was performed prior to submission). PRs that omit this disclosure may be closed without review.
 
 ### Best-practices checklist

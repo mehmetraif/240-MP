@@ -4,10 +4,15 @@ import QtQuick
 // outlined box, on one line. A description too long for the box scrolls
 // through it like a ticker, pausing whenever its start comes round again; one
 // written as several lines reads as one, its lines joined with "•".
+// Settings' HELP LINE (root.helpLine) hides every one at once, by its opacity,
+// so a host's own visible binding holds and its menu keeps its shape; one
+// whose lines are the page itself (ABOUT's) stays, with always.
 Rectangle {
     id: help
 
     property string text: ""
+    property bool always: false
+    readonly property bool shown: always || root.helpLine
 
     readonly property string line: text.split("\n")
         .map(function(part) { return part.trim() })
@@ -28,16 +33,18 @@ Rectangle {
     border.width: root.px
     border.color: root.primaryColor
     antialiasing: false
+    opacity: shown ? 1 : 0
 
     function restart() {
         ticker.stop()
         travel = 0
-        if (scrolls && visible)
+        if (scrolls && visible && shown)
             ticker.start()
     }
     // Deferred, so the text has its new width before it is measured.
     onLineChanged: Qt.callLater(restart)
     onVisibleChanged: Qt.callLater(restart)
+    onShownChanged: Qt.callLater(restart)
     onScrollsChanged: Qt.callLater(restart)
 
     Item {

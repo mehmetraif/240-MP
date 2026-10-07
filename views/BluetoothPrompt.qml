@@ -43,108 +43,57 @@ FocusScope {
         }
     }
 
-    Rectangle {
-        anchors.fill: parent
-        color: root.surfaceColor
-    }
-
-    Column {
-        id: column
-        anchors.centerIn: parent
-        width: root.sw * 0.76875 //492
-        spacing: root.sh * 0.0333333 //16
-
-        Text {
-            text: "PAIRING"
-            color: root.secondaryColor
-            font.family: root.globalFont
-            font.pixelSize: root.sh * 0.0333333 //16
-            anchors.horizontalCenter: parent.horizontalCenter
-        }
-
-        Text {
-            width: parent.width
-            text: (promptRoot.prompt && promptRoot.prompt.name) || ""
-            color: root.primaryColor
-            font.family: root.globalFont
-            font.capitalization: Font.AllUppercase
-            font.pixelSize: root.sh * 0.05 //24
-            horizontalAlignment: Text.AlignHCenter
-            elide: Text.ElideRight
-        }
-
-        Text {
-            width: parent.width
-            text: promptRoot.kind === "confirm"
-                  ? "Does it show this code?"
-                  : "Type this code on it, then press its Enter key"
-            color: root.primaryColor
-            font.family: root.globalFont
-            font.capitalization: Font.AllUppercase
-            font.pixelSize: root.sh * 0.0375 //18
-            horizontalAlignment: Text.AlignHCenter
-            wrapMode: Text.WordWrap
-        }
-
-        // The code, a box per digit: those typed so far solid.
-        Row {
-            anchors.horizontalCenter: parent.horizontalCenter
-            spacing: root.sw * 0.0125 //8
-            Repeater {
-                model: promptRoot.code.length
-                delegate: Rectangle {
-                    readonly property bool typed: promptRoot.kind === "passkey" && index < promptRoot.entered
-                    width: digit.implicitWidth + root.sw * 0.01875 //12
-                    height: digit.implicitHeight + root.sh * 0.0125 //6
-                    color: typed ? root.primaryColor : "transparent"
-                    antialiasing: false
-                    Text {
-                        id: digit
-                        anchors.centerIn: parent
-                        text: promptRoot.code.charAt(index)
-                        color: parent.typed ? root.surfaceColor : root.primaryColor
-                        font.family: root.globalFont
-                        font.pixelSize: root.sh * 0.1 //48
-                    }
-                }
-            }
-        }
+    PromptScreen {
+        // A question to answer, or a code to type: a notice.
+        kind: promptRoot.kind === "confirm" ? "question" : "notice"
+        title: "Pairing"
+        message: (promptRoot.prompt && promptRoot.prompt.name) || ""
+        choices: promptRoot.kind === "confirm" ? ["Yes", "No"] : []
+        currentIndex: promptRoot.choiceIndex
+        hint: promptRoot.kind === "confirm"
+              ? root.hints.back + ":CANCEL " + root.hints.navigate + ":NAVIGATE " + root.hints.select + ":SELECT"
+              : root.hints.back + ":CANCEL"
 
         Column {
-            visible: promptRoot.kind === "confirm"
-            anchors.horizontalCenter: parent.horizontalCenter
-            Repeater {
-                model: ["Yes", "No"]
-                delegate: Item {
-                    width: column.width
-                    height: root.sh * 0.0583333 //28
-                    Rectangle {
-                        anchors.fill: answer
-                        color: root.accentColor
-                        visible: index === promptRoot.choiceIndex
-                    }
-                    Text {
-                        id: answer
-                        anchors.centerIn: parent
-                        text: modelData
-                        color: index === promptRoot.choiceIndex ? root.surfaceColor : root.primaryColor
-                        font.family: root.globalFont
-                        font.capitalization: Font.AllUppercase
-                        topPadding: root.sh * 0.0041667 //2
-                        leftPadding: root.sw * 0.009375 //6
-                        rightPadding: root.sw * 0.009375 //6
-                        bottomPadding: root.sh * 0.00625 //3
-                        font.pixelSize: root.sh * 0.05 //24
+            width: parent.width
+            spacing: root.sh * 0.0333333 //16
+
+            Text {
+                width: parent.width
+                text: promptRoot.kind === "confirm"
+                      ? "Does it show this code?"
+                      : "Type this code on it, then press its Enter key"
+                color: root.primaryColor
+                font.family: root.globalFont
+                font.capitalization: Font.AllUppercase
+                font.pixelSize: root.sh * 0.0375 //18
+                wrapMode: Text.WordWrap
+                horizontalAlignment: Text.AlignHCenter
+            }
+
+            // The code, a box per digit: those typed so far solid.
+            Row {
+                anchors.horizontalCenter: parent.horizontalCenter
+                spacing: root.sw * 0.0125 //8
+                Repeater {
+                    model: promptRoot.code.length
+                    delegate: Rectangle {
+                        readonly property bool typed: promptRoot.kind === "passkey" && index < promptRoot.entered
+                        width: digit.implicitWidth + root.sw * 0.01875 //12
+                        height: digit.implicitHeight + root.sh * 0.0125 //6
+                        color: typed ? root.primaryColor : "transparent"
+                        antialiasing: false
+                        Text {
+                            id: digit
+                            anchors.centerIn: parent
+                            text: promptRoot.code.charAt(index)
+                            color: parent.typed ? root.surfaceColor : root.primaryColor
+                            font.family: root.globalFont
+                            font.pixelSize: root.sh * 0.1 //48
+                        }
                     }
                 }
             }
-        }
-
-        HintBar {
-            anchors.horizontalCenter: parent.horizontalCenter
-            text: promptRoot.kind === "confirm"
-                  ? root.hints.back + ":CANCEL " + root.hints.navigate + ":NAVIGATE " + root.hints.select + ":SELECT"
-                  : root.hints.back + ":CANCEL"
         }
     }
 }

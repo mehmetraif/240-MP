@@ -29,15 +29,22 @@ FocusScope {
     // mpv subtitle-track flag derived from subtitleMode: 0 = on, -1 = forced only, -2 = off.
     property int    subFlag:             (subtitleMode == "on") ? 0 : ((subtitleMode == "forced") ? -1 : -2)
 
+    // The video has shown its first position: the loading screen goes.
+    property bool   playbackStarted:      false
+    // Where the last start began, for the loading screen's counter.
+    property int    lastStartMs:          0
+
     // Track last non-null values during playback for robust save on exit
     property int    lastKnownPositionMs:  0
     property int    lastKnownDurationMs:  0
     property int    lastKnownPlaylistPos: -1
 
-    // Back during the video opens its menu over the picture (PlayerMenu),
-    // the video playing on behind it. A change the video can't take as it
-    // plays (its subtitles) reloads it where it is as the menu closes; CLOSE
-    // VIDEO goes back to the main menu. How it was started, for that reload.
+    // Back during the video opens its menu (PlayerMenu): over the picture,
+    // the video playing on behind it, with Transparent Background; without,
+    // the video ends for it (mpv has the screen) and starts again where it
+    // was as the menu closes. A change the video can't take as it plays (its
+    // subtitles) reloads it where it is as the menu closes; CLOSE VIDEO goes
+    // back to the main menu. How it was started, for that reload.
     property bool   reloadOnClose:   false
     property bool   closeToMainMenu: false
     property bool   startedShuffled: false
@@ -123,26 +130,34 @@ FocusScope {
             }
         } else if (action === "browse") {
             // As back always did: saved where it is, then the module's tree,
-            // the video playing on behind it.
+            // the video playing on behind it. Ended for the menu (an mpv
+            // process has the screen), it is saved already.
             playerMenu.close()
-            mpvController.leavePlayerMenu()
+            if (mpvController.videoActive)
+                mpvController.leavePlayerMenu()
+            else
+                goBack()
             return
         } else if (action === "close") {
             closeToMainMenu = true
             playerMenu.close()
-            mpvController.stop()
+            if (mpvController.videoActive)
+                mpvController.stop()
+            else
+                moduleRoot.goBack()
             return
         }
         playerMenu.actions = menuActions()
         playerMenu.refresh()
     }
     // Back in the menu: the video full screen again, reloaded where it is if
-    // a setting asks for it.
+    // a setting asks for it, or started again there if it ended for the menu.
     function backToVideo() {
         playerMenu.close()
         playerRoot.forceActiveFocus()
+        var ended = !mpvController.videoActive
         mpvController.closePlayerMenu()
-        if (reloadOnClose) {
+        if (reloadOnClose || ended) {
             reloadOnClose = false
             readSettings()
             play(lastKnownPositionMs, lastKnownPlaylistPos, startedShuffled)
@@ -203,7 +218,10 @@ FocusScope {
         }
 
         function onPositionChanged(ms) {
-            if (ms > 0) playerRoot.lastKnownPositionMs = ms
+            if (ms > 0) {
+                playerRoot.lastKnownPositionMs = ms
+                playerRoot.playbackStarted = true
+            }
         }
         function onDurationChanged(ms) {
             if (ms > 0) playerRoot.lastKnownDurationMs = ms
@@ -243,6 +261,13 @@ FocusScope {
                     localFilesBackend.clearPosition(filePath)
                 else if (pos > 5000)
                     localFilesBackend.savePosition(filePath, pos, -1)
+            }
+            // Back during an mpv process, which has the screen while it
+            // plays: the video ended for this menu, and starts again where
+            // it was as the menu closes (backToVideo).
+            if (reason === "menu") {
+                openMenu()
+                return
             }
             playerMenu.close()
             // CLOSE VIDEO leaves the module for the main menu.
@@ -315,8 +340,8 @@ FocusScope {
         var opts = []
         if (savedPos > 0) {
             opts.push({ label: savedPl >= 0
-                            ? "Resume video " + (savedPl + 1) + " at " + formatTime(savedPos)
-                            : "Resume from " + formatTime(savedPos),
+                            ? "Resume video " + (savedPl + 1) + " at " + root.formatTime(savedPos)
+                            : "Resume from " + root.formatTime(savedPos),
                         startMs: savedPos, plPos: savedPl, shuffle: false })
             if (resumeSetting === "ask")
                 opts.push({ label: "Start from the beginning", startMs: 0, plPos: -1, shuffle: false })
@@ -336,6 +361,8 @@ FocusScope {
     }
 
     function play(startMs, plPos, shuffle) {
+        playbackStarted = false
+        lastStartMs = startMs
         mpvController.loadAndPlay(filePath, startMs > 0 ? startMs / 1000.0 : 0.0, 0, subFlag, [], subtitleLangs, loopOn, plPos, 0.0, "", false, "", shuffle, [], imageDurationSec, imageContent)
         // How the main menu takes it back once it plays behind the menus, and
         // how it was started, which taking it back repeats.
@@ -344,6 +371,10 @@ FocusScope {
                                     params: { filePath: filePath, title: itemTitle },
                                     plPos: plPos, shuffle: shuffle, menu: true })
         startedShuffled = shuffle
+        // A still image never moves mpv's clock (its position stays 0), so no
+        // first position comes to end the loading screen: it is up with mpv.
+        if (imageContent)
+            playbackStarted = true
     }
 
     Rectangle {
@@ -351,6 +382,16 @@ FocusScope {
         color: "black"
         // The video shows through its menu.
         visible: !playerMenu.visible
+
+        // While mpv starts (before its picture takes over), and while it
+        // starts again after its menu.
+        LoadingScreen {
+            anchors.fill: parent
+            source: moduleRoot.moduleName
+            startMs: playerRoot.lastStartMs
+            durationMs: playerRoot.lastKnownDurationMs
+            visible: !overlayVisible && !playbackStarted
+        }
     }
 
     PlayerMenu {
@@ -365,70 +406,13 @@ FocusScope {
         onClosed: playerRoot.backToVideo()
     }
 
-    Rectangle {
-        anchors.fill: parent
-        color: root.surfaceColor
+    PromptScreen {
         visible: overlayVisible
-
-        Rectangle {
-            id: dialogRect
-            color: root.surfaceColor
-            anchors.centerIn: parent
-            width: root.sw * 0.76875 //492
-            height: root.sh * (0.2833333 + Math.max(0, choices.length - 2) * 0.0583333) //136 for 2 rows + 28 per extra row
-
-            Column {
-                id: dialogColumn
-                anchors.fill: parent
-                spacing: root.sh * 0.05 //24
-
-                Text {
-                    // Generic title whenever a Shuffle choice is offered; the classic
-                    // resume-only dialog keeps its original wording.
-                    text: choices.some(function(c) { return c.shuffle }) ? "START PLAYBACK?" : "RESUME PLAYBACK?"
-                    color: root.secondaryColor
-                    font.family: root.globalFont
-                    font.pixelSize: root.sh * 0.0333333 //16
-                    anchors.horizontalCenter: parent.horizontalCenter
-                }
-
-                Column {
-                    Repeater {
-                        model: choices
-                        delegate: Item {
-                            width: dialogColumn.width
-                            height: root.sh * 0.0583333 //28
-
-                            Rectangle {
-                                anchors.fill: delegateText
-                                color: root.accentColor
-                                visible: index === choiceIndex
-                            }
-
-                            Text {
-                                id: delegateText
-                                anchors.verticalCenter: parent.verticalCenter
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                text: modelData.label
-                                color: index === choiceIndex ? root.surfaceColor : root.primaryColor
-                                font.family: root.globalFont
-                                font.capitalization: Font.AllUppercase
-                                topPadding: root.sh * 0.0041667 //2
-                                leftPadding: root.sw * 0.009375 //6
-                                rightPadding: root.sw * 0.009375 //6
-                                bottomPadding: root.sh * 0.00625 //3
-                                font.pixelSize: root.sh * 0.0416667 //20
-                            }
-                        }
-                    }
-                }
-
-                HintBar {
-                    text: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE " + root.hints.select + ":SELECT"
-                    anchors.horizontalCenter: parent.horizontalCenter
-                }
-            }
-        }
+        // Whenever a Shuffle choice is offered, the more general question.
+        title: playerRoot.choices.some(function(c) { return c.shuffle }) ? "Start playback?" : "Resume playback?"
+        message: itemTitle.replace(/\.[^.\/]+$/, "")
+        choices: playerRoot.choices
+        currentIndex: choiceIndex
     }
 
     function isPlaylist(path) {
@@ -439,15 +423,4 @@ FocusScope {
         return localFilesBackend.isImage(path)
     }
 
-    function formatTime(ms) {
-        var s   = Math.floor(ms / 1000)
-        var h   = Math.floor(s / 3600)
-        var m   = Math.floor((s % 3600) / 60)
-        var sec = s % 60
-        if (h > 0)
-            return h + ":" + pad(m) + ":" + pad(sec)
-        return m + ":" + pad(sec)
-    }
-
-    function pad(n) { return n < 10 ? "0" + n : "" + n }
 }

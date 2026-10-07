@@ -1,12 +1,12 @@
-# Install 240-MP
+# Install OSD/OS
 
 ## On a Raspberry Pi
 
-The following steps will set up an SD card for your Raspberry Pi with the latest version of 240-MP (and optionally set it up to autostart after boot).  
+The following steps will set up an SD card for your Raspberry Pi with the latest version of OSD/OS (and optionally set it up to autostart after boot).  
 
 Steps 1-4 are focused on setting up a new card with Raspberry Pi OS Lite (64-Bit) and include options for writing a config.txt that will output to a CRT or modern TV.  
 
-However, if you already have Raspberry Pi OS set up and working for your TV then the specific 240-MP install steps start at step 5.
+However, if you already have Raspberry Pi OS set up and working for your TV then the specific OSD/OS install steps start at step 5.
 
 ### Requirements
 
@@ -14,11 +14,11 @@ However, if you already have Raspberry Pi OS set up and working for your TV then
     - The [Pi 4](https://www.raspberrypi.com/products/raspberry-pi-4-model-b/) fits in a nice sweet spot of performance + composite out and its the model I use daily so its the model I am most familiar with. It supports 1080p H264/HEVC playback well on both a CRT and over HDMI.
     - The [Pi 3B and 3B+](https://www.raspberrypi.com/products/raspberry-pi-3-model-b/) work well too with some caveats...  
         - The default configuration for Pi 3 supports smooth 1080p H264 playback at the expense of removing crop functionality.  If crop is important for your use case on a Pi 3 then you can change the video decode settings with the caveat that 1080p H264 playback will no longer be smooth (720p and below  will still work well). The [hardware testing](https://github.com/anthonycaccese/240-MP/wiki/Hardware-Testing#raspberry-pi-3b) page has details on how to make that change.
-        - If you choose to boot a Pi 3/3B+ from USB mass storage instead of SD, some USB flash drives can hang during early boot. If that happens, try an SD card or a different USB drive first before assuming the 240-MP install is the issue.
+        - If you choose to boot a Pi 3/3B+ from USB mass storage instead of SD, some USB flash drives can hang during early boot. If that happens, try an SD card or a different USB drive first before assuming the OSD/OS install is the issue.
     - The [Pi 5](https://www.raspberrypi.com/products/raspberry-pi-5/) also works well but I've only tested over HDMI to a modern TV. The Pi 5 doesn't have a direct composite output port and one can be added through a mod but I don't have the hardware to test that.  I've added details to the [hardware testing](https://github.com/anthonycaccese/240-MP/wiki/Hardware-Testing#raspberry-pi-5) page if you'd like to explore that as an option.
     - Full details on all models can be found on the [hardware testing](https://github.com/anthonycaccese/240-MP/wiki/Hardware-Testing) page on the wiki.  If you have a setup that is working for you and would like to help out others please add a comment to [this discussion](https://github.com/anthonycaccese/240-MP/discussions/44) so we can add it to the wiki.
 - SD Card (minimum of 4GB) with RaspberryPi OS already set up
-    - Note: 240-MP is only an application, it's not an OS so you will need to make sure you have an OS setup and working with the display you'd like to use. 
+    - Note: installed this way, OSD/OS is only an application, not an OS, so you will need to make sure you have an OS setup and working with the display you'd like to use. The [OSD/OS image](os/README.md) is the other way round: it is the whole system.
     - In the below steps I provide an example using Raspberry Pi OS Lite that you can use to create a fresh SD card along with configs I've tested for CRT and HDMI output.
 - A keyboard to navigate
 - Internet Access (either WiFi or network cable will work)
@@ -26,7 +26,7 @@ However, if you already have Raspberry Pi OS set up and working for your TV then
 ### Optional
 
 - A CRT TV and a composite cable
-    - Composite out is my recommended way to use 240-MP
+    - Composite out is my recommended way to use OSD/OS
     - it will also work over HDMI as well so just select the config that works for your setup in step 2 below.
     - This is the composite cable I use if you happen to have a CRT: https://www.adafruit.com/product/2881 (note: I've only tested composite on the Pi 3/4 - the Pi 5 works well over HDMI
 - USB remote control
@@ -182,7 +182,7 @@ However, if you already have Raspberry Pi OS set up and working for your TV then
     - Expand filesystem: `Advanced Options > Expand Filesystem > Yes`
     - Select Finish and allow the Raspberry Pi to reboot
 
-5) After that completes SSH in again and run the following to install the latest version of 240-MP
+5) After that completes SSH in again and run the following to install the latest version of OSD/OS
 
     ```bash
     bash <(curl -fsSL https://github.com/anthonycaccese/240-mp/releases/latest/download/install.sh)
@@ -192,11 +192,11 @@ However, if you already have Raspberry Pi OS set up and working for your TV then
 
     **Optional** 
     - You will get an option at the end of the install script that asks: `Install systemd autostart service? [y/N]` 
-    - If you type `Y` and press enter it will set up 240-MP to autostart when your Raspberry Pi boots to create a simple appliance experience (bascially a dedicated 240-MP device).
+    - If you type `Y` and press enter it will set up OSD/OS to autostart when your Raspberry Pi boots to create a simple appliance experience (bascially a dedicated OSD/OS device).
     - If you choose that option please make sure to enter your primary user for the pi at the next prompt.  If you don't provide one it will set it up for the `Pi` user.
     - If you ever need to inspect the autostart logs later, use `sudo journalctl -u 240mp -f`
 
-At this point you can type `240mp` at any time to start up the app.  And if you installed the autostart service then the next time you boot your Pi it will boot directly into 240-MP.
+At this point you can type `240mp` at any time to start up the app.  And if you installed the autostart service then the next time you boot your Pi it will boot directly into OSD/OS.
 
 ### Post Install
 
@@ -234,21 +234,21 @@ At this point you can type `240mp` at any time to start up the app.  And if you 
                 defaults.pcm.card "your-card-id"
                 defaults.ctl.card "your-card-id"
                 ```
-            - Every program on the Pi picks this up (not just 240-MP) so this is recommened if you want to set audio output for all applications you have running on your OS.  This works on Raspberry Pi OS Lite (the image these steps use), where plain ALSA is in charge of the `default` device.  If you are running a Desktop image instead then PipeWire typically owns `default` and you should pick your output there rather than in `/etc/asound.conf`.
+            - Every program on the Pi picks this up (not just OSD/OS) so this is recommened if you want to set audio output for all applications you have running on your OS.  This works on Raspberry Pi OS Lite (the image these steps use), where plain ALSA is in charge of the `default` device.  If you are running a Desktop image instead then PipeWire typically owns `default` and you should pick your output there rather than in `/etc/asound.conf`.
         - **Option 2: change it for mpv only**
             - Create (or add to your existing) `~/.config/mpv/mpv.conf` and add a single line naming the device:
                 ```
                 audio-device=alsa/plughw:CARD=your-card-id,DEV=0
                 ```
             - Run `mpv --audio-device=help` to see the exact device strings mpv will accept and copy the one that matches your audio output device.
-    - In both options the change applies the next time playback starts and will cover every mpv instance that 240-MP launches.  Please see [ARCHITECTURE.md → How mpv flags are layered](ARCHITECTURE.md#how-mpv-flags-are-layered-the-precedence-cascade) for why audio output is left to your ALSA / mpv config rather than being set by 240-MP.
+    - In both options the change applies the next time playback starts and will cover every mpv instance that OSD/OS launches.  Please see [ARCHITECTURE.md → How mpv flags are layered](ARCHITECTURE.md#how-mpv-flags-are-layered-the-precedence-cascade) for why audio output is left to your ALSA / mpv config rather than being set by OSD/OS.
 
 **Exit to Terminal and Restart**
 
 - If you have the autostart service installed, the Quit dialog gains an `Exit to Terminal` option alongside `Power Off`. Choosing that will drop you to a login shell on the Pi instead of powering off, and leaves autostart intact for subsequent reboots. 
 - It also offers `Restart`, which reboots the Pi. An install from before it was added needs `install.sh` run again to get it, since the service's stop helper is what reboots.
-- To get back into 240-MP from that shell you can do one of the following:
-    1. (*Recommended*) type `sudo systemctl start 240mp` to start up 240-MP and the autostart service again
+- To get back into OSD/OS from that shell you can do one of the following:
+    1. (*Recommended*) type `sudo systemctl start 240mp` to start up OSD/OS and the autostart service again
     2. type `sudo reboot` to reboot and start up the device from scratch (which will also restart the autostart service)
     3. type `240mp` which will relaunch the app unmanaged in your shell; here the Quit dialog shows the plain Yes/No menu and selecting Yes will just return you to the shell rather than powering off
 
@@ -273,7 +273,7 @@ At this point you can type `240mp` at any time to start up the app.  And if you 
 
 ### Uninstall
 
-1) If you'd like to remove 240-MP and continue to use your SD card for other things then you can run the following commands via terminal or over SSH:
+1) If you'd like to remove OSD/OS and continue to use your SD card for other things then you can run the following commands via terminal or over SSH:
 
     ```bash
     sudo rm -rf /opt/240mp
@@ -291,7 +291,7 @@ At this point you can type `240mp` at any time to start up the app.  And if you 
 
 ## On macOS (ARM)
 
-If you don't have a Raspberry Pi and would like to try 240-MP, I also provide a build for macOS on Apple Silicon.  You can download a DMG archive from the latest release and run it on your mac following these steps...
+If you don't have a Raspberry Pi and would like to try OSD/OS, I also provide a build for macOS on Apple Silicon.  You can download a DMG archive from the latest release and run it on your mac following these steps...
 
 ### Requirements
 
@@ -302,8 +302,8 @@ If you don't have a Raspberry Pi and would like to try 240-MP, I also provide a 
 
 1. Download the DMG archive from the latest release
 2. Mount it and move the 240mp.app into your Applications folder
-3. Make sure you have mpv installed (240-MP requires MPV for playback): `brew install mpv`
-4. Double click 240-MP and it should open full screen
+3. Make sure you have mpv installed (OSD/OS requires MPV for playback): `brew install mpv`
+4. Double click the app (`240mp.app`) and it should open full screen
 
 ### Post Install
 
@@ -327,7 +327,7 @@ Or manually:
 
 ## On SteamOS / Linux x86_64
 
-For **SteamOS** and other x86_64 Linux distros, 240-MP ships as an **AppImage**. mpv is bundled, so there is nothing else to install; it runs on stock SteamOS without any additional package installs.
+For **SteamOS** and other x86_64 Linux distros, OSD/OS ships as an **AppImage**. mpv is bundled, so there is nothing else to install; it runs on stock SteamOS without any additional package installs.
 
 ### Requirements
 
@@ -353,8 +353,8 @@ The AppImage carries its own copy of the Wayland client libraries and uses them 
 
 **SteamOS Gaming Mode**
 
-- To run 240-MP from SteamOS Gaming Mode...
-- In Desktop Mode, open **Steam → Games → Add a Non-Steam Game to My Library**, click **Browse**, and select the 240-MP AppImage.
+- To run OSD/OS from SteamOS Gaming Mode...
+- In Desktop Mode, open **Steam → Games → Add a Non-Steam Game to My Library**, click **Browse**, and select the AppImage (`240-MP-linux-x86_64.AppImage`).
 - When in Gaming Mode it will appear in your library under "Non Steam Games".
 - There is a set of artwork available [here](https://github.com/anthonycaccese/240-MP/discussions/249#discussioncomment-18115953) that can be used for Gaming Mode grid display.
 

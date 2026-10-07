@@ -1,6 +1,6 @@
-# 240-MP Security Policy
+# OSD/OS Security Policy
 
-240-MP is a hobby project, but it does handle credentials in some of its modules so security reports are taken seriously.
+OSD/OS is a hobby project, but it does handle credentials in some of its modules so security reports are taken seriously.
 
 ## Supported versions
 
@@ -28,7 +28,7 @@ You'll get an acknowledgement as soon as I can verify. Once a fix is ready it wi
 The most sensitive area is third-party authentication:
 
 - **Auth tokens** (e.g. Plex) are stored in the local data directory with `0600` permissions and should never be logged or committed.
-- Modules should only ever talk **directly** to the third-party API they integrate with, and only ever write to the local 240-MP data directory — never to an external service the contributor controls. See the principles in [CONTRIBUTING.md](CONTRIBUTING.md).
+- Modules should only ever talk **directly** to the third-party API they integrate with, and only ever write to the app's local data directory — never to an external service the contributor controls. See the principles in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Things that are **not** security issues: bugs with no security impact (use a regular
 [bug report](https://github.com/anthonycaccese/240-MP/issues/new/choose) instead), and problems in

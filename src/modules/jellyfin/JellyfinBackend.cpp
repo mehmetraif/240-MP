@@ -6,6 +6,9 @@
 #include <QNetworkRequest>
 #include <QNetworkReply>
 #include <QUrlQuery>
+
+#include "../../util/EmbyApi.h"
+#include "../../util/SslErrors.h"
 #include <QVariantList>
 #include <QVariantMap>
 #include <QDebug>
@@ -169,6 +172,43 @@ int JellyfinBackend::videoQualityMaxHeight() const {
 // HTTP helpers
 // ---------------------------------------------------------------------------
 
+QNetworkRequest JellyfinBackend::downloadRequest(const QString &itemId) const {
+    QNetworkRequest req = jellyfinRequest(embyapi::downloadUrl(m_serverUrl, itemId));
+    req.setRawHeader("Accept", "*/*");
+    req.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
+                     QNetworkRequest::NoLessSafeRedirectPolicy);
+    return req;
+}
+
+QString JellyfinBackend::streamUrl(const QString &itemId) const {
+    return embyapi::streamUrl(m_serverUrl, itemId, m_accessToken, true);
+}
+
+void JellyfinBackend::browse(const QString &parentId, QObject *context,
+                        std::function<void(bool, const QVariantList &)> done) {
+    auto *reply = jellyfinGet(embyapi::browseUrl(m_serverUrl, m_userId, parentId));
+    const bool libraries = parentId.isEmpty();
+    connect(reply, &QNetworkReply::finished, context, [this, reply, libraries, done]() {
+        reply->deleteLater();
+        if (reply->error() != QNetworkReply::NoError) {
+            done(false, {});
+            return;
+        }
+        QVariantList items;
+        const QJsonArray array = QJsonDocument::fromJson(reply->readAll()).object()["Items"].toArray();
+        for (const QJsonValue &v : array) {
+            const QJsonObject item = v.toObject();
+            // The libraries with videos in them; in one, its folders and videos.
+            const bool wanted = libraries
+                ? kSupportedCollectionTypes.contains(item["CollectionType"].toString())
+                : item["IsFolder"].toBool() || item["MediaType"].toString() == QLatin1String("Video");
+            if (wanted)
+                items.append(formatItem(item));
+        }
+        done(true, items);
+    });
+}
+
 QNetworkRequest JellyfinBackend::jellyfinRequest(const QUrl &url) const {
     QNetworkRequest req(url);
     req.setRawHeader("Accept", "application/json");
@@ -190,28 +230,13 @@ QNetworkReply *JellyfinBackend::jellyfinPost(const QUrl &url, const QByteArray &
     return reply;
 }
 
-static QList<QSslError> filterExpectedSslErrors(const QList<QSslError> &errors) {
-    static const QSet<QSslError::SslError> kExpected = {
-        QSslError::SelfSignedCertificate,
-        QSslError::HostNameMismatch,
-        QSslError::UnableToGetLocalIssuerCertificate,
-        QSslError::UnableToVerifyFirstCertificate,
-    };
-    QList<QSslError> allowed;
-    for (const QSslError &e : errors) {
-        if (kExpected.contains(e.error()))
-            allowed.append(e);
-    }
-    return allowed;
-}
-
 void JellyfinBackend::ignoreSslErrors(QNetworkReply *reply) const {
     connect(reply, &QNetworkReply::sslErrors, reply, [this, reply](const QList<QSslError> &errors) {
         // Only relax for the configured Jellyfin server — typical of self-signed LAN certs
         QUrl serverUrl(m_serverUrl);
         if (reply->url().host() != serverUrl.host())
             return;
-        QList<QSslError> allowed = filterExpectedSslErrors(errors);
+        QList<QSslError> allowed = expectedLanSslErrors(errors);
         if (!allowed.isEmpty())
             reply->ignoreSslErrors(allowed);
     });
@@ -221,7 +246,7 @@ void JellyfinBackend::ignoreSslErrors(QNetworkReply *reply) const {
 // Auth
 // ---------------------------------------------------------------------------
 
-bool JellyfinBackend::has_auth() {
+bool JellyfinBackend::has_auth() const {
     return !m_accessToken.isEmpty() && !m_userId.isEmpty() && !m_serverUrl.isEmpty();
 }
 
@@ -299,7 +324,7 @@ void JellyfinBackend::quick_connect_initiate(const QString &serverUrl) {
     connect(reply, &QNetworkReply::sslErrors, reply, [reply](const QList<QSslError> &errors) {
         for (const QSslError &e : errors)
             qDebug("[JellyfinBackend] QC SSL error (ignored): %s", qPrintable(e.errorString()));
-        QList<QSslError> allowed = filterExpectedSslErrors(errors);
+        QList<QSslError> allowed = expectedLanSslErrors(errors);
         if (!allowed.isEmpty())
             reply->ignoreSslErrors(allowed);
     });
@@ -351,7 +376,7 @@ void JellyfinBackend::quick_connect_poll(const QString &secret) {
     connect(reply, &QNetworkReply::sslErrors, reply, [reply](const QList<QSslError> &errors) {
         for (const QSslError &e : errors)
             qDebug("[JellyfinBackend] QC SSL error (ignored): %s", qPrintable(e.errorString()));
-        QList<QSslError> allowed = filterExpectedSslErrors(errors);
+        QList<QSslError> allowed = expectedLanSslErrors(errors);
         if (!allowed.isEmpty())
             reply->ignoreSslErrors(allowed);
     });
@@ -402,7 +427,7 @@ void JellyfinBackend::quick_connect_authenticate(const QString &secret) {
     connect(reply, &QNetworkReply::sslErrors, reply, [reply](const QList<QSslError> &errors) {
         for (const QSslError &e : errors)
             qDebug("[JellyfinBackend] QC SSL error (ignored): %s", qPrintable(e.errorString()));
-        QList<QSslError> allowed = filterExpectedSslErrors(errors);
+        QList<QSslError> allowed = expectedLanSslErrors(errors);
         if (!allowed.isEmpty())
             reply->ignoreSslErrors(allowed);
     });

@@ -9,6 +9,7 @@
 #include <QVariantMap>
 #include <QNetworkAccessManager>
 
+class AppCore;
 class DisplayHandoff;
 class WebPlayerBackend;
 
@@ -44,7 +45,7 @@ class YouTubeBackend : public QObject {
     // SIGN IN's browser (SignIn.qml opens Google's sign-in with it).
     Q_PROPERTY(QObject *browser READ browser CONSTANT)
 public:
-    explicit YouTubeBackend(const QString &appRoot, const QString &dataRoot,
+    explicit YouTubeBackend(const QString &appRoot, const QString &dataRoot, AppCore *appCore,
                             DisplayHandoff *handoff, QObject *parent = nullptr);
 
     QObject *browser() const;
@@ -85,6 +86,18 @@ public:
     // subtitles (--slang).
     Q_INVOKABLE QStringList playbackArgs(const QVariantMap &settings) const;
 
+    // The module's ADVANCED settings as playbackArgs() takes them, with
+    // their defaults: { resolution, codec, maxFrameRate, audioLanguage,
+    // subtitles, subtitleLanguage, speed }. The one place they are read.
+    Q_INVOKABLE QVariantMap playbackSettings() const;
+
+    // yt-dlp's options for downloading a video the way it would play (the
+    // Playlists module's offline lists): the same format, and the account
+    // once signed in. Video and sound come apart above 360p, and only ffmpeg
+    // (canMerge) puts them back together: without it, the best file that
+    // has both.
+    QStringList downloadArgs(bool canMerge) const;
+
     // ADVANCED's language lists (options_slot), by yt-dlp's language codes.
     Q_INVOKABLE void get_audio_languages();
     Q_INVOKABLE void get_subtitle_languages();
@@ -121,6 +134,13 @@ public:
     // on their way, and listingReady(path) follows. A playlist only a branch
     // asks for (preview) isn't fetched: yt-dlp is slow on a Pi.
     Q_INVOKABLE QVariant listing(const QString &path, bool preview = false);
+    // The tree's entries for a folder, as the module's browser shows them:
+    // RECENTLY WATCHED and FAVORITES ahead of the home folder's, the module's
+    // favourites (AppCore's list) for "favorites", listing()'s for the rest,
+    // Shorts left out unless DISPLAY SHORTS is on. undefined while a listing
+    // is on its way (listingReady follows). The Playlists module browses
+    // with it too.
+    Q_INVOKABLE QVariant entries(const QString &path, bool preview = false);
     // Loads the next matches of a search onto its end.
     Q_INVOKABLE void     loadMore(const QString &path);
     // What a video's info screen shows: detailsReady(path, { title, facts,
@@ -212,6 +232,7 @@ private:
 
     QString m_appRoot;
     QString m_dataRoot;
+    AppCore *m_appCore = nullptr;
     QNetworkAccessManager m_nam;
     WebPlayerBackend *m_browser = nullptr;
 

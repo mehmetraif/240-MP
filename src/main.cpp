@@ -24,8 +24,10 @@
 #include "modules/weather/WeatherBackend.h"
 #include "modules/scripts/ScriptsBackend.h"
 #include "modules/web_player/WebPlayerBackend.h"
+#include "modules/playlists/PlaylistsBackend.h"
 #include "player/MpvController.h"
 #include "player/VideoSurface.h"
+#include "player/VhsNoise.h"
 #include "input/InputManager.h"
 #include "input/IdleTracker.h"
 #include "update/UpdateManager.h"
@@ -165,7 +167,7 @@ int main(int argc, char *argv[]) {
     qInfo("[main] UI target display index %d -> %dx%d at (%d,%d)",
           displayIndex, screenGeo.width(), screenGeo.height(), screenGeo.x(), screenGeo.y());
 
-    LocalFilesBackend   localFiles(appRoot, dataRoot);
+    LocalFilesBackend   localFiles(appRoot, dataRoot, &appCore);
     PlexBackend         plexBackend(appRoot, dataRoot);
     JellyfinBackend     jellyfinBackend(appRoot, dataRoot);
     EmbyBackend         embyBackend(appRoot, dataRoot);
@@ -174,7 +176,7 @@ int main(int argc, char *argv[]) {
     // Ahead of everything that takes the screen through it, so that all of
     // them are destroyed before it is.
     DisplayHandoff      displayHandoff;
-    YouTubeBackend      youtubeBackend(appRoot, dataRoot, &displayHandoff);
+    YouTubeBackend      youtubeBackend(appRoot, dataRoot, &appCore, &displayHandoff);
     WeatherBackend      weatherBackend(appRoot, dataRoot);
     ScriptsBackend      scriptsBackend(appRoot, dataRoot, &displayHandoff);
     // The streaming services opened as their own web players. TMDB's
@@ -195,6 +197,11 @@ int main(int argc, char *argv[]) {
           QStringLiteral("https://www.primevideo.com/search/ref=atv_nb_sr?phrase=%1"),
           QStringLiteral("P14440") } },
         appRoot, dataRoot, &displayHandoff);
+    // Lists of videos from the modules above, downloaded through them for
+    // the offline ones.
+    PlaylistsBackend    playlistsBackend(dataRoot, &appCore, &localFiles, &youtubeBackend,
+                                         {{QStringLiteral("com.240mp.jellyfin"), &jellyfinBackend},
+                                          {QStringLiteral("com.240mp.emby"), &embyBackend}});
     MpvController       mpvController(appRoot, dataRoot, &appCore, &displayHandoff);
     InputManager        inputManager(dataRoot, &appCore);
     IdleTracker         idleTracker(60);   // disabled until Main.qml applies the saved setting
@@ -226,6 +233,7 @@ int main(int argc, char *argv[]) {
     appCore.registerModule("com.240mp.scripts",      "scriptsBackend",     &scriptsBackend, ctx);
     appCore.registerModule("com.240mp.netflix",      "netflixBackend",     &netflixBackend, ctx);
     appCore.registerModule("com.240mp.prime_video",  "primeVideoBackend",  &primeVideoBackend, ctx);
+    appCore.registerModule("com.240mp.playlists",    "playlistsBackend",   &playlistsBackend, ctx);
 
     ctx->setContextProperty("idleTracker",   &idleTracker);
     ctx->setContextProperty("appCore",       &appCore);
@@ -234,6 +242,8 @@ int main(int argc, char *argv[]) {
     ctx->setContextProperty("updateManager", &updateManager);
     ctx->setContextProperty("bootProgress",  &bootProgress);
     ctx->setContextProperty("bluetoothManager", &bluetoothManager);
+    // Whether a child has the screen (Main.qml: root.screenHandedOff).
+    ctx->setContextProperty("displayHandoff", &displayHandoff);
 #ifdef Q_OS_MAC
     // Target display geometry in Qt coordinates (top-left origin), so the QML
     // Window bindings position onto the chosen screen. The native fullscreen
@@ -250,8 +260,10 @@ int main(int argc, char *argv[]) {
     // The title bar's logos, in the theme's colour on the art-pixel grid
     // (image://osdicon/…). The engine owns it.
     engine.addImageProvider(QStringLiteral("osdicon"), new OsdIconProvider);
-    // The picture of a video played inside this window (Transparent Background).
+    // The picture of a video played inside this window (Transparent Background),
+    // and a tape's noise, for the screen a video loads behind (LoadingScreen).
     qmlRegisterType<VideoSurface>("MP240.Video", 1, 0, "VideoSurface");
+    qmlRegisterType<VhsNoise>("MP240.Video", 1, 0, "VhsNoise");
 
     engine.load(QUrl::fromLocalFile(appRoot + "/Main.qml"));
     if (engine.rootObjects().isEmpty()) {

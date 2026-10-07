@@ -23,6 +23,29 @@ namespace {
 // How long the search mode looks for devices before it stops by itself.
 constexpr int kSearchMs = 60 * 1000;
 
+// An rfkill switch for Bluetooth, which keeps the radio off below BlueZ: one
+// per adapter, named after it ("hci0").
+struct RfkillSwitch {
+    QString name;
+    bool soft = false;   // blocked by software (rfkill block, the boot default)
+    bool hard = false;   // blocked by a physical switch
+};
+
+// Bluetooth's rfkill switches, from sysfs, which all can read.
+QList<RfkillSwitch> bluetoothSwitches() {
+    QList<RfkillSwitch> switches;
+    const QDir rfkill(QStringLiteral("/sys/class/rfkill"));
+    for (const QString &entry : rfkill.entryList(QDir::Dirs | QDir::NoDotAndDotDot)) {
+        auto read = [&](const char *name) {
+            QFile file(rfkill.filePath(entry + QLatin1Char('/') + QLatin1String(name)));
+            return file.open(QIODevice::ReadOnly) ? QString::fromUtf8(file.readAll()).trimmed() : QString();
+        };
+        if (read("type") == QLatin1String("bluetooth"))
+            switches.append({ read("name"), read("soft") == QLatin1String("1"), read("hard") == QLatin1String("1") });
+    }
+    return switches;
+}
+
 #ifdef MP240_BLUETOOTH
 const QString kBluez         = QStringLiteral("org.bluez");
 const QString kAdapter       = QStringLiteral("org.bluez.Adapter1");
@@ -112,6 +135,20 @@ QString describe(const QDBusMessage &reply) {
     if (name.endsWith(QLatin1String(".DoesNotExist")))
         return QStringLiteral("it has gone out of reach");
     return text.isEmpty() ? name : text;
+}
+
+// What of rfkill's keeps the adapter at path off, in words; empty if nothing.
+QString rfkillBlock(const QString &adapterPath) {
+    const QString name = adapterPath.section(QLatin1Char('/'), -1);
+    for (const RfkillSwitch &rfkillSwitch : bluetoothSwitches()) {
+        if (rfkillSwitch.name != name)
+            continue;
+        if (rfkillSwitch.hard)
+            return QStringLiteral("a switch blocks it (rfkill)");
+        if (rfkillSwitch.soft)
+            return QStringLiteral("rfkill blocks it");
+    }
+    return QString();
 }
 
 // Errors that mean the thing asked for is so already, or about to be.
@@ -411,41 +448,45 @@ void BluetoothManager::collectDetails() {
                           adapter.value(QStringLiteral("PowerState"), QStringLiteral("?")).toString());
     }
 #endif
-    // A switch that keeps the radio off: rfkill's, in sysfs, readable by all.
-    const QDir rfkill(QStringLiteral("/sys/class/rfkill"));
-    for (const QString &entry : rfkill.entryList(QDir::Dirs | QDir::NoDotAndDotDot)) {
-        auto read = [&](const char *name) {
-            QFile file(rfkill.filePath(entry + QLatin1Char('/') + QLatin1String(name)));
-            return file.open(QIODevice::ReadOnly) ? QString::fromUtf8(file.readAll()).trimmed() : QString();
-        };
-        if (read("type") != QLatin1String("bluetooth"))
-            continue;
+    // A switch that keeps the radio off: rfkill's.
+    for (const RfkillSwitch &rfkillSwitch : bluetoothSwitches())
         lines << QStringLiteral("rfkill %1: soft %2, hard %3")
-                     .arg(read("name"),
-                          read("soft") == QLatin1String("1") ? QStringLiteral("blocked") : QStringLiteral("no"),
-                          read("hard") == QLatin1String("1") ? QStringLiteral("blocked") : QStringLiteral("no"));
-    }
+                     .arg(rfkillSwitch.name,
+                          rfkillSwitch.soft ? QStringLiteral("blocked") : QStringLiteral("no"),
+                          rfkillSwitch.hard ? QStringLiteral("blocked") : QStringLiteral("no"));
     m_details = lines.join(QLatin1Char('\n'));
     emit detailsChanged();
 
-    // The system log's last Bluetooth lines: the kernel's, bthelper's and
-    // bluetoothd's. The app's user reads it as a member of adm.
+    // The system log's last Bluetooth lines: the kernel's, bluetoothd's,
+    // rfkill's and this app's. The app's user reads it as a member of adm.
     auto *journal = new QProcess(this);
     auto finish = [this, journal, lines](bool ran) {
         journal->deleteLater();
         static const QRegularExpression relevant(
-            QStringLiteral("bluetooth|hci\\d|bthelper|bcm|brcm"), QRegularExpression::CaseInsensitiveOption);
-        QStringList found;
+            QStringLiteral("bluetooth|hci\\d|rfkill|bthelper|bcm|brcm"), QRegularExpression::CaseInsensitiveOption);
+        static const QRegularExpression stamp(QStringLiteral("^\\[[^\\]]*\\]\\s*"));
+        // Each line once, where it came last, with how many times it came:
+        // a refusal at every try would otherwise push out what led to it.
+        QStringList order;               // the lines, timestamp aside
+        QHash<QString, QString> last;    // line -> its last time, in full
+        QHash<QString, int> times;
         if (ran) {
-            for (const QString &line : QString::fromUtf8(journal->readAllStandardOutput()).split(QLatin1Char('\n')))
-                if (relevant.match(line).hasMatch())
-                    found << line.trimmed();
+            for (const QString &line : QString::fromUtf8(journal->readAllStandardOutput()).split(QLatin1Char('\n'))) {
+                if (!relevant.match(line).hasMatch())
+                    continue;
+                const QString text = line.trimmed().remove(stamp);
+                order.removeOne(text);
+                order.append(text);
+                last.insert(text, line.trimmed());
+                ++times[text];
+            }
         }
         QStringList out = lines;
-        if (found.isEmpty())
+        if (order.isEmpty())
             out << QStringLiteral("(no Bluetooth lines in the system log)");
-        else
-            out << found.mid(qMax(0, int(found.size()) - 16));
+        for (const QString &text : order.mid(qMax(0, int(order.size()) - 20)))
+            out << last.value(text) + (times.value(text) > 1 ? QStringLiteral(" (x%1)").arg(times.value(text))
+                                                             : QString());
         m_details = out.join(QLatin1Char('\n'));
         emit detailsChanged();
     };
@@ -721,7 +762,8 @@ void BluetoothManager::replyToPending(bool accept) {
 
 // Turns the adapter on, then then(). A refusal is tried once more a moment
 // later (bluetoothd may still be setting the adapter up); a second one is
-// said, and the page then offers the details.
+// said, and the page then offers the details. rfkill's block, which BlueZ only
+// calls "Failed", is said at once: trying again wouldn't lift it.
 void BluetoothManager::powerOn(std::function<void()> then, bool retry) {
     const QString adapter = m_adapterPath;
     call(adapter, kProperties, QStringLiteral("Set"),
@@ -738,14 +780,16 @@ void BluetoothManager::powerOn(std::function<void()> then, bool retry) {
              }
              qWarning("[Bluetooth] Powering %s on failed: %s %s", qPrintable(adapter),
                       qPrintable(reply.errorName()), qPrintable(reply.errorMessage()));
-             if (retry && adapter == m_adapterPath) {
+             const QString blocked = rfkillBlock(adapter);
+             if (blocked.isEmpty() && retry && adapter == m_adapterPath) {
                  QTimer::singleShot(2000, this, [this, then, adapter]() {
                      if (adapter == m_adapterPath)
                          powerOn(then, false);
                  });
                  return;
              }
-             setMessage(QStringLiteral("Couldn't turn Bluetooth on: ") + describe(reply));
+             setMessage(QStringLiteral("Couldn't turn Bluetooth on: ")
+                        + (blocked.isEmpty() ? describe(reply) : blocked));
              if (!m_powerFailed) {
                  m_powerFailed = true;
                  emit adapterChanged();

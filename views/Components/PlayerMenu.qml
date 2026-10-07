@@ -2,10 +2,12 @@ import QtQuick
 
 // A video's own menu: back during playback opens it over the picture, which
 // goes on playing (Transparent Background; MpvController's player menu, see
-// noteSession's "menu"). Its lines are the module's settings that matter while
-// a video plays, taken from its manifest by key, wherever they sit (YouTube
-// keeps its own in ADVANCED): ◄ ► change one and save it at once, as in the
-// module's settings, and the host applies it to the video (settingChanged).
+// noteSession's "menu"). Without Transparent Background the video ends for it
+// and its player starts it again where it was as it closes. Its lines are the
+// module's settings that matter while a video plays, taken from its manifest
+// by key, wherever they sit (YouTube keeps its own in ADVANCED): ◄ ► change
+// one and save it at once, as in the module's settings, and the host applies
+// it to the video (settingChanged).
 // Then the host's own lines (actions, acted on in activated), and last CLOSE
 // VIDEO (activated("close")). Back takes the picture back to full screen
 // (closed()). A key it has no use for goes on to its player, so play/pause

@@ -9,13 +9,15 @@
 #include <QUrl>
 #include <functional>
 
-class JellyfinBackend : public QObject {
+#include "../playlists/MediaServer.h"
+
+class JellyfinBackend : public QObject, public MediaServer {
     Q_OBJECT
 public:
     explicit JellyfinBackend(const QString &appRoot, const QString &dataRoot, QObject *parent = nullptr);
 
     // Auth
-    Q_INVOKABLE bool has_auth();
+    Q_INVOKABLE bool has_auth() const;
     Q_INVOKABLE QString get_server_name();
     Q_INVOKABLE QString get_user_name();
     Q_INVOKABLE void check_auth();
@@ -55,6 +57,13 @@ public:
 
     // URL helpers for QML
     Q_INVOKABLE QString get_access_token() const { return m_accessToken; }
+
+    // The Playlists module's server (MediaServer): see the interface.
+    bool signedIn() const override { return has_auth(); }
+    QNetworkRequest downloadRequest(const QString &itemId) const override;
+    QString streamUrl(const QString &itemId) const override;
+    void browse(const QString &parentId, QObject *context,
+                std::function<void(bool ok, const QVariantList &items)> done) override;
 
     // Settings
     Q_INVOKABLE QString get_auth_state();

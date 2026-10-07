@@ -1,0 +1,44 @@
+{
+  "id": "com.240mp.playlists",
+  "name": "Playlists",
+  "icon": "assets/images/logo.svg",
+  "entry_point_qml": "views/Root.qml",
+  "settings": [
+    {
+      "key": "enabled",
+      "label": "ENABLED",
+      "type": "toggle",
+      "default": "ON"
+    },
+    {
+      "key": "download_folder",
+      "label": "Download Folder",
+      "type": "directory_browser",
+      "default": "",
+      "description": "Where offline playlists' videos are downloaded, each video once whatever lists it is on\n[DEFAULT] A Playlists folder in Local Files' folder: on the OSD/OS image, the card's 240-MP partition"
+    },
+    {
+      "key": "subtitles",
+      "label": "Subtitles",
+      "type": "list_single",
+      "options": ["Forced Only", "On", "Off"],
+      "default": "Forced Only",
+      "description": "Whether a video's subtitles show as it starts\n[FORCED ONLY] Only for dialogue in another language. [ON] A YouTube video's in the YouTube module's Subtitle Language"
+    },
+    {
+      "key": "loop_playback",
+      "label": "Loop Playback",
+      "type": "toggle",
+      "default": "OFF",
+      "description": "When a playlist ends, start it again from its first video"
+    },
+    {
+      "key": "video_scaling",
+      "label": "Scaling",
+      "type": "list_single",
+      "options": ["Default", "Letterbox", "14:9", "Pan & Scan", "Anamorphic"],
+      "default": "Default",
+      "description": "How a 16:9 picture fills the 4:3 screen in this module\n[DEFAULT] As Settings' Scaling says"
+    }
+  ]
+}

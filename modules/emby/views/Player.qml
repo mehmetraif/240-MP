@@ -18,6 +18,10 @@ FocusScope {
     property string mediaSourceId:  navParams.mediaSourceId  || itemId
     property string itemTitle:      navParams.title          || ""
     property int    viewOffset:     navParams.viewOffset     || 0
+    // How long it is, from the server, and where the last start began: the
+    // loading screen's counters.
+    property int    itemDurationMs: navParams.duration       || 0
+    property int    lastStartMs:    0
     property int    parentIndex:    navParams.parentIndex    || 0
     property int    index:          navParams.index          || 0
     property var    audioStreams:       navParams.audioStreams     || []
@@ -256,6 +260,7 @@ FocusScope {
         itemId         = detail.itemId         || ""
         mediaSourceId  = detail.mediaSourceId  || detail.itemId || ""
         itemTitle      = detail.title          || ""
+        itemDurationMs = detail.duration       || 0
         audioStreams   = detail.audioStreams   || []
         subtitleStreams= detail.subtitleStreams|| []
         seriesId       = detail.seriesId       || ""
@@ -326,20 +331,9 @@ FocusScope {
                                           audioStreamIdx, subStreamIdx)
     }
 
-    // Starting mpv runs synchronously and, on the Pi, immediately switches VT
-    // (suspending Qt's render thread) before the LOADING frame can paint. Defer
-    // the launch one tick so the loading indicator is rendered first.
-    Timer {
-        id: startTimer
-        interval: 16
-        repeat: false
-        property int pendingOffset: 0
-        onTriggered: doStartPlayback(pendingOffset)
-    }
-
     function beginPlayback(offsetMs) {
-        startTimer.pendingOffset = offsetMs
-        startTimer.restart()
+        lastStartMs = offsetMs
+        doStartPlayback(offsetMs)
     }
 
     // Mirrors PlexBackend's Player.buildSubArgs: text subtitles are handed to mpv
@@ -387,6 +381,7 @@ FocusScope {
     }
 
     function doStartPlayback(offsetMs) {
+        lastStartMs = offsetMs
         var embyToken = embyBackend.get_access_token()
         if (isTranscoding) {
             // HLS manifest bakes in the selected audio. Subtitles do NOT ride in
@@ -408,16 +403,6 @@ FocusScope {
                                        audioTrack, sub.track, sub.urls, [], false, -1, 0.0, "",
                                        false, "", false, sub.titles, 0.0, false, [], embyToken)
         }
-    }
-
-    function formatTime(ms) {
-        var s = Math.floor(ms / 1000)
-        var h = Math.floor(s / 3600)
-        var m = Math.floor((s % 3600) / 60)
-        var sec = s % 60
-        if (h > 0)
-            return h + ":" + (m < 10 ? "0" : "") + m + ":" + (sec < 10 ? "0" : "") + sec
-        return m + ":" + (sec < 10 ? "0" : "") + sec
     }
 
     function findActiveSegment(ms) {
@@ -640,81 +625,23 @@ FocusScope {
         // Shown while mpv launches and buffers the stream (before its window
         // takes over). Hidden once the first position update arrives, or while
         // the resume prompt is up.
-        Text {
-            text: "LOADING..."
-            // White to match mpv's own overlay text color.
-            color: "white"
-            font.family: root.globalFont
-            anchors.centerIn: parent
-            font.pixelSize: root.sh * 0.05 //24
+        LoadingScreen {
+            anchors.fill: parent
+            source: moduleRoot.moduleName
+            startMs: playerRoot.lastStartMs
+            durationMs: playerRoot.itemDurationMs || playerRoot.lastKnownDurationMs
             visible: streamUrl !== "" && !overlayVisible && !playbackStarted
         }
     }
 
-    Rectangle {
-        anchors.fill: parent
-        color: root.surfaceColor
+    PromptScreen {
         visible: overlayVisible
-
-        Rectangle {
-            id: dialogRect
-            color: root.surfaceColor
-            anchors.centerIn: parent
-            width: root.sw * 0.76875
-            height: root.sh * 0.2833333
-
-            Column {
-                id: dialogColumn
-                anchors.fill: parent
-                spacing: root.sh * 0.05
-
-                Text {
-                    text: "RESUME PLAYBACK?"
-                    color: root.secondaryColor
-                    font.family: root.globalFont
-                    font.pixelSize: root.sh * 0.0333333
-                    anchors.horizontalCenter: parent.horizontalCenter
-                }
-
-                Column {
-                    Repeater {
-                        model: [
-                            "Resume from " + formatTime(viewOffset),
-                            "Start from the beginning"
-                        ]
-                        delegate: Item {
-                            width: dialogColumn.width
-                            height: root.sh * 0.0583333
-
-                            Rectangle {
-                                anchors.fill: delegateText
-                                color: root.accentColor
-                                visible: index === choiceIndex
-                            }
-
-                            Text {
-                                id: delegateText
-                                anchors.verticalCenter: parent.verticalCenter
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                text: modelData
-                                color: index === choiceIndex ? root.surfaceColor : root.primaryColor
-                                font.family: root.globalFont
-                                font.capitalization: Font.AllUppercase
-                                topPadding: root.sh * 0.0041667
-                                leftPadding: root.sw * 0.009375
-                                rightPadding: root.sw * 0.009375
-                                bottomPadding: root.sh * 0.00625
-                                font.pixelSize: root.sh * 0.0416667
-                            }
-                        }
-                    }
-                }
-
-                HintBar {
-                    text: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE " + root.hints.select + ":SELECT"
-                    anchors.horizontalCenter: parent.horizontalCenter
-                }
-            }
-        }
+        title: "Resume playback?"
+        message: itemTitle
+        choices: [
+            "Resume from " + root.formatTime(viewOffset),
+            "Start from the beginning"
+        ]
+        currentIndex: choiceIndex
     }
 }

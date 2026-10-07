@@ -616,12 +616,12 @@ FocusScope {
         visible: isLaunching
         z: 100
 
-        Text {
-            text: "LOADING..."
-            color: root.tertiaryColor
-            font.family: root.globalFont
-            anchors.centerIn: parent
-            font.pixelSize: root.sh * 0.05 //24
+        LoadingScreen {
+            anchors.fill: parent
+            source: moduleRoot.moduleName
+            // Where it is and how long it is, as the server says.
+            startMs: detailRoot.detail ? (detailRoot.detail.viewOffset || 0) : 0
+            durationMs: detailRoot.detail ? (detailRoot.detail.duration || 0) : 0
         }
 
         HintBar {

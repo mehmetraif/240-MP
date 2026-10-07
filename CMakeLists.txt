@@ -55,6 +55,8 @@ add_executable(240mp
     src/modules/emby/EmbyBackend.cpp
     src/modules/ambient_mode/AmbientModeBackend.cpp
     src/modules/youtube/YouTubeBackend.cpp
+    src/modules/playlists/PlaylistsBackend.cpp
+    src/modules/playlists/ServerDownload.cpp
     src/modules/nfc_reader/NfcReaderBackend.cpp
     src/modules/nfc_reader/PcscDriver.cpp
     src/modules/nfc_reader/Pn532SerialDriver.cpp
@@ -67,6 +69,7 @@ add_executable(240mp
     src/player/MpvController.cpp
     src/player/EmbeddedMpv.cpp
     src/player/VideoSurface.cpp
+    src/player/VhsNoise.cpp
     src/util/YtDlpLocator.cpp
     src/util/MpvLocator.cpp
     src/util/ExecPath.cpp
@@ -181,7 +184,8 @@ if(APPLE)
 
     # Use a hardcoded relative path — $<TARGET_BUNDLE_CONTENT_DIR> resolves to
     # the build tree, not the install prefix, inside install() rules.
-    install(FILES "${CMAKE_SOURCE_DIR}/Main.qml"
+    # LICENSE goes with every copy, as the GPL asks; Settings → About shows it.
+    install(FILES "${CMAKE_SOURCE_DIR}/Main.qml" "${CMAKE_SOURCE_DIR}/LICENSE"
         DESTINATION "240mp.app/Contents/Resources"
         COMPONENT Runtime)
 
@@ -208,7 +212,8 @@ else()
         RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
         COMPONENT Runtime)
 
-    install(FILES "${CMAKE_SOURCE_DIR}/Main.qml"
+    # LICENSE goes with every copy, as the GPL asks; Settings → About shows it.
+    install(FILES "${CMAKE_SOURCE_DIR}/Main.qml" "${CMAKE_SOURCE_DIR}/LICENSE"
         DESTINATION "${CMAKE_INSTALL_DATADIR}/240mp"
         COMPONENT Runtime)
 

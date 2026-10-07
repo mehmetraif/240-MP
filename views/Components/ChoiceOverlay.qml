@@ -2,17 +2,26 @@ import QtQuick
 
 // A full-screen keyboard-driven chooser: a prompt, the thing being acted on, and
 // a short list of options. Factored out of NfcCardWriter.qml's chooser so every
-// prompt in the app reads the same way.
+// prompt in the app reads the same way, in the standard window (PromptScreen):
+// the prompt in the title bar, the thing under it.
 //
 // The host binds `choices` to a list of { label, action } maps and acts on the
 // action in onActivated — the action is what drives behavior, never the label
-// text, which is free to change with state.
+// text, which is free to change with state. Select closes it before acting,
+// unless closeOnSelect is off: then the host closes it (close()) once it is
+// done, as one that shows what became of the choice does. A host that acts on
+// a choice before anything closes overrides choose(action).
 FocusScope {
     id: overlayRoot
 
     property string promptText:   ""
     property string subtitleText: ""
     property var    choices:      []
+    // PromptScreen's kind: "question" or "notice".
+    property string promptKind:   "question"
+    // The hint line: PromptScreen's own unless set.
+    property string hintText:     ""
+    property bool   closeOnSelect: true
 
     property int choiceIndex: 0
 
@@ -20,6 +29,8 @@ FocusScope {
     signal closed()
 
     visible: false
+    // Hidden, it lets go of the keys.
+    enabled: visible
     focus: visible
 
     function open() {
@@ -33,105 +44,44 @@ FocusScope {
         closed()
     }
 
-    Keys.onPressed: function(event) {
-        if (event.key === Qt.Key_Escape || event.key === Qt.Key_Backspace || event.key === Qt.Key_Back) {
+    // Select on a choice.
+    function choose(action) {
+        // Close first, so the host's onClosed focus restore lands before any
+        // navigation the action triggers.
+        if (closeOnSelect)
             close()
-            event.accepted = true
-            return
-        }
-        if (choices.length === 0) return
-
-        if (event.key === Qt.Key_Up) {
-            choiceIndex = (choiceIndex - 1 + choices.length) % choices.length
-            event.accepted = true
-        } else if (event.key === Qt.Key_Down) {
-            choiceIndex = (choiceIndex + 1) % choices.length
-            event.accepted = true
-        } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-            var choice = choices[choiceIndex]
-            // Close first, so the host's onClosed focus restore lands before any
-            // navigation the action triggers.
-            close()
-            if (choice) activated(choice.action)
-            event.accepted = true
-        }
+        activated(action)
     }
 
-    Rectangle {
-        anchors.fill: parent
-        color: root.surfaceColor
-
-        Column {
-            anchors.centerIn: parent
-            width: root.sw * 0.76875
-            spacing: root.sh * 0.05 //24
-
-            Column {
-                width: parent.width
-                spacing: root.sh * 0.0166667 //8
-
-                Text {
-                    text: overlayRoot.promptText
-                    color: root.secondaryColor
-                    font.family: root.globalFont
-                    font.capitalization: Font.AllUppercase
-                    font.pixelSize: root.sh * 0.0333333 //16
-                    width: parent.width
-                    wrapMode: Text.WordWrap
-                    horizontalAlignment: Text.AlignHCenter
-                }
-
-                Text {
-                    visible: overlayRoot.subtitleText !== ""
-                    text: overlayRoot.subtitleText
-                    color: root.primaryColor
-                    font.family: root.globalFont
-                    font.capitalization: Font.AllUppercase
-                    font.pixelSize: root.sh * 0.0416667 //20
-                    width: parent.width
-                    wrapMode: Text.WordWrap
-                    horizontalAlignment: Text.AlignHCenter
-                }
-            }
-
-            Column {
-                width: parent.width
-
-                Repeater {
-                    model: overlayRoot.choices
-                    delegate: Item {
-                        width: parent.width
-                        height: root.sh * 0.0583333
-
-                        Rectangle {
-                            anchors.fill: choiceText
-                            color: root.accentColor
-                            visible: index === overlayRoot.choiceIndex
-                        }
-
-                        Text {
-                            id: choiceText
-                            anchors.verticalCenter: parent.verticalCenter
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            text: modelData.label
-                            color: index === overlayRoot.choiceIndex ? root.surfaceColor : root.primaryColor
-                            font.family: root.globalFont
-                            font.capitalization: Font.AllUppercase
-                            topPadding: root.sh * 0.0041667
-                            leftPadding: root.sw * 0.009375
-                            rightPadding: root.sw * 0.009375
-                            bottomPadding: root.sh * 0.00625
-                            font.pixelSize: root.sh * 0.0416667
-                        }
-                    }
-                }
-            }
-
-            HintBar {
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE "
-                      + root.hints.select + ":SELECT"
-            }
+    Keys.onPressed: function(event) {
+        var back = event.key === Qt.Key_Escape || event.key === Qt.Key_Backspace || event.key === Qt.Key_Back
+        var enter = event.key === Qt.Key_Return || event.key === Qt.Key_Enter
+        if (back) {
+            close()
+        } else if (enter) {
+            // With nothing to choose (a notice), select closes it too.
+            var choice = choices[choiceIndex]
+            if (choice)
+                choose(choice.action)
+            else
+                close()
+        } else if (event.key === Qt.Key_Up && choices.length > 0) {
+            choiceIndex = (choiceIndex - 1 + choices.length) % choices.length
+        } else if (event.key === Qt.Key_Down && choices.length > 0) {
+            choiceIndex = (choiceIndex + 1) % choices.length
         }
+        // A window over the host's view: its keys stop here (the host may
+        // have uses for ◄ ►), but for a chord like Ctrl+Q.
+        if (!(event.modifiers & Qt.ControlModifier))
+            event.accepted = true
+    }
+
+    PromptScreen {
+        kind: overlayRoot.promptKind
+        title: overlayRoot.promptText
+        message: overlayRoot.subtitleText
+        choices: overlayRoot.choices
+        currentIndex: overlayRoot.choiceIndex
+        hint: overlayRoot.hintText
     }
 }

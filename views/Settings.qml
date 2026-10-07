@@ -15,9 +15,10 @@ FocusScope {
 
     // Flat model: mix of section headers and rows
     property var settingsItems: []
+    // Counted up as a row changes in place, so the rows read theirs again:
+    // the model stays as it is, and the list where it is.
+    property int revision: 0
 
-    property bool quitOverlayVisible: false
-    property int quitChoiceIndex: 0
 
     // Quit overlay choices. Under the autostart service (headless RPi) the quit menu has an
     // "Exit to Terminal" option that drops to a tty1 login without powering off, and a
@@ -61,6 +62,19 @@ FocusScope {
             options: colorOpts,
             value: appSettings["color_scheme"] || "Video 1",
             description: "Choose your prefered color scheme\nPlease see the wiki for details on adding a custom one",
+            moduleId: ""
+        })
+
+        // OSD Background — what the menus are drawn on (Components/OsdGround,
+        // read in Main.qml): the colour scheme's background over the whole
+        // screen, none (black), or a framed window of it behind the menus.
+        items.push({
+            type: "list_single",
+            key: "osd_background",
+            label: "OSD Background",
+            options: ["Full", "Off", "Window"],
+            value: root.osdBackgroundOf(appSettings["osd_background"]),
+            description: "What the menus are drawn on\n[FULL] The color scheme's background, all over  [OFF] None, the menus on black like a deck's on-screen display  [WINDOW] A framed window of it behind the menus, black around it",
             moduleId: ""
         })
 
@@ -196,6 +210,43 @@ FocusScope {
             moduleId: ""
         })
 
+        // Loading Effect — the screen a video loads behind is a tape loading
+        // (Components/LoadingScreen): its noise and tracking bands, or, off,
+        // the deck's display alone on the plain background. Read in Main.qml.
+        items.push({
+            type: "list_single",
+            key: "loading_effect",
+            label: "Loading Effect",
+            options: ["On", "Off"],
+            value: appSettings["loading_effect"] === "Off" ? "Off" : "On",
+            description: "While a video loads, a tape's noise and tracking bands roll over its counters\n[OFF] The counters alone, on the plain background",
+            moduleId: ""
+        })
+
+        // HINT BAR — the key hints on the bar at the foot of every screen
+        // (Components/HintBar). Read in Main.qml.
+        items.push({
+            type: "list_single",
+            key: "hint_bar",
+            label: "Hint Bar",
+            options: ["On", "Off"],
+            value: appSettings["hint_bar"] === "Off" ? "Off" : "On",
+            description: "The key hints on the bar at the foot of every screen\n[OFF] No bar; the keys work as they do",
+            moduleId: ""
+        })
+
+        // HELP LINE — the line about the selected row in the box under a
+        // menu, this one (Components/HelpLine). Read in Main.qml.
+        items.push({
+            type: "list_single",
+            key: "help_line",
+            label: "Help Line",
+            options: ["On", "Off"],
+            value: appSettings["help_line"] === "Off" ? "Off" : "On",
+            description: "The box under a menu with a line about the selected row, this one\n[OFF] No box",
+            moduleId: ""
+        })
+
         // SCREEN SAVER section — single control: OFF disables, a number sets the
         // timeout for both menu idle and playback pause (handled inside mpv).
         items.push({
@@ -279,6 +330,15 @@ FocusScope {
             type: "submenu",
             key: "software_update",
             label: "Update",
+            moduleId: ""
+        })
+        // ABOUT — what OSD/OS is, who makes it, what it is made of and under
+        // which licence (views/About.qml).
+        items.push({
+            type: "submenu",
+            key: "about",
+            label: "About",
+            description: "What OSD/OS is, who makes it, what it is made of and under which license",
             moduleId: ""
         })
         items.push({ type: "quit", label: "Quit" })
@@ -397,16 +457,13 @@ FocusScope {
                 contentY = Math.max(bottom.y - height, originY)
         }
 
-        // The current row, changed, in place of the old one. A new model
-        // starts the list from the top, so it is put back where it was.
+        // The current row, changed, in place of the old one. The model is
+        // not replaced: a new one starts the list over, and it is not put
+        // back where it was for sure once the list has been scrolled about
+        // (a row's height is not known until it is drawn).
         function replaceCurrentRow(row) {
-            var updated = settingsItems.slice()
-            updated[currentIndex] = row
-            var savedIndex = currentIndex
-            var savedY = contentY
-            settingsItems = updated
-            currentIndex = savedIndex
-            contentY = savedY
+            settingsItems[currentIndex] = row
+            settingsRoot.revision++
         }
 
         // A slider's step toward one end (-1 left, 1 right), kept and saved.
@@ -474,11 +531,12 @@ FocusScope {
                     settingsRoot.navigateTo("views/RemapControls.qml", {}, { currentIndex: settingsList.currentIndex })
                 else if (row.key === "bluetooth")
                     settingsRoot.navigateTo("views/Bluetooth.qml", {}, { currentIndex: settingsList.currentIndex })
+                else if (row.key === "about")
+                    settingsRoot.navigateTo("views/About.qml", {}, { currentIndex: settingsList.currentIndex })
                 else
                     settingsRoot.navigateTo("views/ModuleSettings.qml", { moduleId: row.moduleId }, { currentIndex: settingsList.currentIndex })
             } else if (row && row.type === "quit") {
-                settingsRoot.quitChoiceIndex = 0
-                settingsRoot.quitOverlayVisible = true
+                quitPrompt.open()
             } else if (row && row.type === "slider" && row.on !== undefined) {
                 toggleSlider()
             }
@@ -493,7 +551,9 @@ FocusScope {
 
         delegate: Item {
             id: rowItem
-            readonly property bool slider: modelData.type === "slider"
+            // The row as it is now, read again as one changes.
+            readonly property var row: (settingsRoot.revision, settingsRoot.settingsItems[index])
+            readonly property bool slider: row.type === "slider"
             readonly property real lineHeight: root.sh * 0.0583333 //28
             // A slider's bar takes whole lines under its own, so every line
             // keeps to the list's rule as it scrolls.
@@ -506,10 +566,10 @@ FocusScope {
             MenuRow {
                 width: parent.width
                 height: rowItem.lineHeight
-                heading: modelData.type === "section"
-                label: modelData.label || ""
-                value: modelData.type === "list_single" ? (modelData.value || "")
-                     : rowItem.slider && modelData.on !== undefined ? (modelData.on ? "On" : "Off") : ""
+                heading: rowItem.row.type === "section"
+                label: rowItem.row.label || ""
+                value: rowItem.row.type === "list_single" ? (rowItem.row.value || "")
+                     : rowItem.slider && rowItem.row.on !== undefined ? (rowItem.row.on ? "On" : "Off") : ""
                 selected: settingsList.currentIndex === index
             }
 
@@ -519,15 +579,15 @@ FocusScope {
             Loader {
                 id: tape
                 active: rowItem.slider
-                visible: modelData.on !== false
+                visible: rowItem.row.on !== false
                 x: root.sw * 0.009375 //6
                 y: rowItem.lineHeight + Math.round((rowItem.barLines * rowItem.lineHeight - height) / 2)
                 width: parent.width - 2 * x
                 sourceComponent: OsdTapeBar {
                     fontSize: root.sh * 0.0333333 //16
-                    value: modelData.value / 100
-                    startText: modelData.startText
-                    endText: modelData.endText
+                    value: rowItem.row.value / 100
+                    startText: rowItem.row.startText
+                    endText: rowItem.row.endText
                 }
             }
         }
@@ -562,86 +622,16 @@ FocusScope {
     }
 
     // --- QUIT CONFIRMATION OVERLAY ---
-    Rectangle {
+    ChoiceOverlay {
+        id: quitPrompt
         anchors.fill: parent
-        color: root.surfaceColor
-        visible: quitOverlayVisible
-        focus: quitOverlayVisible
-
-        Keys.onUpPressed:   { quitChoiceIndex = Math.max(0, quitChoiceIndex - 1) }
-        Keys.onDownPressed: { quitChoiceIndex = Math.min(quitOptions.length - 1, quitChoiceIndex + 1) }
-        Keys.onReturnPressed: {
-            var act = quitOptions[quitChoiceIndex].action
+        promptText: "Really quit?"
+        choices: quitOptions
+        onActivated: function(act) {
             if (act === "quit")          Qt.quit()
             else if (act === "restart")  Qt.exit(12)   // 240mp-stop reboots on it
             else if (act === "terminal") Qt.exit(10)   // matches EXIT_STATUS check in 240mp-stop
-            else { quitOverlayVisible = false; settingsList.forceActiveFocus() }
         }
-        Keys.onPressed: function(event) {
-            if (event.key === Qt.Key_Escape || event.key === Qt.Key_Backspace || event.key === Qt.Key_Back) {
-                quitOverlayVisible = false
-                settingsList.forceActiveFocus()
-                event.accepted = true
-            }
-        }
-
-        Rectangle {
-            color: root.surfaceColor
-            anchors.centerIn: parent
-            width: root.sw * 0.76875   //492
-            // As tall as its lines, so it stays in the middle however many
-            // choices it has.
-            height: quitDialogColumn.implicitHeight
-
-            Column {
-                id: quitDialogColumn
-                anchors.fill: parent
-                spacing: root.sh * 0.05 //24
-
-                Text {
-                    text: "REALLY QUIT?"
-                    color: root.secondaryColor
-                    font.family: root.globalFont
-                    font.pixelSize: root.sh * 0.0333333 //16
-                    anchors.horizontalCenter: parent.horizontalCenter
-                }
-
-                Column {
-                    Repeater {
-                        model: quitOptions
-                        delegate: Item {
-                            width: quitDialogColumn.width
-                            height: root.sh * 0.0583333 //28
-
-                            Rectangle {
-                                anchors.fill: quitOptionText
-                                color: root.accentColor
-                                visible: index === quitChoiceIndex
-                            }
-
-                            Text {
-                                id: quitOptionText
-                                anchors.verticalCenter: parent.verticalCenter
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                text: modelData.label
-                                color: index === quitChoiceIndex ? root.surfaceColor : root.primaryColor
-                                font.family: root.globalFont
-                                font.capitalization: Font.AllUppercase
-                                topPadding: root.sh * 0.0041667 //2
-                                leftPadding: root.sw * 0.009375 //6
-                                rightPadding: root.sw * 0.009375 //6
-                                bottomPadding: root.sh * 0.00625 //3
-                                font.pixelSize: root.sh * 0.05 //24
-                            }
-                        }
-                    }
-                }
-
-                HintBar {
-                    text: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE " + root.hints.select + ":SELECT"
-                    anchors.horizontalCenter: parent.horizontalCenter
-                }
-            }
-        }
+        onClosed: settingsList.forceActiveFocus()
     }
 }

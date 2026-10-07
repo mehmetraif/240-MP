@@ -1,6 +1,6 @@
-# 240-MP Architecture
+# OSD/OS Architecture
 
-240-MP is a retro VCR-style media app built with **C++ Qt6 + QML**, targeting **Raspberry Pi 4** and **macOS**. and this is the reference for working on 240-MP's code (whether you're adding a new module or changing an existing one). 
+OSD/OS is a retro VCR-style media app built with **C++ Qt6 + QML**, targeting **Raspberry Pi 4** and **macOS**. and this is the reference for working on OSD/OS's code (whether you're adding a new module or changing an existing one). 
 
 If you just want to install or build the app, see [INSTALL.md](INSTALL.md) and [BUILDING.md](BUILDING.md). 
 
@@ -8,11 +8,11 @@ If you want to contribute, please start with [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Philosophy
 
-Think of 240-MP as a **browsing shell** that hands off to **purpose-built tools**.
+Think of OSD/OS as a **browsing shell** that hands off to **purpose-built tools**.
 
 - The app shell handles browsing, auth, and settings
 - **Modules** are self-contained media integrations (Local Files, Plex, Ambient Mode, etc...) that the shell discovers and loads at startup.
-- When a user picks something to play, the shell hands off to a dedicated fullscreen tool and resumes when that tool exits. For video, that tool is **mpv**, launched as a subprocess by `MpvController`. mpv is installed separately (`apt install mpv` / `brew install mpv`).  240-MP does not link against libmpv. The one exception is the **Transparent Background** setting, which plays video inside the app's own window through libmpv, opened at run time (see [Transparent Background](#transparent-background-video-inside-the-app)).
+- When a user picks something to play, the shell hands off to a dedicated fullscreen tool and resumes when that tool exits. For video, that tool is **mpv**, launched as a subprocess by `MpvController`. mpv is installed separately (`apt install mpv` / `brew install mpv`).  OSD/OS does not link against libmpv. The one exception is the **Transparent Background** setting, which plays video inside the app's own window through libmpv, opened at run time (see [Transparent Background](#transparent-background-video-inside-the-app)).
 
 The guiding idea: **browse structured content, then hand off to the right tool for the job** rather than bundling everything into one binary.
 
@@ -28,13 +28,23 @@ The guiding idea: **browse structured content, then hand off to the right tool f
         LocalFilesBackend.h/.cpp
       plex/
         PlexBackend.h/.cpp          # good reference backend implementation
+      playlists/
+        PlaylistsBackend.h/.cpp     # lists across modules, their m3u, offline downloads (see Playlists)
+        MediaServer.h               # what Playlists asks of a media server; Jellyfin's and Emby's backends implement it
+        ServerDownload.h/.cpp       # one download from a media server, on a thread of its own
+      ...
+    util/
+      FileNames.h                   # safeFileName(): a name every filesystem takes (exFAT's rules)
+      SslErrors.h                   # expectedLanSslErrors(): a LAN server's own certificate
+      EmbyApi.h                     # the Emby API's URLs that Jellyfin shares (browse, download, stream)
       ...
     player/
       MpvController.h/.cpp          # mpv subprocess controller: QProcess launch + IPC socket
       EmbeddedMpv.h/.cpp            # mpv inside the app's window (Transparent Background), libmpv opened at run time
       VideoSurface.h/.cpp           # the QML item that shows EmbeddedMpv's picture
+      VhsNoise.h/.cpp               # a tape's noise, drawn afresh each frame, for LoadingScreen
     boot/
-      BootProgress.h/.cpp           # boot screen state on the 240-MP OS image (inert elsewhere)
+      BootProgress.h/.cpp           # boot screen state on the OSD/OS image (inert elsewhere)
     bluetooth/
       BluetoothManager.h/.cpp       # Settings → Bluetooth: BlueZ over D-Bus (Linux)
       BluetoothAgent.h/.cpp         # the pairing agent BlueZ asks (org.bluez.Agent1)
@@ -50,12 +60,13 @@ The guiding idea: **browse structured content, then hand off to the right tool f
   views/                            # app-level QML
     ModuleList.qml
     Settings.qml
+    About.qml                       # Settings → About: the credits, and the licence's text
     ...
-    Components/                     # shared QML components (AppBar, HintBar, MenuRow, HelpLine, ScrollMarks, TreeBrowser, InfoPanel, EntryOptions, PlayerMenu, MousePointer, OnScreenKeyboard, WebPlayerBrowse, WebPlayerLaunch, the Osd* elements, ChoiceOverlay, qmldir)
-    BootScreen.qml                  # boot screen of the 240-MP OS image (see os/README.md)
+    Components/                     # shared QML components (AppBar, HintBar, MenuRow, MenuList, HelpLine, ScrollMarks, TreeBrowser, InfoPanel, EntryOptions, PlaylistAdder, PlayerMenu, LoadingScreen, PromptScreen, OsdGround, MousePointer, OnScreenKeyboard, WebPlayerBrowse, WebPlayerLaunch, the Osd* elements, ChoiceOverlay, qmldir)
+    BootScreen.qml                  # boot screen of the OSD/OS image (see os/README.md)
   Main.qml                          # app root
   CMakeLists.txt
-  os/                               # 240-MP OS image: a pi-gen stage on Raspberry Pi OS Lite
+  os/                               # OSD/OS image: a pi-gen stage on Raspberry Pi OS Lite
   docs/                             # the README's screenshots (docs/screenshots/, 640×480) and diagrams (docs/images/)
 ```
 
@@ -162,6 +173,7 @@ A real example (Plex) — note `requires_auth`, dynamic options, and apply slots
 | `get_module_auth_state(moduleId)` | Returns the module's auth state (for `requires_auth` settings) |
 | `getCustomColorScheme()` | Returns the user's custom color scheme |
 | `listDirectories(path)` / `parentDirectory(path)` / `homePath()` | Helpers for `directory_browser` |
+| `licenseText()` | The licence's text (`LICENSE` next to the app), its paragraphs each on one line, for Settings → About |
 
 ### Signals
 
@@ -198,7 +210,7 @@ Two further capabilities are **probed on demand** rather than connected at regis
 
 `get_menu_entries()` returns a list of `{name, params}`. `AppCore` fills in `entry_point` from the module's manifest and appends the rows to the `modulesLoaded` payload, so `views/ModuleList.qml` renders them like any other row and forwards `params` as `navParams` then the module's `Root.qml` router interprets them.
 
-Rows are appended **after** all module rows on purpose: module row indices then stay stable, so a saved menu position still restores onto the same row when a contributed row appears or disappears. The scripts module uses this to list `favorite = yes` scripts after native 240-MP modules.
+Rows are appended **after** all module rows on purpose: module row indices then stay stable, so a saved menu position still restores onto the same row when a contributed row appears or disappears. The scripts module uses this to list `favorite = yes` scripts after native OSD/OS modules.
 
 ## Playback Hand-off (MpvController)
 
@@ -206,17 +218,18 @@ The current MPV implementation is a good reference implementation of the "browse
 
 ### How the hand-off works
 
-1. **Launch** — `loadAndPlay(url, startSeconds, audioTrack, subTrack, ...)` starts mpv as a `QProcess`. Playback parameters are passed as mpv command-line flags: `--start=<sec>` (resume offset), `--playlist-start=<n>`, `--loop-playlist=inf`, and so on. mpv is found on `PATH` — the app never links libmpv.
+1. **Launch** — `loadAndPlay(url, startSeconds, audioTrack, subTrack, ...)` starts mpv as a `QProcess`. Playback parameters are passed as mpv command-line flags: `--start=<sec>` (resume offset), `--playlist-start=<n>`, `--loop-playlist=inf`, and so on; what plays comes last, behind a `--`, so a name beginning with `-` is never taken for an option. mpv is found on `PATH` — the app never links libmpv. Whatever played until then ends at once, but the new session starts a tick (50 ms) later, so that the player's loading screen is drawn first: starting mpv runs synchronously and, on the Pi, switches the VT at once, suspending Qt's render thread before the frame can paint. A `stop()` in that tick cancels the start and ends it as stopped where it was to begin; another `loadAndPlay()` supersedes it. A player calls `loadAndPlay()` and is done; it never defers the call itself.
 2. **Control channel** — mpv is started with `--input-ipc-server=<socket>` (a Unix domain socket at `/tmp/240mp-mpv.sock`). `MpvController` connects to it with a `QLocalSocket` and sends JSON commands via `sendCommand(QJsonArray)`. `seekTo()` and `sendKey()` (which sends mpv a `keypress` command) go over this channel — that's how the USB remote / keyboard drives mpv's OSC while it's fullscreen.
 3. **State back to QML** — `MpvController` issues `observe_property` for `time-pos`, `duration`, and `playlist-pos`, and re-publishes them as `Q_PROPERTY`s + the `positionChanged` / `durationChanged` / `playlistPosChanged` signals. A watchdog timer logs a warning if no `time-pos` event arrives for ~10 s (freeze detection).
 4. **Exit** — when mpv quits, `MpvController` emits a single signal, **`playbackEnded(finalPos, finalDur, reason)`**, where `reason` is one of:
     - `"eof"` — the file played to its natural end. What happens next is the module's call: most just return to the menu.  For example: Plex may autoplay the next episode (based on the user's autoplay setting, and fall back to a normal return when there is no next episode, e.g. a movie or the last episode of a season).
     - `"stopped"` — the user quit/stopped before the end (also the safe default for a crash/kill with no end-file event). Record the resume position and return.
     - `"failed"` — mpv exited with code 2 (file couldn't be played). A module may attempt recovery first.  For example: Plex retries with transcoding — otherwise it just returns.
+    - `"menu"` — the process ended for its player's own menu: back, for a player whose session note says `menu: true` (see [Its player's menu](#transparent-background-video-inside-the-app)). The player saves where it got to as for `"stopped"`, opens its menu instead of going back, and starts the video again where it was as the menu closes.
 
     **The baseline for every module to keep in mind:** by the time `playbackEnded` fires, mpv has already exited, so a handler that returns without either calling `goBack()` or starting fresh playback (`loadAndPlay`, e.g. in an autoplay/retry scenario) will leave the now-defunct Player view focused over a dead subprocess which will cause the app to freeze. So please handle the one signal, then branch on `reason` only where you have special behavior, and make sure no branch falls through.
 
-    With Transparent Background on, back from a video fires `playbackEnded(…, "stopped")` while the picture goes on behind the menus (see below): handled as above, it returns to the menus over it. A player with a menu of its own gets `playerMenuRequested()` instead, and `playbackEnded` only once it leaves the video.
+    With Transparent Background on, back from a video fires `playbackEnded(…, "stopped")` while the picture goes on behind the menus (see below): handled as above, it returns to the menus over it. A player with a menu of its own gets `playerMenuRequested()` instead, and `playbackEnded` only once it leaves the video. Without it, back still ends the mpv process, and such a player gets `playbackEnded(…, "menu")`, with nothing playing under its menu (see [Its player's menu](#transparent-background-video-inside-the-app)).
 
 ### Per-device video decode profiles
 
@@ -281,11 +294,12 @@ With Settings → **Transparent Background** (`app.transparent_background`: how 
 - **`EmbeddedMpv`** (`src/player/EmbeddedMpv.h/.cpp`) is mpv as a library. libmpv is opened at run time with `QLibrary` (`libmpv.so.2`, or `libmpv.2.dylib` in Homebrew's prefixes), never linked, so the app runs where it is missing; `mpvController.embeddedAvailable()` says whether it loaded, and Settings offers the row only then. Its headers are optional at build time (`pkg-config mpv`, so `libmpv-dev` / Homebrew's mpv); without them `MP240_EMBEDDED_MPV` is left undefined and it is never available.
 - **The same session.** `sessionArgs()` builds the command line the subprocess gets, and `EmbeddedMpv::start()` turns it into options and a playlist: `--x=y` is option `x`, a repeated list option (`--script`, `--sub-file`, `--http-header-fields`) is gathered and set whole as a node array, so an item keeps any character, and an option this libmpv doesn't know is skipped with a warning where the mpv command line would refuse to start. On top: `vo=libmpv`, `idle=once` (it quits when its playlist has played out, as the process exits), `input-default-bindings=yes` (libmpv leaves them off). Decoding uses each profile's copy-back mode (Pi 4 `drm-copy,v4l2m2m-copy`, Pi 3 `v4l2m2m-copy`, Pi 5 `auto-copy-safe`, desktop Linux `vaapi-copy,nvdec-copy,no`, macOS `videotoolbox-copy`), the `mpv_video_args` override is not used, and libmpv reads no `mpv.conf`. The IPC socket, the OSC scripts and every signal work as for the process; there is no `DisplayHandoff`, since the app keeps the screen.
 - **The picture** comes from libmpv's software renderer (`MPV_RENDER_API_TYPE_SW`), on a thread of its own, at the pixel size of the **`VideoSurface`** item (`src/player/VideoSurface.h/.cpp`, `import MP240.Video`) that shows it: the same CPU colour conversion and scaling `--vo=drm` does on a Pi 4, into memory rather than a KMS buffer. It works on every scene graph backend. On a Pi 3 the CPU is short for it.
-- **Back** is mapped by the session's input.conf to `script-message 240mp-menu` (the OSC's own menu, while open, still takes it first). `detachToMenus()` then emits `playbackEnded(pos, dur, "stopped")`, unless its player has a menu of its own (below): the module saves where it got to, reports it stopped, and goes back, while the session goes on (`mpvController.background`). Its position is followed but no longer reported. `Main.qml` puts the `VideoSurface` over everything while a session plays full screen and under the views while `background` (`root.videoBehind`); the views draw no background of their own, so the picture is theirs, and the background colour lies between them at the setting's solidity (`root.backdropSolidity`). Full-screen dialogs keep their own background, and the title bar's logo gets a box of it.
+- **Back** is mapped by the session's input.conf to `script-message 240mp-menu` (the OSC's own menu, while open, still takes it first). `detachToMenus()` then emits `playbackEnded(pos, dur, "stopped")`, unless its player has a menu of its own (below): the module saves where it got to, reports it stopped, and goes back, while the session goes on (`mpvController.background`). Its position is followed but no longer reported. `Main.qml` puts the `VideoSurface` over everything while a session plays full screen and under the views while `background` (`root.videoBehind`); the views draw no background of their own, so the picture is theirs, and their ground (`OsdGround`, in OSD BACKGROUND's shape: all over, or only its window, the picture showing whole around it) lies between them at the setting's solidity (`root.backdropSolidity`). Full-screen dialogs keep their own ground, and the title bar's logo gets a box of it.
 - **The setting** is a slider in Settings: its line, `ON` or `OFF`, with the deck's tape bar (`OsdTapeBar`) under it from TRANSPARENT to SOLID, which ◄ ► move by 10 and save at once, so the menus over a video show each step. At SOLID none of the picture shows, but the video plays on, sound and all. Select turns the setting off (`Off`, the bar's lines left empty) and back on at the bar's value, as it does a module's toggle; ◄ ► turn it on too. The bar takes whole lines under its own, so the list scrolls by lines as before. Its first values, `On` and `Dim`, read as `0` and `60`. `100` was off until SOLID kept the video playing, and now reads as SOLID. `Main.qml`'s `backgroundOn()` and `MpvController::transparentBackground()` read the value the same way.
-- **Chosen again** (the same command line apart from `--start`), the session is not reloaded: `reattach()` brings it back full screen. A module resuming at the point it saved when back left it carries on where the picture is now; any other start (from the beginning, say) is sought.
-- **Back to it from the main menu.** Right after `loadAndPlay()` a player notes the session: `noteSession({ module, title, params })`, `params` being its own `navParams`. Every `loadAndPlay()` clears the note, so a player that notes nothing leaves none. While the session plays behind the menus, `backgroundNote` (`root.behindNote`) holds it, and the main menu (`views/ModuleList.qml`) leads with a row for it, `► <title>`, the cursor on it. Select opens the module with `{ resumePlayer: params }`, and its tree opens the player with them as if chosen from RECENTLY WATCHED. A player that finds its own video in `root.behindNote` skips its resume prompt and plays from the point back saved, so the same video chosen in the tree comes back at once too. YouTube (by `videoId`) and Local Files (by path, with the `plPos` and `shuffle` it was started with, so the command line matches) note their sessions. The other players don't yet, so their videos come back only by choosing them again.
+- **Chosen again**, the session is not reloaded: `takeBack(startSeconds)` brings it back full screen (`false` when there is none, and the player starts its video as it would any), as does a `loadAndPlay()` with the same command line apart from `--start`. A module resuming at the point it saved when back left it carries on where the picture is now; any other start (from the beginning, say) is sought.
+- **Back to it from the main menu.** Right after `loadAndPlay()` a player notes the session: `noteSession({ module, title, params })`, `params` being its own `navParams`. Every `loadAndPlay()` clears the note, so a player that notes nothing leaves none. While the session plays behind the menus, `backgroundNote` (`root.behindNote`) holds it, and the main menu (`views/ModuleList.qml`) leads with a row for it, `► <title>`, the cursor on it. Select opens the module with `{ resumePlayer: params }`, and its tree opens the player with them as if chosen from RECENTLY WATCHED. A player that finds its own video in `root.behindNote` skips its resume prompt and plays from the point back saved, so the same video chosen in the tree comes back at once too. YouTube (by `videoId`) and Local Files (by path, with the `plPos` and `shuffle` it was started with, so the command line matches) note their sessions; Playlists notes what it was started with and takes the session back outright (`takeBack`). The other players don't yet, so their videos come back only by choosing them again.
 - **Its player's menu.** A player whose note says `menu: true` keeps the session when back is pressed: `detachToMenus()` emits `playerMenuRequested()` instead of `playbackEnded`, and the player opens its menu over the picture (`PlayerMenu`, see Components), its position still reported. Back from the menu calls `closePlayerMenu()`, and the picture is full screen again. A setting changed there is saved at once; the player puts what it can on the session as it plays with `setVideoProperty(name, value)` (`speed`, `loop-playlist`, a Scaling's `keepaspect` and `panscan`), and reloads it where it is for the rest as the menu closes. **Browse** calls `leavePlayerMenu()`: `playbackEnded(…, "stopped")` follows, as from back without a menu, and the player returns to its module's menus over the picture. **Close Video** is `stop()`, and the player, at its `playbackEnded`, leaves the module for the main menu (`moduleRoot.goBack()`). If something else takes the screen while the menu is open, the player gets `playbackEnded(…, "stopped")` too. YouTube and Local Files have one.
+- **Its player's menu without Transparent Background.** An mpv process has the screen while it plays, so nothing of the app's can lie over the picture. The process's input.conf maps back to `script-message 240mp-menu` too, and for a session whose note says `menu: true`, `backFromProcess()` ends the process. Once the screen is the app's again (after `DisplayHandoff`'s release), `playbackEnded(…, "menu")` comes, and `videoActive` is false: the player saves where it got to, opens its menu on the app's own background, and as it closes starts the video again from there, with the settings as they are now, so every change in the menu applies then. Nothing plays under the menu, so **Browse** and **Close Video** are the player's own: it goes back to its module's menus, or leaves the module, itself (it calls `leavePlayerMenu()` and `stop()` only while `videoActive`). Any other player's back quits the process, as it always has. A video that ends by itself while back is on its way ends as usual.
 - **It ends** when its playlist plays out, with play/pause on the main menu (`stopBackground()`, `[SPACE]:STOP` in its footer), with any other playback, when something else takes the screen (`DisplayHandoff::handingOff`, emitted at every `acquire()`: a takeover script, a web player) and when the setting is turned off. Behind the menus no `playbackEnded` follows: its module took it as stopped already (under its player's menu, it does). A server told the stream stopped (a Plex, Jellyfin or Emby transcode) may end it sooner.
 
 ### Raspberry Pi headless hand-off (EGLFS)
@@ -298,7 +312,7 @@ The order is load-bearing and was established against real Pi hardware — read 
 - **`releaseDeferred(owner, cb)`**: after 200 ms (>3 VSync at 60 Hz, so the child's last pending KMS commit can clear), `drmSetMaster` → restore CRTC → switch back, then run `cb`. The restore uses **legacy** `drmModeSetCrtc`, not an atomic commit: the child's atomic cleanup leaves `CRTC_ACTIVE=0` and EGLFS would get `EINVAL` on its first page flip.
 - **`releaseNow(owner)`**: synchronous, for shutdown; `MpvController`'s destructor calls it so quitting mid-playback no longer leaves the Pi on a blank VT.
 
-The `owner` token means two subsystems can never both believe they hold the screen — `acquire()` refuses if someone else holds it, and `isHeldBy()` is the re-entrancy guard for relaunching a child without releasing first. All of it is Linux-only in effect (`isHeadless()` is false on macOS and whenever a compositor is present), where the hand-off is just a fullscreen window swap.
+The `owner` token means two subsystems can never both believe they hold the screen — `acquire()` refuses if someone else holds it, and `isHeldBy()` is the re-entrancy guard for relaunching a child without releasing first. Its `held` property (`heldChanged`) is true from a successful `acquire()` until the restore; it is the context property **`displayHandoff`**, read in views as `root.screenHandedOff` (Main.qml), so that an animation can rest while nothing it draws reaches the screen (LoadingScreen does). All of it is Linux-only in effect (`isHeadless()` is false on macOS and whenever a compositor is present), where the hand-off is just a fullscreen window swap.
 
 Two consequences that are easy to get wrong, both of them Pi-only and both invisible on any other target:
 
@@ -309,7 +323,7 @@ Two consequences that are easy to get wrong, both of them Pi-only and both invis
 
   Note that `VT_OPENQRY`'s notion of "in use" is the *virtual console's* tty count, not "some process has `/dev/ttyN` open". `fuser -v /dev/tty1` comes back empty under the service and yet VT 1 is in use, because the process pinning it opened `/dev/tty0`. `fuser` on the numbered node is the wrong instrument here; read `/sys/class/tty/tty0/active` instead.
 
-On a dev box neither of these bites the same way, because `autovt@` is unmasked there: a getty spawns on the VT we switch to, repaints the console for us, and holds that VT open so `VT_OPENQRY` keeps moving up. The login prompt you see mid-hand-off on a dev Pi is that getty, not anything 240-MP drew.
+On a dev box neither of these bites the same way, because `autovt@` is unmasked there: a getty spawns on the VT we switch to, repaints the console for us, and holds that VT open so `VT_OPENQRY` keeps moving up. The login prompt you see mid-hand-off on a dev Pi is that getty, not anything OSD/OS drew.
 
 ### Adding a different hand-off target
 
@@ -317,11 +331,11 @@ The longer-term vision is to hand off to *other* purpose-built tools (e.g. Retro
 
 The **scripts module** (`modules/scripts/`, `src/modules/scripts/`) is the second worked example, and generalises the idea to arbitrary user programs. Its `ScriptLauncher` has things that `MpvController` doesn't need:
 
-- **Two run modes per target.** `console` keeps 240-MP on screen and streams the child's merged output into a QML view; `takeover` gives the child the display. The split is per-target. On macOS / desktop Linux / SteamOS a takeover needs nothing at all (the child's window covers ours), and only headless Linux needs the `DisplayHandoff` bracket.
+- **Two run modes per target.** `console` keeps OSD/OS on screen and streams the child's merged output into a QML view; `takeover` gives the child the display. The split is per-target. On macOS / desktop Linux / SteamOS a takeover needs nothing at all (the child's window covers ours), and only headless Linux needs the `DisplayHandoff` bracket.
 - **Nothing is handed over before a spawn that might still be refused.** All validation happens first, `QProcess::errorOccurred(FailedToStart)` is handled explicitly (`finished` is *never* emitted in that case), and a started-watchdog covers "started but silent". 
 - **`setsid()` in a child-process modifier**, so the child leads its own process group: `killpg` reaches everything it spawned, and an empty group is how you know the screen is free again. A launcher script that backgrounds its real work and exits immediately would otherwise have the display taken back out from under its children.
 - **Report only after the display is restored.** The caller pops its view on the "finished" signal; doing that while the framebuffer still belongs to the child draws into memory you don't own.
-- **No stop key during a takeover.** A takeover child should own input for it's whole run, and on EGLFS every keystroke is double-delivered (Qt's libinput and the child both read the same evdev devices) so any tap-to-stop key would also fire inside inside a launched takeover application (For example ESC/Back is used by RetroArch's to navigate its menus just like its used inside 240-MP so pressing that key while RA is open would SIGTERM the session mid-run). With this in mind, the runner view is set up to swallow Back events while a takeover is busy and offers no direct stop key. What covers failures instead: the started-watchdog and `FailedToStart` handling, the downgrade-to-console refusal when display state can't be saved, and `~ScriptLauncher`'s SIGTERM → SIGKILL + `releaseNow()` at app quit. Console mode and downgraded runs (where 240-MP kept the screen) still have the Back-to-stop key with `requestStop()`'s SIGTERM → SIGKILL escalation.
+- **No stop key during a takeover.** A takeover child should own input for it's whole run, and on EGLFS every keystroke is double-delivered (Qt's libinput and the child both read the same evdev devices) so any tap-to-stop key would also fire inside inside a launched takeover application (For example ESC/Back is used by RetroArch's to navigate its menus just like its used inside OSD/OS so pressing that key while RA is open would SIGTERM the session mid-run). With this in mind, the runner view is set up to swallow Back events while a takeover is busy and offers no direct stop key. What covers failures instead: the started-watchdog and `FailedToStart` handling, the downgrade-to-console refusal when display state can't be saved, and `~ScriptLauncher`'s SIGTERM → SIGKILL + `releaseNow()` at app quit. Console mode and downgraded runs (where OSD/OS kept the screen) still have the Back-to-stop key with `requestStop()`'s SIGTERM → SIGKILL escalation.
 
 The **web player modules**, Netflix and Prime Video (`modules/netflix/`, `modules/prime_video/`, `src/modules/web_player/`), reuse `ScriptLauncher` rather than growing a third launcher. `WebPlayerBackend` runs the bundled `scripts/web-player.sh <service> <url>` as a takeover through its own instance, named after the service for `DisplayHandoff` with `setHandoffOwner()`; `main.cpp` makes one per service. The script opens the service's web player in Chromium (`--kiosk`, a profile per service), under the `cage` Wayland kiosk compositor when there is no desktop; cage opens the display and input devices itself (libseat's `noop` backend), since the app holds no login seat to share. Each module has two views, both shared components: `WebPlayerBrowse` lists the service's catalogue in a `TreeBrowser`, and `WebPlayerLaunch` opens what was chosen straight away and waits for the browser to close. Only a service's first launch in a run waits 1.2 s first, to show how to come back, since a headless Pi's screen is dark while the browser starts. Unlike a script takeover it does have a way out: holding Back for two seconds closes the browser. A browser has no use for a held Back, so the double-delivered key can't misfire the way a tap would in RetroArch. Only Escape and Qt's Back key count (a gamepad's Back arrives as Escape), not Backspace, which the browser's text fields need, and the view leaves once Back is let go, so its auto-repeat can't carry on back through the menus. While the browser is open the view focuses a hidden `TextInput`, so `InputManager` treats the keyboard as typing: Right Shift stays Shift instead of standing in for Back (held for an "@", it closed the browser), and remote remaps don't fire. An open browser also counts as activity, so no screen saver comes up behind it.
 
@@ -361,6 +375,22 @@ An NFC card's tag file can point at content another module owns, rather than at 
 - **Collections and playlists are the exception to the guid rule.** They are server-local, user-created objects with no metadata-agent guid to be portable with, so their cards carry the ratingKey (`plex://collection/<ratingKey>`) and `resolve_card_queue` fetches `/library/collections/<key>/items` or `/playlists/<key>/items` in one request. Such a card breaks only if the set is deleted and recreated. The rows go through `formatItem` + `flattenSeasons` exactly as the in-app loaders do, so `expand_queue` fans shows out identically either way.
 - Shuffle keeps rolling via a **shuffle bag** in `PlexBackend` (`m_shuffleBag`): a shuffled permutation played to exhaustion then reshuffled, rather than independent random draws, which clump badly over the hours a jukebox card runs. `resolve_card` reports the show/season as `cardScope`; the Player's EOF branch calls `load_random_episode(scope)` instead of `load_next_episode(ratingKey)`. Both emit `nextEpisodeReady`, so the advance itself is shared. Continuation respects the module's `autoplay_next_episode` setting.
 
+## Playlists (videos from several modules)
+
+The Playlists module (`modules/playlists`, `PlaylistsBackend`) keeps lists of videos that other modules own, and plays a list as one. It is the one module that reaches into others: `main.cpp` hands its backend Local Files', YouTube's, and the media servers' as a map of module id to **`MediaServer`** (`src/modules/playlists/MediaServer.h`: `signedIn()`, `downloadRequest(itemId)`, `streamUrl(itemId)`, `browse(parentId, context, done)`), which `JellyfinBackend` and `EmbyBackend` implement with their own requests, item format and TLS allowances (`src/util/EmbyApi.h` builds the URLs both share); the module never minds which server it has.
+
+**Two kinds.** An **online** playlist plays each video from where it lives: a Local Files path, a YouTube watch URL that mpv's ytdl hook opens with the YouTube module's ways (`YouTubeBackend::playbackArgs`, its ADVANCED settings, yt-dlp's path), a Jellyfin or Emby stream (`/Videos/{id}/stream?static=true`, the token in the query, so in a list mixing sources it goes to that server and nowhere else). An **offline** playlist plays only what is on the device: Local Files' files as they are, and for everything else a copy, downloaded once.
+
+**Storage.** `<data>/playlists.json`: the playlists (`id`, `name`, `kind`, `order`, `items`, and `resume`, where it stopped) and `downloads`, by key. An item's **key** names the video whatever list it is on: `local:<path>`, `youtube:<videoId>`, `jellyfin:<itemId>`, `emby:<itemId>`. `addEntry(playlistId, moduleId, entry)` turns an entry as its module has it (a tree's entry, a server's item) into an item (`itemFor`), and refuses a second of the same key on a list.
+
+**Downloads.** Every offline list's videos share one copy per key, in the download folder (the module's `download_folder` setting, else a `Playlists` folder in Local Files' media folder: on the OSD/OS image, the card's 240-MP partition, mounted writable for it), under `YouTube/`, `Jellyfin/`, `Emby/`. One runs at a time: queued as a video goes on an offline list, and 15 s after start for any still missing. `enqueue()` never queues a key already downloaded, so a video on several lists is fetched once; `dropUnreferenced()` deletes a copy as soon as no offline list has it (an item removed, a list deleted). YouTube's run yt-dlp (`YouTubeBackend::downloadArgs(canMerge)`: the module's format and the account's cookies; `--merge-output-format mp4` with ffmpeg, the best progressive file without; `--windows-filenames` for exFAT; `--print after_move:filepath` names the file), in a process group of its own, so a cancelled download's ffmpeg ends with it (an interrupt, then a kill two seconds later; the app never waits on it). Jellyfin's and Emby's fetch the server's `downloadRequest()` (`/Items/{id}/Download`, the original file, which a server allows a user or not: 401/403 is `not allowed`, kept until **Retry Downloads**) through a **`ServerDownload`** (`src/modules/playlists/ServerDownload.h/.cpp`): the reply read and the file written on a thread of its own, so a server faster than the card never holds the app's thread, and a transfer that stops moving for half a minute fails rather than holding the slot. A finished file is `fsync`ed, with its folder, off the app's thread (the item still downloading, at 100%, until it is) before it counts as done; a copy deleted has its folder flushed the same way. A download that fails says why (the page's help line) and keeps what it got, for yt-dlp to carry on from on a retry; an unwritable folder fails it at once, naming the folder (a card from before the partition was writable). File names come from `safeFileName()` (`src/util/FileNames.h`, exFAT's rules, which the NFC module's tag files follow too).
+
+**Playing.** `prepare(playlistId, fromItemId)` writes what plays into an m3u in `<data>/playlists/`, a new file each time (owner-only: it may hold a token) and the last one only, in the order it plays: a shuffled list is shuffled there rather than by mpv, so a place in the m3u always names a video (`savePosition` keeps the item, not the place), and **Play from Here** puts that video first. What can't play (a file gone, a server signed out of, a download not done) is left out. The player hands the m3u to `loadAndPlay` with its own SUBTITLES and LOOP PLAYBACK; an in-order list asks to resume where it stopped, and forgets that once it has played out (`eof`). It notes its session (`noteSession`, `menu: true`) with what `prepare()` wrote, so chosen again from the main menu while it plays behind the menus it takes the session back (`takeBack`); a list played afresh has a new m3u, so MpvController never takes it for the one behind.
+
+**Adding videos.** From inside the module, ADD VIDEOS is a `TreeBrowser` over the sources, each browsed as its own module browses it: Local Files' and YouTube's trees come from their backends' `entries(path)` (the one place each tree's folders are built: RECENTLY WATCHED, FAVORITES and SEARCH ahead of the media folder, YouTube's home with its lists and without Shorts when DISPLAY SHORTS is off), which their own `Items.qml` use too; Jellyfin's and Emby's from `serverListing(moduleId, parentId)`, the server's `browse()` through `MediaServer`, so it never shares their views' signals. `addEntry` says whether the video is now to be downloaded (`downloading`), for the wording. From the modules, a `PlaylistAdder`: EntryOptions' ADD TO PLAYLIST, and Right on PLAY on Jellyfin's and Emby's item pages, which hand it the item as the backend formats it.
+
+**Another module** joins with a key prefix (`keyPrefix`), its entry's id and title (`itemFor`), what plays (`playableUrl`) and, to go on offline lists, a download (`startNext`); another media server joins by implementing `MediaServer` and being handed to the backend in `main.cpp`. Netflix and Prime Video can't: they play in the service's own player.
+
 ## Input (InputManager)
 
 All input arrives in QML as **ordinary key events** — views bind `Keys.onPressed` / `Keys.onUpPressed` / etc. and never know which physical device produced the event. Keyboards and keyboard-emulating USB remotes deliver real key events natively; **USB game controllers** are translated by `InputManager` (`src/input/InputManager.h/.cpp`, exposed to QML as the context property **`inputManager`**).
@@ -396,13 +426,19 @@ Qt's own pointer stays hidden (`main.cpp`): on EGLFS it is a hardware cursor, an
 Settings → **Bluetooth** (`views/Bluetooth.qml`) pairs a Bluetooth keyboard, gamepad or remote. It is backed by `BluetoothManager` (`src/bluetooth/`, the context property **`bluetoothManager`**), which talks to BlueZ, the Linux Bluetooth daemon, over D-Bus (`org.bluez` on the system bus).
 
 - **Optional, Linux only.** It is built when CMake finds Qt D-Bus (`qt6-base-dev` has it), with `MP240_BLUETOOTH` defined. On macOS, or without Qt D-Bus, `supported` is false and Settings leaves the row out.
-- **BlueZ is only called once it is on the bus.** A `QDBusServiceWatcher` follows `org.bluez` coming and going, and `GetManagedObjects` loads the adapter (the first one, `hci0` on a Pi) and its devices. `InterfacesAdded`/`InterfacesRemoved`/`PropertiesChanged` keep them up to date. On 240-MP OS `bluetooth.service` starts after the app is on screen (see [os/README.md](os/README.md)), and a call to `org.bluez` before then would start it early through D-Bus activation. A change to a property the list doesn't show (`RSSI`, with every answer while searching) doesn't touch it.
+- **BlueZ is only called once it is on the bus.** A `QDBusServiceWatcher` follows `org.bluez` coming and going, and `GetManagedObjects` loads the adapter (the first one, `hci0` on a Pi) and its devices. `InterfacesAdded`/`InterfacesRemoved`/`PropertiesChanged` keep them up to date. On OSD/OS image `bluetooth.service` starts after the app is on screen (see [os/README.md](os/README.md)), and a call to `org.bluez` before then would start it early through D-Bus activation. A change to a property the list doesn't show (`RSSI`, with every answer while searching) doesn't touch it.
 - **Search** is `StartDiscovery` for a minute (`startSearch()`/`stopSearch()`, `searching`). `devices` lists the paired devices by name, then the devices found in the order they were found. A device that hasn't said its name is left out until it is paired. `kind` comes from the Class of Device (a keyboard with a touchpad is a "combo", which BlueZ has no icon for), else from BlueZ's `Icon`.
 - **Pairing** (`pair(path)`) stops the search, calls `Device1.Pair` (two minutes, enough to type a code), then sets `Trusted` so the device reconnects by itself after a restart, and calls `Connect`. `connectDevice`, `disconnectDevice` and `forget` (`Adapter1.RemoveDevice`) work on a paired device. `busy` marks the row while one of these runs, and `message` says how it went.
 - **The agent.** `BluetoothAgent` (`org.bluez.Agent1`) is exported at `/com/240mp/BluetoothAgent`, then registered as BlueZ's default agent with the `DisplayYesNo` capability. That covers a keyboard (BlueZ shows a passkey to type on it: `DisplayPasskey`, called again with the digits typed so far; or an older keyboard's PIN, `DisplayPinCode`/`RequestPinCode`), a phone (the same code on both: `RequestConfirmation`, answered with `answerPrompt`), and a pad or mouse with nothing to show (no question). What is to be shown is in `prompt` (`{ kind, name, code, entered }`), drawn by `views/BluetoothPrompt.qml` over the page; back cancels the pairing (`cancelPairing()`). A pairing nobody started here (`RequestAuthorization`) is refused. `AuthorizeService` lets a paired device in.
 - **Leaving the page** stops a search and cancels a pairing, since nothing would show the code any more.
-- **Turning it on** (`setPowered`, and SEARCH while off) is tried once more 2 s later when BlueZ refuses, as bluetoothd may still be setting the adapter up. A second refusal sets `powerFailed`, and the page then offers DETAILS. `collectDetails()` puts into `details` the adapter's state as BlueZ has it, rfkill's switches (sysfs) and the system log's last Bluetooth lines (`journalctl`, which the app's user reads as a member of `adm`), so a photo of the screen shows what went wrong without a terminal. On 240-MP OS the Pi's own adapter needs the image's `bthelper` fix to turn on at all (see [os/README.md](os/README.md)).
+- **Turning it on** (`setPowered`, and SEARCH while off) is tried once more 2 s later when BlueZ refuses, as bluetoothd may still be setting the adapter up. A second refusal sets `powerFailed`, and the page then offers DETAILS. An adapter that rfkill blocks (its switch in `/sys/class/rfkill`, named after it) isn't tried again: BlueZ only answers "Failed" for it, so `message` says rfkill blocks it. `collectDetails()` puts into `details` the adapter's state as BlueZ has it, rfkill's switches and the system log's last Bluetooth lines (`journalctl`, which the app's user reads as a member of `adm`), each line once with how many times it came, so a photo of the screen shows what went wrong without a terminal. On OSD/OS image the image unblocks Bluetooth as bluetoothd starts, which the Pi's own adapter needs to turn on at all (see [os/README.md](os/README.md)).
 - **Permissions.** The app talks to BlueZ as the user it runs as. `install.sh` and the OS image add that user to the `bluetooth` group, which BlueZ's D-Bus policy lets in.
+
+## About (views/About.qml)
+
+Settings → **About** says what OSD/OS is, who makes it, what it is made of and under which licence, as menu lines (`MenuList`) whose `HelpLine` carries each one's detail: the version, the developer, 240-MP that it is a modified version of, the licence, the source, the fonts and the libraries with their licences. Its help line is set `always`, so it stays when Settings' Help Line is off: these lines are the page.
+
+Behind the LICENSE line is the licence itself, below the title bar in place of the lines: the notice the GNU GPL asks an interactive program to show (whose copyright it is, that it comes with no warranty, that it may be passed on under the licence, and where the licence is), then the licence's text, a page at a time with ▲ ▼. The text is `LICENSE` next to the app, which CMake installs with `Main.qml` into every build (the GPL asks that every copy carry it), read through `appCore.licenseText()`, which puts each paragraph on one line for the view to wrap. The developer's name and the year are properties at the top of the view.
 
 ## C++ Backend Patterns
 
@@ -416,7 +452,7 @@ Please review `PlexBackend` as a reference implementation.
 - For dynamic settings dropdowns, emit `dynamicOptionsReady(key, [{id, label}])` — auto-connected; `AppCore` re-emits with the module ID prepended.
 - For auth-gated modules, emit `authStateChanged()` on sign-in/out — auto-connected and re-emitted as `moduleAuthStateChanged(moduleId)`.
 - To react to your own settings changing, add a slot `onSettingChanged(moduleId, key, value)` — auto-connected to `moduleSettingChanged`.
-- A backend resolves its own configured paths in its constructor — e.g. `LocalFilesBackend` / `AmbientModeBackend` read `media_directory` from `config.json` (defaulting to `dataRoot/media` / `dataRoot/ambient`; Local Files takes `MP240_MEDIA_DIR` first when the environment sets it, as 240-MP OS does for the card's film partition). `main.cpp` does not touch module paths.
+- A backend resolves its own configured paths in its constructor — e.g. `LocalFilesBackend` / `AmbientModeBackend` read `media_directory` from `config.json` (defaulting to `dataRoot/media` / `dataRoot/ambient`; Local Files takes `MP240_MEDIA_DIR` first when the environment sets it, as OSD/OS image does for the card's film partition). `main.cpp` does not touch module paths.
 
 ## QML View Patterns
 
@@ -616,9 +652,31 @@ Shared QML components live in `views/Components/` (registered via `qmldir`, impo
 
 The module's logo stands at its left end, in the theme's text colour, a fifth taller than the bar so it stands out of it above and below, an art pixel clear of it on each side. Then comes a solid bar in the same colour with the title and subtitle in the background colour, the way a deck's on-screen menu starts. The logo is drawn by `OsdIconProvider` (`src/util/`, `image://osdicon/<rrggbb>/<url>`): trimmed to its shape and drawn from the original at the bar's size (a vector is rendered at that height, not scaled from a bitmap), in one colour with its own smooth edges. It does not use a shader effect, which the software scene graph draws as nothing.
 
+### PromptScreen (`views/Components/PromptScreen.qml`)
+
+A question or a notice, full screen, in the window every view has: the question in the title bar (an `AppBar`) behind a **?**, or a notice's (an error, a code to type, a button to press) behind a **!**; the hint line in its fixed place at the foot; and between them, centred both ways in the space the bars leave, what it is about and the answers, as the main menu's rows. However few lines it has, the bar and the hint line stay where every view has them.
+
+| Property | Type | Description |
+|---|---|---|
+| `title` | `string` | The question (`"Resume playback?"`), or what happened (`"Playback failed"`) |
+| `kind` | `string` | `"question"` (the default: `assets/images/question.svg`) or `"notice"` (`notice.svg`) |
+| `message` | `string` | Under the bar: what it is about (the video, the device), or a notice's details. Wraps |
+| `choices` | `var` | The answers: labels, or maps with a `label` (`{ label, action }`) |
+| `currentIndex` | `int` | The answer under the cursor |
+| `maxChoices` | `int` | More answers than this (5) show a window of them that follows the cursor (a `ListView` with `ScrollMarks`), ▲ / ▼ while some are hidden above or below it (`PlaylistAdder`'s playlists) |
+| `hint` | `string` | The hint line; unless set, back, with navigate and select while there are answers |
+
+It only draws: the host keeps its keys, its cursor and its visibility, so a dialog becomes one by swapping its drawing for it. Items declared inside it go between the message and the answers, centring themselves across its width (the pairing code in `BluetoothPrompt`). Every question and notice in the app is one: the players' resume prompts and error screens, Settings' quit, the update's install, the script's run, a new button for Controls, Bluetooth pairing, and `ChoiceOverlay` (so `EntryOptions` and the Plex PLAY chooser) too.
+
+### OsdGround (`views/Components/OsdGround.qml`)
+
+What the OSD is drawn on, as Settings → **OSD Background** (`app.osd_background`, `root.osdBackground`) has it: **Full** (the default), the colour scheme's background all over; **Window**, a window of it behind what a view shows, framed in the scheme's colour, black around it; **Off**, none, black (with the colours above). The window (`root.osdWindow`) is the area the views lay their content out in (`root.contentBox`: the title bar's logo to the hint bar, 74 to 566 across and 57 to 430 down at 640×480), with a margin (`root.osdMargin`, 12) on every side, on art pixels.
+
+`Main.qml` lays one under every view (`z: -1`, over the window's own colour, black but for Full). Over a video behind the menus it is as solid as Transparent Background says, and in Window only the window is drawn (`surround: false`), the picture showing whole around it. A layer that hides the whole view under it lays its own (`PromptScreen`, the `OnScreenKeyboard` and `InfoPanel` below the title bar, `NfcCardWriter`, Bluetooth's DETAILS), never a `Rectangle` of `root.surfaceColor`, so the window goes on under it just as it was: it works in screen coordinates, the window placed where it lies on the screen whatever part of it the ground covers. `LoadingScreen` and the boot screen keep their own full-screen ground: the tape's picture, not the OSD's.
+
 ### VCR OSD elements
 
-The UI keeps to two colours, like a deck's on-screen display: the theme's `primary` on its `surface`. `Main.qml` maps `secondaryColor`, `tertiaryColor` and `accentColor` to `primaryColor`, so existing views follow without change. Within that:
+The UI keeps to two colours, like a deck's on-screen display: the theme's `primary` on its `surface`. `Main.qml` maps `secondaryColor`, `tertiaryColor` and `accentColor` to `primaryColor`, so existing views follow without change. Settings → **OSD Background** Off makes the two the theme's lighter colour and black (`surfaceColor` black, `primaryColor` whichever of `primary` and `surface` is lighter, so a theme with dark text, T-120, doesn't vanish), and every view follows that too. Within that:
 
 - a selection is a solid box with its text in `surfaceColor`;
 - anything dimmed is dithered with `Dither` instead of given a lower opacity;
@@ -628,10 +686,11 @@ Pixel-drawn pieces of a deck's on-screen menu, built on `root.px` (one pixel of 
 
 | Component | What it draws |
 |---|---|
-| `HintBar` | The footer hint line on a solid bar. It is a `Text`, so a view sets `text` and anchors exactly as on one. It owns its font size, steps it down only as far as a long hint needs to fit the safe width. Every view's footer and every dialog's hint line uses it. |
-| `MenuRow` | A settings line the way a camcorder's menu lays one out, `DISPLAY······ON`: `label`, a dot per character cell, then `value` against the line's right end (none for a submenu), with `selected` as a solid bar. With `heading` it heads a group instead: the label and a rule to the line's end (`MODULES ─────`). Settings, every module's settings and Controls use it. |
+| `HintBar` | The footer hint line on a solid bar. It is a `Text`, so a view sets `text` and anchors exactly as on one. It owns its font size, steps it down only as far as a long hint needs to fit the safe width. Every view's footer and every dialog's hint line uses it, always in the same place: anchored to the bottom, `bottomMargin: root.sh * 0.1041667`, `leftMargin: root.sw * 0.125`, never under a dialog's last line (a `PromptScreen` does this for a dialog). Settings → **Hint Bar** (`app.hint_bar`, `"On"` when unset, or `"Off"`; `root.hintBar`) hides every one at once, by the bar's `opacity`, so a view's own `visible` binding holds and the window keeps its shape. |
+| `MenuRow` | A settings line the way a camcorder's menu lays one out, `DISPLAY······ON`: `label`, a dot per character cell, then `value` against the line's right end (none for a submenu), with `selected` as a solid bar. With `heading` it heads a group instead: the label and a rule to the line's end (`MODULES ─────`). A value too long for the line is cut short; with `keepValue` the label is instead, two dots before a value that always shows whole (a playlist's videos, `TEEN TITANS GO!… ··READY`). Settings, every module's settings, Controls and the Playlists module use it. |
 | `ScrollMarks` | The ▲ above a list while lines are hidden above it and the ▼ below while lines are hidden below. Laid over a list (`anchors.fill` and `list`); the main menu and the settings menus use it. |
-| `HelpLine` | The help line under a settings menu: the focused line's description in an outlined box, on one line. A description too long for the box scrolls through it like a ticker; one written as several lines reads as one, joined with `•`. |
+| `MenuList` | A view's menu of `MenuRow`s in the place every view's list has (under the title bar, one row short of the help line), with `ScrollMarks` and a cursor (`step(delta)`, Up and Down) that steps over section headings (rows whose `type` is `"section"`), round the ends. The host gives it `model` (a list) and `delegate`, and keys it; `currentIndex`, `count` and `contentY` are the list's. The Playlists module's pages use it. |
+| `HelpLine` | The help line under a settings menu: the focused line's description in an outlined box, on one line. A description too long for the box scrolls through it like a ticker; one written as several lines reads as one, joined with `•`. Settings → **Help Line** (`app.help_line`, `"On"` when unset, or `"Off"`; `root.helpLine`) hides every one at once, by its `opacity`, so a host's own `visible` binding holds and its menu keeps its shape; one whose lines are the page itself sets `always` (About's). |
 | `Dither` | A checkerboard of background-colour art pixels laid over an area: the two-colour way to dim it. |
 | `PixelIcon` | A symbol from a small bitmap: `play`, `left`, `up`, `down`, `ff`, `rew`, `pause`, `stop`, `rec`, `eject`, plus the `ok` key and `tape` badges. |
 | `OsdTicks` | The segment bar, `||||----`: a tick per filled step and a dash per empty one. The boot screen's progress bar. |
@@ -677,23 +736,30 @@ Typing with a remote: a grid of letters and digits under the line being typed, t
 
 ### ChoiceOverlay (`views/Components/ChoiceOverlay.qml`)
 
-Full-screen keyboard-driven chooser: a prompt, the thing being acted on, and a short list of options. Use it whenever a single button has to ask "which way?" — the Plex show/season PLAY button asks next-episode vs shuffle through it.
+Full-screen keyboard-driven chooser: a prompt, the thing being acted on, and a short list of options, drawn as a `PromptScreen` (the prompt in the title bar, the thing under it). Use it whenever a single button has to ask "which way?" — the Plex show/season PLAY button asks next-episode vs shuffle through it.
 
 | Property | Type | Description |
 |---|---|---|
 | `promptText` | `string` | The question, e.g. `"What would you like to play?"` |
 | `subtitleText` | `string` | What is being acted on — the show or season name (hidden when empty) |
 | `choices` | `var` | List of `{ label, action }` maps |
+| `promptKind` | `string` | The `PromptScreen`'s kind: `"question"` (the default) or `"notice"` |
+| `hintText` | `string` | The hint line; the `PromptScreen`'s own unless set |
+| `closeOnSelect` | `bool` | Whether select closes it before acting (the default), or leaves it to the host to close (`close()`) once it is done, as one that shows what became of the choice does |
 
-Call `open()` to show it. It emits `activated(action)` when the user picks one and `closed()` once it hides (bind `onClosed: <host>.forceActiveFocus()`); Up/Down wrap, Esc/Back cancels. As with NfcCardWriter, **behaviour keys off `action`, never the label text** — labels are free to change with state (`"Resume Next Episode"` vs `"Play Next Episode"`) without touching the handler.
+Call `open()` to show it. It emits `activated(action)` when the user picks one and `closed()` once it hides (bind `onClosed: <host>.forceActiveFocus()`); Up/Down wrap, Esc/Back cancels, and select with nothing to choose (a notice) closes it too. Its keys stop at it (Ctrl chords aside), so a host's Left and Right never reach the view under it. A host that acts on a choice before anything closes overrides `choose(action)` (`EntryOptions`, `PlaylistAdder`). As with NfcCardWriter, **behaviour keys off `action`, never the label text** — labels are free to change with state (`"Resume Next Episode"` vs `"Play Next Episode"`) without touching the handler. Settings' quit, the update's install and the Playlists module's delete ask through one.
 
 ### EntryOptions (`views/Components/EntryOptions.qml`)
 
-An entry's options, as a `ChoiceOverlay`: **Add to Favorites** or **Remove from Favorites** (the module's `favorites` list, `moduleId`), **Play at Startup** or **Don't Play at Startup** (see above), then whatever the host adds in `moreChoices` and acts on in its own `onActivated` (YouTube's **Save to Watch Later**). A tree view opens it with `offer(entry)` on Right on an entry (`optionsRequested`, from the tree or its `InfoPanel`), and refreshes its FAVORITES folder on `favoritesEdited()`.
+An entry's options, as a `ChoiceOverlay`: **Add to Favorites** or **Remove from Favorites** (the module's `favorites` list, `moduleId`), **Play at Startup** or **Don't Play at Startup** (see above), **Add to Playlist** where the Playlists module takes the module's videos (a `PlaylistAdder` of its own, over the options, which stay under it and close with it: one `closed()` to the host, as it closes), then whatever the host adds in `moreChoices` and acts on in its own `onActivated` (YouTube's **Save to Watch Later**). A tree view opens it with `offer(entry)` on Right on an entry (`optionsRequested`, from the tree or its `InfoPanel`), and refreshes its FAVORITES folder on `favoritesEdited()`.
+
+### PlaylistAdder (`views/Components/PlaylistAdder.qml`)
+
+Putting a video on one of the app's playlists, as a `ChoiceOverlay` that stays open for the outcome (`closeOnSelect: false`): **Add to playlist?**, the video under it, then every playlist (an offline one marked so), **New Online Playlist** and **New Offline Playlist** (named on an `OnScreenKeyboard` loaded only while the window is up). What became of the video (added, and whether it is now to be downloaded; already on it; can't go on one) shows in the same window as a notice, until Back or Select closes it (`closed()`). `available(moduleId)` says whether to offer it at all (the Playlists module on, and taking the module's videos); `offer(moduleId, entry)` opens it, the entry being the video as its module has it (see [Playlists](#playlists-videos-from-several-modules)). `EntryOptions` carries one; Jellyfin's and Emby's item pages open theirs with Right on PLAY.
 
 ### PlayerMenu (`views/Components/PlayerMenu.qml`)
 
-A video's own menu, over the picture while it plays on (Transparent Background, see [Its player's menu](#transparent-background-video-inside-the-app)). Its player opens it at `mpvController`'s `playerMenuRequested()`.
+A video's own menu, over the picture while it plays on (Transparent Background, see [Its player's menu](#transparent-background-video-inside-the-app)), or without it in the picture's place, the video starting again where it was as it closes. Its player opens it at `mpvController`'s `playerMenuRequested()`, or at `playbackEnded(…, "menu")`.
 
 | Property | Type | Description |
 |---|---|---|
@@ -702,6 +768,32 @@ A video's own menu, over the picture while it plays on (Transparent Background, 
 | `actions` | `var` | The host's own lines after them: `{ label, action }` |
 
 ◄ ► change a setting and save it at once, as the module's settings do, then emit `settingChanged(key, value)` for the host to put on the video. Select on a line of `actions`, or on **Close Video** (always last, `action: "close"`), emits `activated(action)`. Back emits `closed()`. `open(title)` shows it with the cursor on the first line; `refresh()` rebuilds the lines where they are, for labels that change with state (`Add to Favorites` / `Remove from Favorites`). `applyScaling(value)` puts a Scaling on the video as it plays, `Default` being Settings'. A key it has no use for goes on to its player, so play/pause still pauses the video under it. As with ChoiceOverlay, behaviour keys off `action`, never the label.
+
+### LoadingScreen (`views/Components/LoadingScreen.qml`)
+
+What a player shows while its video starts, in place of a black screen: a VCR's screen as a tape loads, after a dubbing deck's on-screen display. The theme's background, in a tape's noise. Its corners:
+
+- top left: TAPE A, PLAY, and where the video is (while it loads, the point it starts from);
+- top middle: TV, the deck's output;
+- top right: TAPE B, LOADING blinking, and how long the video is once that is known, the seconds it has been up until then;
+- bottom left: SLP ▶ and the source;
+- bottom right: SLP ◀ and DEST.
+
+The tracking band jitters across the top and, every few seconds, rolls down the picture, breaking up the letters it passes. The display jumps sideways now and then, and its letters bleed a little to the right. Settings → **Loading Effect** (`app.loading_effect`, `"On"` when unset, or `"Off"`; Main.qml's `root.loadingEffect`) turns all of that off: the display then stands alone on the plain background, its counters and blinking LOADING as before.
+
+| Property | Type | Description |
+|---|---|---|
+| `source` | `string` | Under SLP ▶: what plays (the players give their module's name) |
+| `startMs` | `int` | TAPE A's counter: where the video is; while it loads, where it starts from |
+| `durationMs` | `int` | TAPE B's counter once known: how long the video is (0, the default, while it isn't) |
+| `title` | `string` | Optional, across the middle: what loads, when the player knows before it plays (a card's title) |
+| `effect` | `bool` | The noise, bands, jumps and bleed. Defaults to `root.loadingEffect` |
+
+Players give `durationMs` what they know: the server's length for Plex, Jellyfin and Emby (from the detail screen, `navParams.duration`), else mpv's, which comes as it opens the file (`lastKnownDurationMs`). The detail screens' launch overlays show the item's own position and length.
+
+The noise is **`VhsNoise`** (`src/player/VhsNoise.h/.cpp`, `import MP240.Video`), a C++ item that draws a new frame about twenty times a second: short horizontal streaks of its `color` at random strengths, at the art pixel (`pixel`, `root.px`), scaled up without smoothing. `streaks` sets how many cover the picture. `bands` adds the tracking band and the head-switching strip along the bottom, and with a `shade` (the background colour), dropouts in them cut into whatever lies under the noise. LoadingScreen lays one under its text and one with only the bands over it. Both, and the screen's timers, run only while it is visible and the screen is the app's: while another process has it (`root.screenHandedOff`, see [the hand-off](#raspberry-pi-headless-hand-off-eglfs)), nothing drawn would reach it, so they rest (`running: false` on VhsNoise keeps its last frame) and leave the CPU to mpv.
+
+Every video player shows one until the first position arrives, and the launch overlays of Plex, Jellyfin and Emby's detail screens (while the stream is prepared) are one too. A still image never moves mpv's position, so Local Files ends it as image content is launched. On the Pi, with Transparent Background off, mpv takes the screen as soon as it starts, and what stays on it until the picture comes is the frame drawn last: the players start mpv a moment late (`startTimer`), so that it is the loading screen, still. mpv's own length comes only after that, so the still frame shows one only when the player knew it before (a server's, or the video's when it starts again after its menu). With Transparent Background on, it goes on moving until the picture comes, and mpv's length shows as soon as mpv has opened the file.
 
 ### NfcCardWriter (`views/Components/NfcCardWriter.qml`)
 

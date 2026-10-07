@@ -53,7 +53,7 @@ FocusScope {
                                        { path: "recent", sel: 0, name: "Recently Watched", pushed: false }] })
     }
     function playAtStartup(entry) {
-        var favorites = localFilesBackend.existing(appCore.get_list(moduleRoot.moduleId, "favorites"))
+        var favorites = localFilesBackend.entries("favorites")
         for (var i = 0; i < favorites.length; ++i) {
             if (favorites[i].path === entry.path) {
                 play(favorites[i], [{ path: itemsRoot.rootPath, sel: 1, name: "", pushed: false },
@@ -62,14 +62,6 @@ FocusScope {
             }
         }
     }
-
-    // The tree's own folders, ahead of the media folder's. Their paths aren't
-    // file paths, which are absolute.
-    readonly property var lead: [
-        { name: "Recently Watched", path: "recent", isFolder: true },
-        { name: "Favorites", path: "favorites", isFolder: true },
-        { name: "Search", path: "search", isFolder: false, kind: "search" }
-    ]
 
     AppBar {
         iconSource: moduleRoot.moduleIcon
@@ -114,17 +106,10 @@ FocusScope {
         rootPath: itemsRoot.rootPath
         savedTrail: itemsRoot.navListState.trail || []
         fetch: function(path, preview) {
-            if (!localFilesBackend || !appCore)
+            if (!localFilesBackend)
                 return []
-            if (path === "recent" || path === "favorites")
-                return localFilesBackend.existing(appCore.get_list(moduleRoot.moduleId, path))
-            if (path.indexOf("search/") === 0) {
-                var found = localFilesBackend.search(path, path.substring(7))
-                return found === undefined ? null : found
-            }
-            var items = localFilesBackend.getItems(path)
-            // An empty media folder has nothing to search either.
-            return path === itemsRoot.rootPath && items.length > 0 ? itemsRoot.lead.concat(items) : items
+            var entries = localFilesBackend.entries(path)
+            return entries === undefined ? null : entries
         }
         labelOf: function(item) {
             if (item.isFolder || item.kind || !itemsRoot.hideExtensions) return item.name

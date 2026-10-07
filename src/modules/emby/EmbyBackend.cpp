@@ -6,6 +6,9 @@
 #include <QNetworkRequest>
 #include <QNetworkReply>
 #include <QUrlQuery>
+
+#include "../../util/EmbyApi.h"
+#include "../../util/SslErrors.h"
 #include <QVariantList>
 #include <QVariantMap>
 #include <QDebug>
@@ -186,6 +189,43 @@ int EmbyBackend::videoQualityMaxHeight() const {
 // HTTP helpers
 // ---------------------------------------------------------------------------
 
+QNetworkRequest EmbyBackend::downloadRequest(const QString &itemId) const {
+    QNetworkRequest req = embyRequest(embyapi::downloadUrl(m_serverUrl, itemId));
+    req.setRawHeader("Accept", "*/*");
+    req.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
+                     QNetworkRequest::NoLessSafeRedirectPolicy);
+    return req;
+}
+
+QString EmbyBackend::streamUrl(const QString &itemId) const {
+    return embyapi::streamUrl(m_serverUrl, itemId, m_accessToken, false);
+}
+
+void EmbyBackend::browse(const QString &parentId, QObject *context,
+                        std::function<void(bool, const QVariantList &)> done) {
+    auto *reply = embyGet(embyapi::browseUrl(m_serverUrl, m_userId, parentId));
+    const bool libraries = parentId.isEmpty();
+    connect(reply, &QNetworkReply::finished, context, [this, reply, libraries, done]() {
+        reply->deleteLater();
+        if (reply->error() != QNetworkReply::NoError) {
+            done(false, {});
+            return;
+        }
+        QVariantList items;
+        const QJsonArray array = QJsonDocument::fromJson(reply->readAll()).object()["Items"].toArray();
+        for (const QJsonValue &v : array) {
+            const QJsonObject item = v.toObject();
+            // The libraries with videos in them; in one, its folders and videos.
+            const bool wanted = libraries
+                ? kSupportedCollectionTypes.contains(item["CollectionType"].toString())
+                : item["IsFolder"].toBool() || item["MediaType"].toString() == QLatin1String("Video");
+            if (wanted)
+                items.append(formatItem(item));
+        }
+        done(true, items);
+    });
+}
+
 QNetworkRequest EmbyBackend::embyRequest(const QUrl &url) const {
     QNetworkRequest req(url);
     req.setRawHeader("Accept", "application/json");
@@ -210,21 +250,6 @@ QNetworkReply *EmbyBackend::embyPost(const QUrl &url, const QByteArray &body) {
     return reply;
 }
 
-static QList<QSslError> filterExpectedSslErrors(const QList<QSslError> &errors) {
-    static const QSet<QSslError::SslError> kExpected = {
-        QSslError::SelfSignedCertificate,
-        QSslError::HostNameMismatch,
-        QSslError::UnableToGetLocalIssuerCertificate,
-        QSslError::UnableToVerifyFirstCertificate,
-    };
-    QList<QSslError> allowed;
-    for (const QSslError &e : errors) {
-        if (kExpected.contains(e.error()))
-            allowed.append(e);
-    }
-    return allowed;
-}
-
 void EmbyBackend::ignoreSslErrors(QNetworkReply *reply) const {
     // Snapshot the configured host now, while the request is issued — the async
     // sslErrors callback fires later, and logout() clears m_serverUrl the moment
@@ -235,7 +260,7 @@ void EmbyBackend::ignoreSslErrors(QNetworkReply *reply) const {
         // Only relax for the configured Emby server — typical of self-signed LAN certs
         if (reply->url().host() != serverHost)
             return;
-        QList<QSslError> allowed = filterExpectedSslErrors(errors);
+        QList<QSslError> allowed = expectedLanSslErrors(errors);
         if (!allowed.isEmpty())
             reply->ignoreSslErrors(allowed);
     });
@@ -245,7 +270,7 @@ void EmbyBackend::ignoreSslErrors(QNetworkReply *reply) const {
 // Auth
 // ---------------------------------------------------------------------------
 
-bool EmbyBackend::has_auth() {
+bool EmbyBackend::has_auth() const {
     return !m_accessToken.isEmpty() && !m_userId.isEmpty() && !m_serverUrl.isEmpty();
 }
 

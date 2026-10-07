@@ -47,31 +47,13 @@ FocusScope {
                && lower.indexOf("list=") !== -1
     }
 
-    function doPlay(startMs, plPos) {
+    function play(startMs, plPos) {
         lastStartMs = startMs
         lastPlPos   = plPos
         // extraArgs opts into yt-dlp so YouTube-page URLs in the mapping
         // resolve; safe for local files and direct media URLs, which the
         // native demuxer handles before the ytdl hook ever runs.
         mpvController.loadAndPlay(videoPath, startMs / 1000.0, -1, subFlag, [], subtitleLangs, false, plPos, 0.0, "", false, "", false, [], 0.0, false, ytdlArgs)
-    }
-
-    // Starting mpv runs synchronously and, on the Pi, immediately switches VT
-    // (suspending Qt's render thread) before the LOADING frame can paint. Defer
-    // the launch one tick so the loading indicator is rendered first.
-    Timer {
-        id: startTimer
-        interval: 50
-        repeat: false
-        property int pendingStartMs: 0
-        property int pendingPlPos:   -1
-        onTriggered: doPlay(pendingStartMs, pendingPlPos)
-    }
-
-    function play(startMs, plPos) {
-        startTimer.pendingStartMs = startMs
-        startTimer.pendingPlPos   = plPos
-        startTimer.restart()
     }
 
     Keys.onPressed: function(event) {
@@ -152,7 +134,7 @@ FocusScope {
             // A bad mapping path or missing yt-dlp surfaces as an mpv failure
             // before any position event — show the error instead of leaving.
             if (reason === "failed" && !playbackStarted) {
-                playerRoot.errorMessage = "PLAYBACK FAILED\n\nCHECK THE MAPPED PATH OR URL\n(YOUTUBE LINKS REQUIRE YT-DLP)"
+                playerRoot.errorMessage = "Check the mapped path or URL\n(YouTube links require yt-dlp)"
                 return
             }
             var pos   = lastKnownPositionMs || finalPositionMs
@@ -236,132 +218,35 @@ FocusScope {
         // stream. Hidden once the first position update arrives. The title
         // carries the tap confirmation from Items.qml through the whole
         // pre-playback wait.
-        Column {
-            anchors.centerIn: parent
-            spacing: root.sh * 0.05 //24
+        LoadingScreen {
+            anchors.fill: parent
+            source: moduleRoot.moduleName
+            title: videoTitle
+            startMs: playerRoot.lastStartMs
+            durationMs: playerRoot.lastKnownDurationMs
             visible: !overlayVisible && !playbackStarted && errorMessage === ""
-
-            Text {
-                text: "LOADING..."
-                color: "white"
-                font.family: root.globalFont
-                anchors.horizontalCenter: parent.horizontalCenter
-                font.pixelSize: root.sh * 0.05 //24
-            }
-            Text {
-                visible: videoTitle !== ""
-                text: videoTitle
-                color: "#919191"
-                font.family: root.globalFont
-                font.capitalization: Font.AllUppercase
-                width: root.sw * 0.76875 //492
-                wrapMode: Text.WordWrap
-                horizontalAlignment: Text.AlignHCenter
-                anchors.horizontalCenter: parent.horizontalCenter
-                font.pixelSize: root.sh * 0.0333333 //16
-            }
         }
 
-        Column {
-            anchors.centerIn: parent
-            spacing: root.sh * 0.05 //24
+        PromptScreen {
             visible: errorMessage !== ""
-
-            Text {
-                text: errorMessage
-                color: "white"
-                font.family: root.globalFont
-                width: root.sw * 0.5625 //360
-                wrapMode: Text.WordWrap
-                horizontalAlignment: Text.AlignHCenter
-                anchors.horizontalCenter: parent.horizontalCenter
-                font.pixelSize: root.sh * 0.0375 //18
-            }
-            HintBar {
-                text: root.hints.back + ":BACK " + root.hints.select + ":RETRY"
-                anchors.horizontalCenter: parent.horizontalCenter
-            }
+            kind: "notice"
+            title: "Playback failed"
+            message: errorMessage
+            hint: root.hints.back + ":BACK " + root.hints.select + ":RETRY"
         }
     }
 
-    Rectangle {
-        anchors.fill: parent
-        color: root.surfaceColor
+    PromptScreen {
         visible: overlayVisible
-
-        Rectangle {
-            id: dialogRect
-            color: root.surfaceColor
-            anchors.centerIn: parent
-            width: root.sw * 0.76875 //492
-            height: root.sh * 0.2833333 //136
-
-            Column {
-                id: dialogColumn
-                anchors.fill: parent
-                spacing: root.sh * 0.05 //24
-
-                Text {
-                    text: "RESUME PLAYBACK?"
-                    color: root.secondaryColor
-                    font.family: root.globalFont
-                    font.pixelSize: root.sh * 0.0333333 //16
-                    anchors.horizontalCenter: parent.horizontalCenter
-                }
-
-                Column {
-                    Repeater {
-                        model: [
-                            savedPlaylistPos >= 0
-                                ? "Resume video " + (savedPlaylistPos + 1) + " at " + formatTime(savedPositionMs)
-                                : "Resume from " + formatTime(savedPositionMs),
-                            "Start from the beginning"
-                        ]
-                        delegate: Item {
-                            width: dialogColumn.width
-                            height: root.sh * 0.0583333 //28
-
-                            Rectangle {
-                                anchors.fill: delegateText
-                                color: root.accentColor
-                                visible: index === choiceIndex
-                            }
-
-                            Text {
-                                id: delegateText
-                                anchors.verticalCenter: parent.verticalCenter
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                text: modelData
-                                color: index === choiceIndex ? root.surfaceColor : root.primaryColor
-                                font.family: root.globalFont
-                                font.capitalization: Font.AllUppercase
-                                topPadding: root.sh * 0.0041667 //2
-                                leftPadding: root.sw * 0.009375 //6
-                                rightPadding: root.sw * 0.009375 //6
-                                bottomPadding: root.sh * 0.00625 //3
-                                font.pixelSize: root.sh * 0.0416667 //20
-                            }
-                        }
-                    }
-                }
-
-                HintBar {
-                    text: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE " + root.hints.select + ":SELECT"
-                    anchors.horizontalCenter: parent.horizontalCenter
-                }
-            }
-        }
+        title: "Resume playback?"
+        message: videoTitle
+        choices: [
+            savedPlaylistPos >= 0
+                ? "Resume video " + (savedPlaylistPos + 1) + " at " + root.formatTime(savedPositionMs)
+                : "Resume from " + root.formatTime(savedPositionMs),
+            "Start from the beginning"
+        ]
+        currentIndex: choiceIndex
     }
 
-    function formatTime(ms) {
-        var s   = Math.floor(ms / 1000)
-        var h   = Math.floor(s / 3600)
-        var m   = Math.floor((s % 3600) / 60)
-        var sec = s % 60
-        if (h > 0)
-            return h + ":" + pad(m) + ":" + pad(sec)
-        return m + ":" + pad(sec)
-    }
-
-    function pad(n) { return n < 10 ? "0" + n : "" + n }
 }

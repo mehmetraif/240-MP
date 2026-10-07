@@ -246,13 +246,19 @@ bool EmbeddedMpv::start(const QStringList &args) {
             qWarning("[EmbeddedMpv] --%s: %s", qPrintable(name), a.errorString(err));
     };
 
-    // The command line as options, its other words as the playlist.
+    // The command line as options, its other words, and every word after a
+    // "--", as the playlist.
     QStringList urls;
     int playlistStart = -1;
     bool shuffle = false;
+    bool files = false;
     for (const QString &arg : args) {
-        if (!arg.startsWith(QLatin1String("--"))) {
+        if (files || !arg.startsWith(QLatin1String("--"))) {
             urls << arg;
+            continue;
+        }
+        if (arg == QLatin1String("--")) {
+            files = true;
             continue;
         }
         QString name = arg.mid(2);

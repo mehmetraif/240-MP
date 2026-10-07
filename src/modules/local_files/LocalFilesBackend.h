@@ -6,15 +6,24 @@
 #include <QVariantMap>
 #include <memory>
 
+class AppCore;
 class QDirIterator;
 
 class LocalFilesBackend : public QObject {
     Q_OBJECT
 public:
-    explicit LocalFilesBackend(const QString &appRoot, const QString &dataRoot, QObject *parent = nullptr);
+    explicit LocalFilesBackend(const QString &appRoot, const QString &dataRoot, AppCore *appCore,
+                               QObject *parent = nullptr);
     ~LocalFilesBackend() override;
 
     Q_INVOKABLE QVariantList getItems(const QString &path);
+    // The tree's entries for a folder, as the module's browser shows them:
+    // the media folder led by RECENTLY WATCHED, FAVORITES and SEARCH (the
+    // tree's own folders, whose paths aren't file paths), those two lists'
+    // files that are still there, a search's results (undefined while it
+    // runs, searchReady following), and any other folder's files and
+    // folders. The Playlists module browses with it too.
+    Q_INVOKABLE QVariant     entries(const QString &path);
     Q_INVOKABLE bool         isImage(const QString &path) const;
     Q_INVOKABLE bool         isPlaylist(const QString &path) const;
     Q_INVOKABLE bool         playlistContainsImages(const QString &path) const;
@@ -55,6 +64,7 @@ private:
 
     QString m_appRoot;
     QString m_dataRoot;
+    AppCore *m_appCore = nullptr;
     QString m_mediaRoot;
 
     struct SearchRun;

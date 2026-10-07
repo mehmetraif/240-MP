@@ -167,14 +167,14 @@ void ScriptsBackend::writeStubSidecar(const QString &sidecarPath,
 
     const QString scriptName = QFileInfo(sidecarPath).completeBaseName() + ".sh";
     QString out;
-    out += "# 240-MP script metadata for " + scriptName + "\n";
+    out += "# OSD/OS script metadata for " + scriptName + "\n";
     out += "# Whole-line comments only. Unknown keys are ignored.\n";
     out += "# Delete this file to regenerate it with defaults.\n";
     out += "\n";
-    out += "# Row label shown in 240-MP.\n";
+    out += "# Row label shown in OSD/OS.\n";
     out += "name = " + defaults.name + "\n";
     out += "\n";
-    out += "# console  = 240-MP stays on screen and shows this script's output.\n";
+    out += "# console  = OSD/OS stays on screen and shows this script's output.\n";
     out += "# takeover = the script gets the whole screen (a TV app, a game front end).\n";
     out += "mode = " + defaults.mode + "\n";
     out += "\n";

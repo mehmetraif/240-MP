@@ -196,51 +196,19 @@ FocusScope {
         anchors.fill: parent
         color: "black"
 
-        Column {
-            anchors.centerIn: parent
-            spacing: root.sh * 0.05
+        LoadingScreen {
+            anchors.fill: parent
+            source: moduleRoot.moduleName
+            title: queueTitle
             visible: errorMessage === ""
-
-            Text {
-                text: "LOADING..."
-                color: "white"
-                font.family: root.globalFont
-                anchors.horizontalCenter: parent.horizontalCenter
-                font.pixelSize: root.sh * 0.05
-            }
-            Text {
-                visible: queueTitle !== ""
-                text: queueTitle
-                color: "#919191"
-                font.family: root.globalFont
-                font.capitalization: Font.AllUppercase
-                width: root.sw * 0.76875
-                wrapMode: Text.WordWrap
-                horizontalAlignment: Text.AlignHCenter
-                anchors.horizontalCenter: parent.horizontalCenter
-                font.pixelSize: root.sh * 0.0333333
-            }
         }
 
-        Column {
-            anchors.centerIn: parent
-            spacing: root.sh * 0.05
+        PromptScreen {
             visible: errorMessage !== ""
-
-            Text {
-                text: errorMessage
-                color: "white"
-                font.family: root.globalFont
-                width: root.sw * 0.5625
-                wrapMode: Text.WordWrap
-                horizontalAlignment: Text.AlignHCenter
-                anchors.horizontalCenter: parent.horizontalCenter
-                font.pixelSize: root.sh * 0.0375
-            }
-            HintBar {
-                text: root.hints.back + ":BACK " + root.hints.select + ":RETRY"
-                anchors.horizontalCenter: parent.horizontalCenter
-            }
+            kind: "notice"
+            title: "Playback failed"
+            message: errorMessage
+            hint: root.hints.back + ":BACK " + root.hints.select + ":RETRY"
         }
     }
 }

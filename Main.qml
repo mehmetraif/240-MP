@@ -6,6 +6,7 @@ import Components
 Window {
     id: root
     flags: Qt.FramelessWindowHint | Qt.Window
+    title: "OSD/OS"
     x:      Qt.platform.os === "osx" ? macScreenX      : Screen.virtualX
     y:      Qt.platform.os === "osx" ? macScreenY      : Screen.virtualY
     width:  Qt.platform.os === "osx" ? macScreenWidth  : Screen.width
@@ -21,7 +22,9 @@ Window {
     visibility: Qt.platform.os === "osx" ? Window.AutomaticVisibility
                                          : Window.FullScreen
     visible: true
-    color: root.surfaceColor
+    // Under everything: what OSD BACKGROUND puts around its window (black
+    // but for FULL). OsdGround draws the ground itself, over it.
+    color: root.osdBackground === "Full" ? root.surfaceColor : "#000000"
 
     // --- Color Schemes ---
     readonly property var themes: ({
@@ -84,8 +87,18 @@ Window {
     })
     property var allThemes: themes  // may gain a "Custom" entry on startup
     property string currentTheme: "Video 1"
-    property string primaryColor:   (allThemes[currentTheme] || allThemes["Video 1"]).primary
-    property string surfaceColor:   (allThemes[currentTheme] || allThemes["Video 1"]).surface
+    readonly property var theme: allThemes[currentTheme] || allThemes["Video 1"]
+    // Settings' OSD BACKGROUND (app.osd_background), what the menus are drawn
+    // on (Components/OsdGround): "Full", the default, the scheme's background
+    // over the whole screen; "Window", a framed window of it behind what a
+    // view shows (osdWindow), black around it; "Off", none: black, the menus
+    // in whichever of the scheme's two colours is the lighter, as a deck's OSD
+    // with nothing playing. A scheme's dark text (T-120's) would vanish on
+    // black, so Off takes its background colour for the text instead.
+    property string osdBackground: "Full"
+    readonly property bool osdOff: osdBackground === "Off"
+    property string primaryColor:   osdOff ? lighterOf(theme.primary, theme.surface) : theme.primary
+    property string surfaceColor:   osdOff ? "#000000" : theme.surface
     // Two colours only, like a deck's on-screen display: everything is drawn in
     // the theme's primary colour on its surface colour. A selection is a solid
     // box with its text in the surface colour, and anything dimmed is dithered
@@ -101,6 +114,35 @@ Window {
     // pixel-drawn OSD elements (Components/Osd*, PixelIcon) are built on.
     readonly property int px: Math.max(1, Math.floor(sh / 240))
 
+    // The area the views lay their content out in: the title bar's logo to
+    // the hint bar (74 to 566 across and 57 to 430 down, of 640×480).
+    readonly property rect contentBox: Qt.rect(sw * 0.115625, sh * 0.11875, sw * 0.76875, sh * 0.7770833)
+    // OSD BACKGROUND's window: the content box with a margin on every side,
+    // on art pixels.
+    readonly property real osdMargin: sh * 0.025 //12
+    readonly property rect osdWindow: {
+        var left = snapPx(contentBox.x - osdMargin), right = snapPx(contentBox.x + contentBox.width + osdMargin)
+        var top = snapPx(contentBox.y - osdMargin), bottom = snapPx(contentBox.y + contentBox.height + osdMargin)
+        return Qt.rect(left, top, right - left, bottom - top)
+    }
+    function snapPx(v) { return Math.round(v / px) * px }
+
+    // A time as the players show it: h:mm:ss, or m:ss under an hour.
+    function formatTime(ms) {
+        var s = Math.floor(ms / 1000)
+        var h = Math.floor(s / 3600)
+        var m = Math.floor((s % 3600) / 60)
+        var sec = s % 60
+        return (h > 0 ? h + ":" + pad(m) : m) + ":" + pad(sec)
+    }
+    function pad(n) { return n < 10 ? "0" + n : "" + n }
+
+    // The lighter of two colours, by how bright the eye finds them.
+    function lighterOf(a, b) {
+        function luma(c) { var k = Qt.color(c); return 0.2126 * k.r + 0.7152 * k.g + 0.0722 * k.b }
+        return luma(a) >= luma(b) ? a : b
+    }
+
     Connections {
         target: appCore
         function onAppSettingChanged(key, value) {
@@ -108,6 +150,14 @@ Window {
                 root.currentTheme = value
             } else if (key === "transparent_background") {
                 root.backdropSolidity = root.solidityOf(value)
+            } else if (key === "loading_effect") {
+                root.loadingEffect = value !== "Off"
+            } else if (key === "hint_bar") {
+                root.hintBar = value !== "Off"
+            } else if (key === "help_line") {
+                root.helpLine = value !== "Off"
+            } else if (key === "osd_background") {
+                root.osdBackground = root.osdBackgroundOf(value)
             } else if (key === "mouse_pointer") {
                 root.pointerSetting = String(value)
                 if (root.pointerShown)
@@ -154,6 +204,10 @@ Window {
         root.currentTheme = savedTheme
         root.backdropSolidity = root.solidityOf(cfg.app && cfg.app.transparent_background)
         root.pointerSetting = String((cfg.app && cfg.app.mouse_pointer) || "5")
+        root.loadingEffect = !(cfg.app && cfg.app.loading_effect === "Off")
+        root.hintBar = !(cfg.app && cfg.app.hint_bar === "Off")
+        root.helpLine = !(cfg.app && cfg.app.help_line === "Off")
+        root.osdBackground = root.osdBackgroundOf(cfg.app && cfg.app.osd_background)
 
         // Screensaver: the tracker starts disabled; this is the single place the
         // saved setting is applied (live changes land in onAppSettingChanged above,
@@ -306,6 +360,19 @@ Window {
     // back as its first row. Empty for a player that notes nothing.
     readonly property var behindNote: mpvController ? mpvController.backgroundNote : ({})
     property int backdropSolidity: 100
+    // Another process has the screen: mpv, or a script, on the Pi's console
+    // (see DisplayHandoff). Nothing drawn here reaches it until it is back,
+    // so what animates rests meanwhile (LoadingScreen).
+    readonly property bool screenHandedOff: displayHandoff ? displayHandoff.held : false
+    // "loading_effect": the tape's noise and bands on the screen a video
+    // loads behind (LoadingScreen), "On" (the default, when unset) or "Off".
+    property bool loadingEffect: true
+    // "hint_bar": the key hints on the bar at the foot of every screen
+    // (HintBar), "On" (the default, when unset) or "Off".
+    property bool hintBar: true
+    // "help_line": the line about the selected row in the box under a menu
+    // (HelpLine), "On" (the default, when unset) or "Off".
+    property bool helpLine: true
 
     // "transparent_background": how solid the menus' ground is over a video
     // behind them, 0 (TRANSPARENT) to 100 (SOLID: none of it shows, but it
@@ -315,6 +382,9 @@ Window {
     function backgroundOn(raw) {
         var s = String(raw === undefined || raw === null ? "" : raw).trim().toLowerCase()
         return s === "on" || s === "dim" || !isNaN(parseInt(s))
+    }
+    function osdBackgroundOf(raw) {
+        return raw === "Window" || raw === "Off" ? raw : "Full"
     }
     function solidityOf(raw) {
         var s = String(raw === undefined || raw === null ? "" : raw).toLowerCase()
@@ -330,12 +400,15 @@ Window {
         visible: root.videoActive
         z: root.videoBehind ? -2 : 5000
     }
-    Rectangle {
+    // What the menus are drawn on (OSD BACKGROUND), under every view. Over a
+    // video behind them, as solid as Transparent Background says, and in
+    // WINDOW only the window, the picture showing whole around it.
+    OsdGround {
         anchors.fill: parent
         z: -1
-        visible: root.videoBehind && root.backdropSolidity > 0
-        color: root.surfaceColor
-        opacity: root.backdropSolidity / 100
+        visible: !root.videoBehind || root.backdropSolidity > 0
+        opacity: root.videoBehind ? root.backdropSolidity / 100 : 1
+        surround: !root.videoBehind
     }
 
     // A running user script suppresses the screen saver too — a takeover script

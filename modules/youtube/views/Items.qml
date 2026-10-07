@@ -25,13 +25,6 @@ FocusScope {
     // The app's INFO SCREEN setting: "off", "key" (right only) or seconds.
     readonly property string infoSetting: (appCore ? appCore.get_setting("", "info_screen") : "") || "3"
 
-    // Shorts are left out when the "Display Shorts" setting is off.
-    // Unset/true/"ON" => show shorts (default); explicit false => hide.
-    readonly property bool showShorts: {
-        var raw = appCore ? appCore.get_setting(moduleRoot.moduleId, "display_shorts") : undefined
-        return raw === undefined || raw === null || raw === true || raw === "ON"
-    }
-
     // The startup favourite, played as if chosen in FAVORITES, so coming back
     // from it lands there, or the video behind the menus (the main menu's row
     // for it), opened again as if chosen in RECENTLY WATCHED. Only as the view
@@ -50,9 +43,7 @@ FocusScope {
                              { path: "history", sel: 0, name: "Recently Watched", pushed: false }] })
     }
     function playAtStartup(entry) {
-        var favorites = appCore.get_list(moduleRoot.moduleId, "favorites")
-        if (!showShorts)
-            favorites = favorites.filter(function(e) { return !e.isShort })
+        var favorites = youtubeBackend.entries("favorites")
         for (var i = 0; i < favorites.length; ++i) {
             if (favorites[i].path === entry.path) {
                 navigateTo("Player.qml", { item: favorites[i], startup: true },
@@ -83,16 +74,10 @@ FocusScope {
         previewDelay: (parseInt(itemsRoot.infoSetting) || 0) * 1000
         savedTrail: itemsRoot.navListState.trail || []
         fetch: function(path, preview) {
-            if (!youtubeBackend || !appCore)
+            if (!youtubeBackend)
                 return []
-            var entries = path === "favorites" ? appCore.get_list(moduleRoot.moduleId, path)
-                                               : youtubeBackend.listing(path, preview)
-            if (entries === undefined)
-                return null
-            if (path === "home")
-                entries = [{ name: "Recently Watched", path: "history", isFolder: true },
-                           { name: "Favorites", path: "favorites", isFolder: true }].concat(entries)
-            return itemsRoot.showShorts ? entries : entries.filter(function(e) { return !e.isShort })
+            var entries = youtubeBackend.entries(path, preview)
+            return entries === undefined ? null : entries
         }
         onActivated: function(item) {
             switch (item.kind) {

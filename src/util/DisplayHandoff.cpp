@@ -41,6 +41,8 @@ DisplayHandoff::~DisplayHandoff() {
     if (!m_owner.isEmpty()) {
         m_releaseTimer->stop();
         m_onRestored = nullptr;
+        // Not heldChanged: QML outlives this object, and has nothing to redraw.
+        blockSignals(true);
         doRestore();
     }
 }
@@ -125,6 +127,7 @@ int DisplayHandoff::acquire(const QString &owner) {
         // without this restore, Qt EGLFS gets EINVAL on its next page flip.
         saveDrmCrtcState(m_qtDrmFd);
     }
+    emit heldChanged();
     return freeVt;
 #else
     return 0;
@@ -178,7 +181,10 @@ void DisplayHandoff::doRestore() {
     }
     m_previousVt = -1;
     m_switchedVt = false;
-    m_owner.clear();
+    if (!m_owner.isEmpty()) {
+        m_owner.clear();
+        emit heldChanged();
+    }
 }
 
 int DisplayHandoff::getActiveVt() const {

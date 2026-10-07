@@ -143,9 +143,12 @@ FocusScope {
         }
     }
 
-    Rectangle {
+    Item {
         anchors.fill: parent
-        color: root.surfaceColor
+
+        OsdGround {
+            anchors.fill: parent
+        }
 
         Column {
             anchors.centerIn: parent

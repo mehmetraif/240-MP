@@ -27,16 +27,18 @@ FocusScope {
     property int    lastKnownPositionMs: 0
     property int    lastKnownDurationMs: 0
 
-    // Back during the video opens its menu over the picture (PlayerMenu),
-    // the video playing on behind it. A change the video can't take as it
-    // plays (its format, its audio, its subtitles) reloads it where it is as
-    // the menu closes; CLOSE VIDEO goes back to the main menu.
+    // Back during the video opens its menu (PlayerMenu): over the picture,
+    // the video playing on behind it, with Transparent Background; without,
+    // the video ends for it (mpv has the screen) and starts again where it
+    // was as the menu closes. A change the video can't take as it plays (its
+    // format, its audio, its subtitles) reloads it where it is as the menu
+    // closes; CLOSE VIDEO goes back to the main menu.
     property bool   reloadOnClose:   false
     property bool   closeToMainMenu: false
 
     focus: true
 
-    function doPlay(startMs) {
+    function play(startMs) {
         overlayVisible = false
         lastStartMs = startMs
         mpvController.loadAndPlay(videoUrl, startMs / 1000.0, 0, subTrack, [], subLangs, false, -1, 0.0, "", false, "", false, [], 0.0, false, ytdlArgs)
@@ -130,47 +132,39 @@ FocusScope {
                 youtubeBackend.addToWatchLater(videoId, item.title || "", item.channelName || "")
         } else if (action === "browse") {
             // As back always did: saved where it is, then the module's tree,
-            // the video playing on behind it.
+            // the video playing on behind it. Ended for the menu (an mpv
+            // process has the screen), it is saved already.
             playerMenu.close()
-            mpvController.leavePlayerMenu()
+            if (mpvController.videoActive)
+                mpvController.leavePlayerMenu()
+            else
+                goBack()
             return
         } else if (action === "close") {
             closeToMainMenu = true
             playerMenu.close()
-            mpvController.stop()
+            if (mpvController.videoActive)
+                mpvController.stop()
+            else
+                moduleRoot.goBack()
             return
         }
         playerMenu.actions = menuActions()
         playerMenu.refresh()
     }
     // Back in the menu: the video full screen again, reloaded where it is if
-    // a setting asks for it.
+    // a setting asks for it, or started again there if it ended for the menu.
     function backToVideo() {
         playerMenu.close()
         playerRoot.forceActiveFocus()
+        var ended = !mpvController.videoActive
         mpvController.closePlayerMenu()
-        if (reloadOnClose) {
+        if (reloadOnClose || ended) {
             reloadOnClose = false
             readSettings()
             playbackStarted = false
             play(lastKnownPositionMs)
         }
-    }
-
-    // Starting mpv runs synchronously and, on the Pi, immediately switches VT
-    // (suspending Qt's render thread) before the LOADING frame can paint. Defer
-    // the launch one tick so the loading indicator is rendered first.
-    Timer {
-        id: startTimer
-        interval: 50
-        repeat: false
-        property int pendingStartMs: 0
-        onTriggered: doPlay(pendingStartMs)
-    }
-
-    function play(startMs) {
-        startTimer.pendingStartMs = startMs
-        startTimer.restart()
     }
 
     Keys.onPressed: function(event) {
@@ -248,7 +242,7 @@ FocusScope {
             // yt-dlp missing/outdated or an unplayable stream surfaces as mpv exit
             // code 2 before any position event — show the error instead of leaving.
             if (reason === "failed" && !playbackStarted) {
-                playerRoot.errorMessage = "PLAYBACK FAILED\n\nPLEASE CHECK THAT YT-DLP IS INSTALLED AND UP TO DATE"
+                playerRoot.errorMessage = "Please check that yt-dlp is installed and up to date"
                 return
             }
             var pos = lastKnownPositionMs || finalPositionMs
@@ -259,6 +253,13 @@ FocusScope {
                 youtubeBackend.savePosition(videoId, 0, item.title || "", item.channelName || "")
             else if (pos > 5000)
                 youtubeBackend.savePosition(videoId, pos, item.title || "", item.channelName || "")
+            // Back during an mpv process, which has the screen while it
+            // plays: the video ended for this menu, and starts again where
+            // it was as the menu closes (backToVideo).
+            if (reason === "menu") {
+                openMenu()
+                return
+            }
             playerMenu.close()
             // CLOSE VIDEO leaves the module for the main menu.
             if (closeToMainMenu)
@@ -309,102 +310,32 @@ FocusScope {
         // Shown while mpv launches and buffers the stream (before its window
         // takes over). Hidden once the first position update arrives, or while
         // the resume prompt is up.
-        Text {
-            text: "LOADING..."
-            color: "white"
-            font.family: root.globalFont
-            anchors.centerIn: parent
-            font.pixelSize: root.sh * 0.05 //24
+        LoadingScreen {
+            anchors.fill: parent
+            source: moduleRoot.moduleName
+            startMs: playerRoot.lastStartMs
+            durationMs: playerRoot.lastKnownDurationMs
             visible: !overlayVisible && !playbackStarted && errorMessage === ""
         }
 
-        Column {
-            anchors.centerIn: parent
-            spacing: root.sh * 0.05 //24
+        PromptScreen {
             visible: errorMessage !== ""
-
-            Text {
-                text: errorMessage
-                color: "white"
-                font.family: root.globalFont
-                width: root.sw * 0.5625 //360
-                wrapMode: Text.WordWrap
-                horizontalAlignment: Text.AlignHCenter
-                anchors.horizontalCenter: parent.horizontalCenter
-                font.pixelSize: root.sh * 0.0375 //18
-            }
-            HintBar {
-                text: root.hints.back + ":BACK " + root.hints.select + ":RETRY"
-                anchors.horizontalCenter: parent.horizontalCenter
-            }
+            kind: "notice"
+            title: "Playback failed"
+            message: errorMessage
+            hint: root.hints.back + ":BACK " + root.hints.select + ":RETRY"
         }
     }
 
-    Rectangle {
-        anchors.fill: parent
-        color: root.surfaceColor
+    PromptScreen {
         visible: overlayVisible
-
-        Rectangle {
-            id: dialogRect
-            color: root.surfaceColor
-            anchors.centerIn: parent
-            width: root.sw * 0.76875
-            height: root.sh * 0.2833333
-
-            Column {
-                id: dialogColumn
-                anchors.fill: parent
-                spacing: root.sh * 0.05
-
-                Text {
-                    text: "RESUME PLAYBACK?"
-                    color: root.secondaryColor
-                    font.family: root.globalFont
-                    font.pixelSize: root.sh * 0.0333333
-                    anchors.horizontalCenter: parent.horizontalCenter
-                }
-
-                Column {
-                    Repeater {
-                        model: [
-                            "Resume from " + formatTime(savedPositionMs),
-                            "Start from the beginning"
-                        ]
-                        delegate: Item {
-                            width: dialogColumn.width
-                            height: root.sh * 0.0583333
-
-                            Rectangle {
-                                anchors.fill: delegateText
-                                color: root.accentColor
-                                visible: index === choiceIndex
-                            }
-
-                            Text {
-                                id: delegateText
-                                anchors.verticalCenter: parent.verticalCenter
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                text: modelData
-                                color: index === choiceIndex ? root.surfaceColor : root.primaryColor
-                                font.family: root.globalFont
-                                font.capitalization: Font.AllUppercase
-                                topPadding: root.sh * 0.0041667
-                                leftPadding: root.sw * 0.009375
-                                rightPadding: root.sw * 0.009375
-                                bottomPadding: root.sh * 0.00625
-                                font.pixelSize: root.sh * 0.0416667
-                            }
-                        }
-                    }
-                }
-
-                HintBar {
-                    text: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE " + root.hints.select + ":SELECT"
-                    anchors.horizontalCenter: parent.horizontalCenter
-                }
-            }
-        }
+        title: "Resume playback?"
+        message: item.title || ""
+        choices: [
+            "Resume from " + root.formatTime(savedPositionMs),
+            "Start from the beginning"
+        ]
+        currentIndex: choiceIndex
     }
 
     PlayerMenu {
@@ -420,15 +351,4 @@ FocusScope {
         onClosed: playerRoot.backToVideo()
     }
 
-    function formatTime(ms) {
-        var s   = Math.floor(ms / 1000)
-        var h   = Math.floor(s / 3600)
-        var m   = Math.floor((s % 3600) / 60)
-        var sec = s % 60
-        if (h > 0)
-            return h + ":" + pad(m) + ":" + pad(sec)
-        return m + ":" + pad(sec)
-    }
-
-    function pad(n) { return n < 10 ? "0" + n : "" + n }
 }

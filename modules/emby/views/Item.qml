@@ -117,6 +117,7 @@ FocusScope {
                 mediaSourceId: d.mediaSourceId || d.itemId,
                 title: d.title,
                 viewOffset: d.viewOffset || 0,
+                duration: d.duration || 0,
                 audioStreams: d.audioStreams || [],
                 subtitleStreams: d.subtitleStreams || [],
                 selectedAudioId: detailRoot.selectedAudioId(),
@@ -190,7 +191,9 @@ FocusScope {
     Keys.onRightPressed: {
         if (isLaunching) return
         if (!detail) return
-        if (focusRow === 1 && detail.audioStreams && detail.audioStreams.length > 1) {
+        if (focusRow === 0 && adder.available(moduleRoot.moduleId)) {
+            adder.offer(moduleRoot.moduleId, detail)
+        } else if (focusRow === 1 && detail.audioStreams && detail.audioStreams.length > 1) {
             audioIdx = (audioIdx + 1) % detail.audioStreams.length
             userChangedTracks = true
             debounceSaveTimer.restart()
@@ -686,14 +689,25 @@ FocusScope {
         }
     }
 
-    // Footer
+    // Footer. On PLAY, right puts the video on a playlist.
     HintBar {
         id: footer
-        text: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE " + root.hints.change + ":CHANGE " + root.hints.select + ":SELECT"
+        text: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE "
+              + (focusRow === 0 ? (adder.available(moduleRoot.moduleId) ? root.hints.browse + ":PLAYLIST " : "")
+                                : root.hints.change + ":CHANGE ")
+              + root.hints.select + ":SELECT"
         anchors.bottom: parent.bottom
         anchors.left: parent.left
         anchors.bottomMargin: root.sh * 0.1041667 //50
         anchors.leftMargin: root.sw * 0.125 //80
+    }
+
+    // Right on PLAY: the video on one of the app's playlists.
+    PlaylistAdder {
+        id: adder
+        anchors.fill: parent
+        z: 50
+        onClosed: detailRoot.forceActiveFocus()
     }
 
     // Launch overlay — covers the detail screen while the stream URL is prepared.
@@ -703,12 +717,12 @@ FocusScope {
         visible: isLaunching
         z: 100
 
-        Text {
-            text: "LOADING..."
-            color: root.tertiaryColor
-            font.family: root.globalFont
-            anchors.centerIn: parent
-            font.pixelSize: root.sh * 0.05 //24
+        LoadingScreen {
+            anchors.fill: parent
+            source: moduleRoot.moduleName
+            // Where it is and how long it is, as the server says.
+            startMs: detailRoot.detail ? (detailRoot.detail.viewOffset || 0) : 0
+            durationMs: detailRoot.detail ? (detailRoot.detail.duration || 0) : 0
         }
 
         HintBar {

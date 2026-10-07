@@ -79,12 +79,12 @@ FocusScope {
     readonly property real cellH: root.sh * 0.0666667 //32
     readonly property real fontSize: root.sh * 0.05 //24
 
-    // Everything under the title bar.
-    Rectangle {
+    // Everything under the title bar, on the ground every view has (OSD
+    // BACKGROUND): a window goes on under it as it was.
+    OsdGround {
         y: root.sh * 0.1916667 //92
         width: parent.width
         height: parent.height - y
-        color: root.surfaceColor
     }
 
     Column {

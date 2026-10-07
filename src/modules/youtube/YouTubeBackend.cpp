@@ -1,4 +1,6 @@
 #include "YouTubeBackend.h"
+
+#include "../../AppCore.h"
 #include "../web_player/WebPlayerBackend.h"
 #include "../../util/YtDlpLocator.h"
 
@@ -35,9 +37,9 @@ static QString watchUrlFor(const QString &videoId) {
     return QStringLiteral("https://www.youtube.com/watch?v=") + videoId;
 }
 
-YouTubeBackend::YouTubeBackend(const QString &appRoot, const QString &dataRoot,
+YouTubeBackend::YouTubeBackend(const QString &appRoot, const QString &dataRoot, AppCore *appCore,
                                DisplayHandoff *handoff, QObject *parent)
-    : QObject(parent), m_appRoot(appRoot), m_dataRoot(dataRoot)
+    : QObject(parent), m_appRoot(appRoot), m_dataRoot(dataRoot), m_appCore(appCore)
 {
     // Google's sign-in as YouTube's own SIGN IN button opens it, back to
     // YouTube once signed in. Nothing to browse, so no catalogue.
@@ -664,15 +666,20 @@ static QVariantList languageOptions() {
     return options;
 }
 
-QString YouTubeBackend::ytdlFormat(const QString &resolution, const QString &codec,
-                                   const QString &maxFrameRate, const QString &audioLanguage) const {
+// The PLAYBACK RESOLUTION setting's height in lines (480 for one it doesn't know).
+static int resolutionHeight(const QString &resolution) {
     static const QHash<QString, int> kHeights{
         {QStringLiteral("240p"), 240},   {QStringLiteral("360p"), 360},
         {QStringLiteral("480p"), 480},   {QStringLiteral("720p"), 720},
         {QStringLiteral("1080p"), 1080}, {QStringLiteral("1440p"), 1440},
         {QStringLiteral("2160p"), 2160}};
+    return kHeights.value(resolution, 480);
+}
+
+QString YouTubeBackend::ytdlFormat(const QString &resolution, const QString &codec,
+                                   const QString &maxFrameRate, const QString &audioLanguage) const {
     // "<=?" also takes a format that doesn't say its height or rate.
-    QString cap = QStringLiteral("[height<=?%1]").arg(kHeights.value(resolution, 480));
+    QString cap = QStringLiteral("[height<=?%1]").arg(resolutionHeight(resolution));
     if (maxFrameRate == QLatin1String("30"))
         cap += QStringLiteral("[fps<=?30]");
 
@@ -733,6 +740,37 @@ QStringList YouTubeBackend::playbackArgs(const QVariantMap &settings) const {
                              .remove(QLatin1Char('x')).toDouble(&ok);
     if (ok && speed > 0.0 && qAbs(speed - 1.0) > 0.001)
         args << QStringLiteral("--speed=%1").arg(speed);
+    return args;
+}
+
+QVariantMap YouTubeBackend::playbackSettings() const {
+    auto setting = [this](const char *key, const char *fallback) {
+        const QString value = m_appCore
+            ? m_appCore->get_setting(QStringLiteral("com.240mp.youtube"), QLatin1String(key)).toString()
+            : QString();
+        return value.isEmpty() ? QString::fromLatin1(fallback) : value;
+    };
+    return {{QStringLiteral("resolution"), setting("playback_resolution", "480p")},
+            {QStringLiteral("codec"), setting("video_codec", "H.264")},
+            {QStringLiteral("maxFrameRate"), setting("max_frame_rate", "Any")},
+            {QStringLiteral("audioLanguage"), setting("audio_language", "original")},
+            {QStringLiteral("subtitles"), setting("subtitles", "Off")},
+            {QStringLiteral("subtitleLanguage"), setting("subtitle_language", "en")},
+            {QStringLiteral("speed"), setting("playback_speed", "1x")}};
+}
+
+QStringList YouTubeBackend::downloadArgs(bool canMerge) const {
+    const QVariantMap s = playbackSettings();
+    const QString resolution = s.value(QStringLiteral("resolution")).toString();
+    const QString format = canMerge
+        ? ytdlFormat(resolution, s.value(QStringLiteral("codec")).toString(),
+                     s.value(QStringLiteral("maxFrameRate")).toString(),
+                     s.value(QStringLiteral("audioLanguage")).toString())
+        : QStringLiteral("best[height<=?%1][vcodec^=avc1]/best[height<=?%1]/best").arg(resolutionHeight(resolution));
+    QStringList args = cookieArgs();
+    args << QStringLiteral("-f") << format;
+    if (canMerge)
+        args << QStringLiteral("--merge-output-format") << QStringLiteral("mp4");
     return args;
 }
 
@@ -912,6 +950,34 @@ static QVariantMap treeFolder(const QString &name, const QString &path) {
 
 static QVariantMap treeAction(const QString &name, const QString &kind, const QString &path) {
     return { { "name", name }, { "path", path }, { "isFolder", false }, { "kind", kind } };
+}
+
+QVariant YouTubeBackend::entries(const QString &path, bool preview) {
+    QVariantList list;
+    if (path == QLatin1String("favorites")) {
+        list = m_appCore ? m_appCore->get_list(QStringLiteral("com.240mp.youtube"), QStringLiteral("favorites"))
+                         : QVariantList();
+    } else {
+        const QVariant listed = listing(path, preview);
+        if (!listed.isValid())
+            return listed;
+        list = listed.toList();
+        if (path == QLatin1String("home"))
+            list = QVariantList{treeFolder(QStringLiteral("Recently Watched"), QStringLiteral("history")),
+                                treeFolder(QStringLiteral("Favorites"), QStringLiteral("favorites"))} + list;
+    }
+    // Shorts are left out with DISPLAY SHORTS off; unset is on.
+    const QVariant shorts = m_appCore
+        ? m_appCore->get_setting(QStringLiteral("com.240mp.youtube"), QStringLiteral("display_shorts")) : QVariant();
+    const bool showShorts = !shorts.isValid() || shorts.isNull() || shorts.toBool()
+                            || shorts.toString() == QLatin1String("ON");
+    if (showShorts)
+        return list;
+    QVariantList kept;
+    for (const QVariant &e : list)
+        if (!e.toMap().value(QStringLiteral("isShort")).toBool())
+            kept << e;
+    return kept;
 }
 
 QVariant YouTubeBackend::listing(const QString &path, bool preview) {

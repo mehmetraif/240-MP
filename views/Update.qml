@@ -15,8 +15,6 @@ FocusScope {
     property var navListState: ({})
 
     property bool autostartSession: false
-    property bool confirmOverlayVisible: false
-    property int confirmChoiceIndex: 0
 
     // Null guards: context properties resolve to null while the view Loader
     // tears down; guarded bindings stay teardown-safe (see Main.qml mirrors).
@@ -87,8 +85,7 @@ FocusScope {
             if (canDownload) updateManager.download()
             break
         case "readyToApply":
-            confirmChoiceIndex = 0
-            confirmOverlayVisible = true
+            confirmPrompt.open()
             break
         }
     }
@@ -239,18 +236,14 @@ FocusScope {
         }
     }
 
-    // --- INSTALL CONFIRMATION OVERLAY --- (mirrors the Settings quit overlay)
-    Rectangle {
+    // --- INSTALL CONFIRMATION OVERLAY --- (as the Settings quit overlay)
+    ChoiceOverlay {
+        id: confirmPrompt
         anchors.fill: parent
-        color: root.surfaceColor
-        visible: confirmOverlayVisible
-        focus: confirmOverlayVisible
-
-        Keys.onUpPressed:   { confirmChoiceIndex = Math.max(0, confirmChoiceIndex - 1) }
-        Keys.onDownPressed: { confirmChoiceIndex = Math.min(confirmOptions.length - 1, confirmChoiceIndex + 1) }
-        Keys.onReturnPressed: {
-            var act = confirmOptions[confirmChoiceIndex].action
-            confirmOverlayVisible = false
+        promptText: "Install update?"
+        subtitleText: updateRoot.latestVersion
+        choices: confirmOptions
+        onActivated: function(act) {
             if (act === "apply" && updateManager) {
                 // Linux exits with code 11 under autostart (see 240mp-stop in
                 // scripts/install.sh) or quits for apply-on-next-launch; macOS
@@ -258,74 +251,8 @@ FocusScope {
                 updateManager.applyAndRestart()
             } else if (act === "discard" && updateManager) {
                 updateManager.discardStagedUpdate()
-                content.forceActiveFocus()
-            } else {
-                content.forceActiveFocus()
             }
         }
-        Keys.onPressed: function(event) {
-            if (event.key === Qt.Key_Escape || event.key === Qt.Key_Backspace || event.key === Qt.Key_Back) {
-                confirmOverlayVisible = false
-                content.forceActiveFocus()
-                event.accepted = true
-            }
-        }
-
-        Rectangle {
-            color: root.surfaceColor
-            anchors.centerIn: parent
-            width: root.sw * 0.76875   //492
-            height: root.sh * 0.2833333 //136
-
-            Column {
-                id: confirmDialogColumn
-                anchors.fill: parent
-                spacing: root.sh * 0.05 //24
-
-                Text {
-                    text: "INSTALL " + updateRoot.latestVersion + "?"
-                    color: root.secondaryColor
-                    font.family: root.globalFont
-                    font.pixelSize: root.sh * 0.0333333 //16
-                    anchors.horizontalCenter: parent.horizontalCenter
-                }
-
-                Column {
-                    Repeater {
-                        model: confirmOptions
-                        delegate: Item {
-                            width: confirmDialogColumn.width
-                            height: root.sh * 0.0583333 //28
-
-                            Rectangle {
-                                anchors.fill: confirmOptionText
-                                color: root.accentColor
-                                visible: index === confirmChoiceIndex
-                            }
-
-                            Text {
-                                id: confirmOptionText
-                                anchors.verticalCenter: parent.verticalCenter
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                text: modelData.label
-                                color: index === confirmChoiceIndex ? root.surfaceColor : root.primaryColor
-                                font.family: root.globalFont
-                                font.capitalization: Font.AllUppercase
-                                topPadding: root.sh * 0.0041667 //2
-                                leftPadding: root.sw * 0.009375 //6
-                                rightPadding: root.sw * 0.009375 //6
-                                bottomPadding: root.sh * 0.00625 //3
-                                font.pixelSize: root.sh * 0.05 //24
-                            }
-                        }
-                    }
-                }
-
-                HintBar {
-                    text: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE " + root.hints.select + ":SELECT"
-                    anchors.horizontalCenter: parent.horizontalCenter
-                }
-            }
-        }
+        onClosed: content.forceActiveFocus()
     }
 }

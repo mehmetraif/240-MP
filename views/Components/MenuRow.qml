@@ -16,6 +16,10 @@ Item {
     property bool selected: false
     // A group's heading rather than a line: "MODULES ─────".
     property bool heading: false
+    // A line whose value matters more than its label (a playlist's video and
+    // where its download is): the label is cut short with "…" instead, two
+    // dots before the value, so the value always shows whole.
+    property bool keepValue: false
     property real fontSize: root.sh * 0.05 //24
 
     readonly property color ink: selected ? root.surfaceColor : root.primaryColor
@@ -26,7 +30,7 @@ Item {
     readonly property real cell: Math.max(1, metrics.advanceWidth)
     // By the label's drawn width, so a letter from the fallback font, which is
     // not one cell wide, still leaves the dots on the grid and clear of it.
-    readonly property int labelCells: Math.ceil(labelText.implicitWidth / cell - 0.01)
+    readonly property int labelCells: Math.ceil(labelText.width / cell - 0.01)
     // The value ends on the line's last whole cell. One too long for the line
     // starts two dots after the label instead, and is cut short there.
     readonly property int lineCells: Math.floor((width - 2 * pad) / cell)
@@ -55,6 +59,10 @@ Item {
         id: labelText
         x: menuRow.pad
         anchors.verticalCenter: parent.verticalCenter
+        width: menuRow.keepValue && menuRow.value !== ""
+               ? Math.min(implicitWidth, Math.max(1, menuRow.lineCells - menuRow.valueCells - 2) * menuRow.cell)
+               : implicitWidth
+        elide: Text.ElideRight
         text: menuRow.label
         color: menuRow.ink
         font.family: root.globalFont

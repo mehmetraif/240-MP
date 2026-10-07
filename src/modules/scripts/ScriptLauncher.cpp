@@ -447,7 +447,7 @@ void ScriptLauncher::onProcessFinished(int exitCode, QProcess::ExitStatus status
 
 void ScriptLauncher::onErrorOccurred(QProcess::ProcessError error) {
     if (error == QProcess::FailedToStart) {
-        appendOutput(QStringLiteral("\n[240-MP] Failed to start: %1\n")
+        appendOutput(QStringLiteral("\n[OSD/OS] Failed to start: %1\n")
                         .arg(m_process ? m_process->errorString() : QString()));
         finish(-1, QStringLiteral("failed_to_start"));
         return;

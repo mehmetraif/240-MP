@@ -1,6 +1,7 @@
 #include "NfcReaderBackend.h"
 
 #include "../../AppCore.h"
+#include "../../util/FileNames.h"
 #include "NfcDriver.h"
 #include "PcscDriver.h"
 #include "Pn532SerialDriver.h"
@@ -461,20 +462,6 @@ QString NfcReaderBackend::mappedTitleForUid(const QString &uid) const {
     return it->title;
 }
 
-// Characters that are illegal or awkward in a filename on either target OS.
-// The title doubles as the tag file's name, so it has to survive round-tripping.
-static QString sanitizeTitle(const QString &title) {
-    QString out;
-    for (const QChar c : title) {
-        if (QString(QLatin1String("/\\:*?\"<>|")).contains(c)) out += u'-';
-        else if (c == u'\n' || c == u'\r' || c == u'\t') out += u' ';
-        else out += c;
-    }
-    // A leading dot would hide the file from the tag scan (QDir skips hidden).
-    while (out.startsWith(u'.')) out.remove(0, 1);
-    return out.trimmed();
-}
-
 bool NfcReaderBackend::writeCardFile(const QString &uid, const QString &title,
                                      const QString &ref, const QString &mode) {
     const QString normalizedUid = normalizeUid(uid);
@@ -483,7 +470,9 @@ bool NfcReaderBackend::writeCardFile(const QString &uid, const QString &title,
         return false;
     }
 
-    QString name = sanitizeTitle(title);
+    // The title doubles as the tag file's name, so it has to survive
+    // round-tripping on either target OS; '-' for what can't stay.
+    QString name = safeFileName(title, QLatin1Char('-'), 0, QString());
     if (name.isEmpty()) name = QString(normalizedUid).replace(u':', u'-');
 
     QDir().mkpath(tagsDirPath());

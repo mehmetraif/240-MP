@@ -1,0 +1,69 @@
+import QtQuick
+
+// A view's menu: the app's rows in the place every view's list has (under the
+// title bar, one row short of the help line, so the ▼ fits above it), ▲ / ▼
+// while rows are hidden above or below (ScrollMarks), and a cursor that steps
+// over section headings (rows whose type is "section"), round the ends. The
+// host gives it its rows (model, a list) and their delegate, and keys it (the
+// cursor's up and down are its own).
+//
+//     MenuList {
+//         id: list
+//         model: rows
+//         delegate: MenuRow { width: list.width; …; selected: list.currentIndex === index }
+//         Keys.onReturnPressed: …
+//     }
+Item {
+    id: menu
+
+    property alias model: view.model
+    property alias delegate: view.delegate
+    property alias currentIndex: view.currentIndex
+    property alias contentY: view.contentY
+    readonly property alias count: view.count
+
+    anchors.top: parent.top
+    anchors.left: parent.left
+    anchors.topMargin: root.sh * 0.25 //120
+    anchors.leftMargin: root.sw * 0.115625 //74
+    width: root.sw * 0.76875 //492
+    height: root.sh * 0.4666667 //224
+
+    function isSection(i) {
+        var row = view.model[i]
+        return !!row && row.type === "section"
+    }
+
+    // The cursor delta rows on, over the headings, round the ends.
+    function step(delta) {
+        if (count === 0)
+            return
+        var i = currentIndex
+        for (var n = 0; n < count; n++) {
+            i = (i + delta + count) % count
+            if (!isSection(i))
+                break
+        }
+        currentIndex = i
+        show(i)
+    }
+
+    // Scrolls so that the row is in view.
+    function show(i) {
+        view.positionViewAtIndex(i, ListView.Contain)
+    }
+
+    Keys.onUpPressed: step(-1)
+    Keys.onDownPressed: step(1)
+
+    ListView {
+        id: view
+        anchors.fill: parent
+        clip: true
+    }
+
+    ScrollMarks {
+        anchors.fill: parent
+        list: view
+    }
+}
