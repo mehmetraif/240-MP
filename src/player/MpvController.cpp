@@ -190,6 +190,22 @@ QStringList MpvController::sessionArgs(const QString &url, float startSeconds,
         }
     }
 
+    // Settings' CHANNEL LOGO: OSD/OS's logo in a corner of the picture, drawn
+    // by mpv itself (scripts/mpv-logo.lua), so it is in the picture in both
+    // modes and under whatever the app draws over it. The corner reaches the
+    // script with the script options below; unset is the top right.
+    QString logoCorner;
+    if (m_appCore) {
+        const QString corner = m_appCore->get_setting(QString(), "video_logo").toString();
+        const QString logoScript = m_appRoot + "/scripts/mpv-logo.lua";
+        if (corner != QLatin1String("off") && QFile::exists(logoScript)) {
+            logoCorner = (corner == QLatin1String("tl") || corner == QLatin1String("bl")
+                          || corner == QLatin1String("br") || corner == QLatin1String("all"))
+                         ? corner : QStringLiteral("tr");
+            args << QString("--script=%1").arg(logoScript);
+        }
+    }
+
     // Still-image playback only: mpv's KMS output (--vo=drm) won't repaint the
     // primary plane between two consecutive same-size/format stills, so a photo
     // playlist freezes on the first frame while the clock advances. This script
@@ -242,6 +258,8 @@ QStringList MpvController::sessionArgs(const QString &url, float startSeconds,
         scriptOpts << QString("transcode-offset=%1").arg(double(transcodeOffsetSec), 0, 'f', 3);
     if (screensaverTimeout > 0)
         scriptOpts << QString("screensaver_timeout=%1").arg(screensaverTimeout);
+    if (!logoCorner.isEmpty())
+        scriptOpts << QString("logo-corner=%1").arg(logoCorner);
     // Tell the OSC scripts to hide their CROP button on decode paths where
     // --panscan would blank the video (Pi 3 overlay path, 1080p Playback ON).
     if (noCrop)

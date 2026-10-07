@@ -50,8 +50,8 @@ SDL2 is a build-time dependency — `InputManager` links against it for USB game
 ### Get the source
 
 ```bash
-git clone https://github.com/anthonycaccese/240-mp.git
-cd 240-mp
+git clone https://github.com/mehmetraif/OSD-OS.git
+cd OSD-OS
 ```
 
 ### Build
@@ -151,8 +151,8 @@ IPv6 is not an OSD/OS requirement, and OSD/OS should not enable or force it auto
 ### Get the source
 
 ```bash
-git clone https://github.com/anthonycaccese/240-mp.git
-cd 240-mp
+git clone https://github.com/mehmetraif/OSD-OS.git
+cd OSD-OS
 ```
 
 ### Build

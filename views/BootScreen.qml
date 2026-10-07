@@ -47,14 +47,17 @@ FocusScope {
     readonly property real textSize: Math.max(root.sh * 0.0375, Math.min(root.sh * 0.0583333,
         Math.floor(100 * columnWidth / Math.max(1, probe.advanceWidth))))
 
-    // The cassette and everything under it sit as one block in the middle of
-    // the screen, spaced in art pixels.
+    // The cassette and everything under it sit as one block, spaced in art
+    // pixels, in the middle of what is left under the deck's display: between
+    // PLAY and the foot of the safe area, where every view's hint bar ends.
     readonly property real barGap: root.px * 8
     readonly property real statusGap: root.px * 5
     readonly property real linesGap: root.px * 3
     readonly property real blockHeight: cassette.height + barGap + bar.height
         + statusGap + status.height + linesGap + lines.height
-    readonly property real blockY: Math.round((root.sh - blockHeight) / 2)
+    readonly property real blockTop: playRow.y + playRow.height
+    readonly property real blockBottom: root.sh - root.sh * 0.1041667 //430
+    readonly property real blockY: Math.round(blockTop + (blockBottom - blockTop - blockHeight) / 2)
 
     // Cycles 0..3 for the "..." after whatever is starting.
     property int dots: 0
@@ -90,6 +93,7 @@ FocusScope {
     // The deck's own on-screen display while a tape plays, inside the same
     // overscan-safe gutter as every other view.
     Row {
+        id: playRow
         x: root.sw * 0.125 //80
         y: root.sh * 0.125 //60
         spacing: root.sw * 0.0125 //8
@@ -109,9 +113,10 @@ FocusScope {
 
     VhsCassette {
         id: cassette
-        // On the same 240-line pixel grid as the rest of the on-screen display:
-        // 160×92 at 640×480.
-        pixelSize: root.px
+        // As large as on the owner's drawing of this screen, where it is
+        // 612 × 284 of 1448 × 1086: 270 × 126 at 640×480, 304 × 126 at 720×480.
+        width: Math.round(root.sw * 612 / 1448)
+        height: Math.round(root.sh * 284 / 1086)
         ink: root.primaryColor
         x: Math.round((root.sw - width) / 2)
         y: bootRoot.blockY

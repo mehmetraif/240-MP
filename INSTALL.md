@@ -185,7 +185,7 @@ However, if you already have Raspberry Pi OS set up and working for your TV then
 5) After that completes SSH in again and run the following to install the latest version of OSD/OS
 
     ```bash
-    bash <(curl -fsSL https://github.com/anthonycaccese/240-mp/releases/latest/download/install.sh)
+    bash <(curl -fsSL https://github.com/mehmetraif/OSD-OS/releases/latest/download/install.sh)
     ```
 
     This will install all of the needed dependencies (note: over WiFi it will take about 20 mins to complete) 
@@ -263,7 +263,7 @@ At this point you can type `240mp` at any time to start up the app.  And if you 
 1) SSH into your Raspberry Pi
 2) Re-run the install script
     ```bash
-    bash <(curl -fsSL https://github.com/anthonycaccese/240-mp/releases/latest/download/install.sh)
+    bash <(curl -fsSL https://github.com/mehmetraif/OSD-OS/releases/latest/download/install.sh)
     ```
 3) When it asks to "`Install systemd autostart service? [y/N]`"
     - If you already have autostart set up please answer `Y` (that's needed to keep the app files owned by the service user, which in-app updates rely on)
@@ -340,7 +340,7 @@ The AppImage carries its own copy of the Wayland client libraries and uses them 
 
 > **Note for SteamOS**: please switch to Desktop Mode for the following steps
 
-1. Download `240-MP-linux-x86_64.AppImage` from the [latest release](https://github.com/anthonycaccese/240-mp/releases/latest).
+1. Download `240-MP-linux-x86_64.AppImage` from the [latest release](https://github.com/mehmetraif/OSD-OS/releases/latest).
 2. In your file manager, right-click the file → **Properties → Permissions** → tick *Is executable* (or run `chmod +x` on it from terminal).
 3. Double-click to launch. The Local Files module is enabled by default; open Settings to enable others (see the [modules section](https://github.com/anthonycaccese/240-MP/wiki#modules) in the wiki for details on each).
 
@@ -364,7 +364,7 @@ The AppImage carries its own copy of the Wayland client libraries and uses them 
 - The app verifies the download, swaps the new `.AppImage` over your current one in place (keeping a `.bak` of the previous version until the new one launches cleanly). 
 - In **Gaming Mode** the app needs to close after applying; so simply relaunch it from your Steam library to pick up the new version (the file path is unchanged, so your existing shortcut will still work). 
 - Your settings in `~/.local/share/240-MP/` are retained.
-- If the app is stored in a read-only location the in-app update can't write to then the update screen simply point you at the [Releases page](https://github.com/anthonycaccese/240-mp/releases/latest) to download and replace the `.AppImage` manually.
+- If the app is stored in a read-only location the in-app update can't write to then the update screen simply point you at the [Releases page](https://github.com/mehmetraif/OSD-OS/releases/latest) to download and replace the `.AppImage` manually.
 
 ### Uninstall
 

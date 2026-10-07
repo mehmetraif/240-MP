@@ -253,6 +253,7 @@ Window {
     // engine invalidates the root context itself.
     readonly property var hints: inputManager ? inputManager.hints : ({})
     readonly property string appVersion: appCore ? appCore.appVersion : ""
+    readonly property string appBuild: appCore ? appCore.appBuild : ""
 
     // --- BOOT SCREEN (240-MP OS image only, see os/README.md) ---
     // bootProgress mirrors, for the same teardown-safety reason as above.
