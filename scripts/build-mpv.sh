@@ -2,7 +2,7 @@
 # ──────────────────────────────────────────────────────────────────────────────
 # Build a modern mpv from source against the host's *stock* FFmpeg.
 #
-# Why: 240-MP targets a current mpv (the RPi and macOS builds get one from apt /
+# Why: OSD/OS targets a current mpv (the RPi and macOS builds get one from apt /
 # brew). Ubuntu 24.04's apt mpv is 0.37.0 — one release too old for the app's
 # "forced subtitles only" option (`--subs-with-matching-audio=forced`, added in
 # mpv 0.38.0). mpv 0.40.0 is the newest release that still builds against

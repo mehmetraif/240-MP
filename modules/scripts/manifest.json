@@ -1,5 +1,5 @@
 {
-  "id": "com.240mp.scripts",
+  "id": "com.osdos.scripts",
   "name": "Scripts",
   "icon": "assets/images/logo.svg",
   "entry_point_qml": "views/Root.qml",

@@ -1,0 +1,11 @@
+[Unit]
+Description=Update yt-dlp for OSD/OS's YouTube module after each boot and daily
+
+# Unlike the apt timers the image switches off, a check is one small request to
+# GitHub, and an update one write of about 3 MB.
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=1d
+
+[Install]
+WantedBy=timers.target

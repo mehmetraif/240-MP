@@ -4,7 +4,7 @@
 
 class MpvController;
 
-// The picture of an mpv session played inside 240-MP's own window (the
+// The picture of an mpv session played inside OSD/OS's own window (the
 // Transparent Background setting, see EmbeddedMpv), drawn as an item so that
 // the menus can lie over it. It fills its area, mpv having fitted the picture
 // to it (bars, Scaling), and tells the controller how many pixels that is:

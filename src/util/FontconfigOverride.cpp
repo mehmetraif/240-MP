@@ -5,7 +5,7 @@
 namespace fcoverride {
 
 QString write(const QString &fontsDir) {
-    const QString path = QDir::tempPath() + "/240mp-fonts.conf";
+    const QString path = QDir::tempPath() + "/osdos-fonts.conf";
     QFile f(path);
     if (!f.open(QFile::WriteOnly | QFile::Text))
         return {};

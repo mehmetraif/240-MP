@@ -1,7 +1,7 @@
 import QtQuick
 import Components
 
-// Boot screen of the 240-MP OS image (os/README.md). The image puts the app on
+// Boot screen of the OSD/OS image (os/README.md). The image puts the app on
 // screen first and starts the services it held back afterwards, in the order
 // it lists them; this shows them coming up while the cassette plays — the tape
 // winds across in step with the progress bar. It stays until they have all

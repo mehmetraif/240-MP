@@ -19,7 +19,7 @@
 #include <QSet>
 #include <QRegularExpression>
 
-static const QString kModuleId = QStringLiteral("com.240mp.jellyfin");
+static const QString kModuleId = QStringLiteral("com.osdos.jellyfin");
 
 // Library CollectionTypes the module knows how to browse + play. Anything else
 // (music, books, photos, mixed/empty, etc.) is hidden from both the browse list
@@ -30,7 +30,7 @@ static const QSet<QString> kSupportedCollectionTypes = {
 };
 
 static QString authHeaderValue(const QString &token, const QString &deviceId) {
-    QString auth = QStringLiteral("MediaBrowser Client=\"240-MP\", Device=\"%1\", DeviceId=\"%2\", Version=\"%3\"")
+    QString auth = QStringLiteral("MediaBrowser Client=\"OSD/OS\", Device=\"%1\", DeviceId=\"%2\", Version=\"%3\"")
                        .arg(QSysInfo::machineHostName(), deviceId, QCoreApplication::applicationVersion());
     if (!token.isEmpty())
         auth += QStringLiteral(", Token=\"%1\"").arg(token);

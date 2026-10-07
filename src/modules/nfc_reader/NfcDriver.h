@@ -1,14 +1,15 @@
 #pragma once
 #include <QString>
+#include "util/LegacyNames.h"
 #include <QtGlobal>
 
 // Verbose reader discovery logging. Auto-detection is the only way a reader is
 // chosen (there is no picker setting), so when it picks nothing there is
 // otherwise no way to tell why — which is unworkable on a machine you can only
-// reach over SSH, like a Steam Deck. Follows the MP240_UPDATE_FEED_URL
+// reach over SSH, like a Steam Deck. Follows the OSDOS_UPDATE_FEED_URL
 // precedent of an env var rather than a user-visible setting.
 inline bool nfcDebugEnabled() {
-    static const bool enabled = qEnvironmentVariableIsSet("MP240_NFC_DEBUG");
+    static const bool enabled = legacy::envIsSet("NFC_DEBUG");
     return enabled;
 }
 
@@ -16,7 +17,7 @@ inline bool nfcDebugEnabled() {
 // thread; none of them are thread-safe, and every method may block for as long
 // as the underlying transport does. The worker's watchdog is what covers that.
 //
-// Deliberately narrower than a general NFC abstraction: 240-MP only ever reads
+// Deliberately narrower than a general NFC abstraction: OSD/OS only ever reads
 // a card's UID, so there is no write, no NDEF, and no capability negotiation.
 class NfcDriver {
 public:

@@ -36,6 +36,7 @@
 #include "util/ExecPath.h"
 #include "util/DisplayHandoff.h"
 #include "util/OsdIconProvider.h"
+#include "util/LegacyNames.h"
 #ifdef Q_OS_MAC
 #include "util/MacosUtils.h"
 #endif
@@ -50,20 +51,28 @@ static QString resolveAppRoot() {
     if (QCoreApplication::applicationFilePath().contains(".app/Contents/MacOS/"))
         return QDir(appDir + "/../Resources").canonicalPath();
 
-    QDir fhsData(appDir + "/../share/240mp");
+    QDir fhsData(appDir + "/../share/osdos");
     if (fhsData.exists())
         return fhsData.canonicalPath();
 
     return QDir(appDir + "/..").canonicalPath();
 }
 
+// The data folder: DATA_ROOT, else the platform's for OSD-OS. Before anything
+// reads it, what an install from 240-MP's days left is brought over: its data
+// folder, moved here, and the module ids in it (util/LegacyNames).
 static QString resolveDataRoot() {
     QString envRoot = qEnvironmentVariable("DATA_ROOT");
-    if (!envRoot.isEmpty())
-        return QDir(envRoot).canonicalPath();
+    if (!envRoot.isEmpty()) {
+        const QString root = QDir(envRoot).canonicalPath();
+        legacy::migrateModuleIds(root);
+        return root;
+    }
 
-    QString path = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    QString path = legacy::migrateDataFolder(
+        QStandardPaths::writableLocation(QStandardPaths::AppDataLocation));
     QDir().mkpath(path);
+    legacy::migrateModuleIds(path);
     return path;
 }
 
@@ -76,7 +85,7 @@ static QString resolveDataRoot() {
 // Async-signal-safe: only records the signal. A 100 ms timer in main() polls it and
 // exits from the event loop, where destructors run properly.
 static volatile std::sig_atomic_t g_termSignal = 0;
-extern "C" void mp240HandleTerm(int sig) { g_termSignal = sig; }
+extern "C" void osdosHandleTerm(int sig) { g_termSignal = sig; }
 
 int main(int argc, char *argv[]) {
     // On a headless screen (EGLFS) Qt draws the mouse pointer itself, as a
@@ -87,10 +96,10 @@ int main(int argc, char *argv[]) {
         qputenv("QT_QPA_EGLFS_HIDECURSOR", "1");
 
     QGuiApplication app(argc, argv);
-    app.setApplicationName("240-MP");
+    app.setApplicationName("OSD-OS");
     app.setApplicationVersion(QStringLiteral(APP_VERSION));
 
-    // Hide cursor — 240-MP is keyboard/gamepad-only so the cursor serves no
+    // Hide cursor — OSD/OS is keyboard/gamepad-only so the cursor serves no
     // purpose. Hidden on all of Linux: headless EGLFS and desktop compositors
     // (Steam Deck / RPi desktop) alike, since the app runs fullscreen kiosk-style.
 #ifdef Q_OS_LINUX
@@ -103,16 +112,16 @@ int main(int argc, char *argv[]) {
 
     setlocale(LC_NUMERIC, "C");
 
-    std::signal(SIGTERM, mp240HandleTerm);
-    std::signal(SIGINT,  mp240HandleTerm);
-    std::signal(SIGHUP,  mp240HandleTerm);
+    std::signal(SIGTERM, osdosHandleTerm);
+    std::signal(SIGINT,  osdosHandleTerm);
+    std::signal(SIGHUP,  osdosHandleTerm);
     QTimer termPoll;
     termPoll.setInterval(100);
     QObject::connect(&termPoll, &QTimer::timeout, &app, [&app]() {
         if (g_termSignal) {
             qInfo("[main] Termination signal received — shutting down cleanly");
             // 128 + signal number, the shell convention for "ended by a signal".
-            // It lets the autostart service's stop helper (240mp-stop) tell a
+            // It lets the autostart service's stop helper (osdos-stop) tell a
             // `systemctl stop`/`restart` apart from the user choosing Quit
             // (exit 0), which is the only one that should power the Pi off.
             app.exit(128 + g_termSignal);
@@ -200,13 +209,13 @@ int main(int argc, char *argv[]) {
     // Lists of videos from the modules above, downloaded through them for
     // the offline ones.
     PlaylistsBackend    playlistsBackend(dataRoot, &appCore, &localFiles, &youtubeBackend,
-                                         {{QStringLiteral("com.240mp.jellyfin"), &jellyfinBackend},
-                                          {QStringLiteral("com.240mp.emby"), &embyBackend}});
+                                         {{QStringLiteral("com.osdos.jellyfin"), &jellyfinBackend},
+                                          {QStringLiteral("com.osdos.emby"), &embyBackend}});
     MpvController       mpvController(appRoot, dataRoot, &appCore, &displayHandoff);
     InputManager        inputManager(dataRoot, &appCore);
     IdleTracker         idleTracker(60);   // disabled until Main.qml applies the saved setting
     UpdateManager       updateManager(appRoot, dataRoot);
-    BootProgress        bootProgress;      // inert outside the 240-MP OS image (os/)
+    BootProgress        bootProgress;      // inert outside the OSD/OS image (os/)
     BluetoothManager    bluetoothManager;  // Settings → Bluetooth (BlueZ on Linux)
 
     // Playback follows the UI's display: mpv gets a --fs-screen* arg derived
@@ -222,18 +231,18 @@ int main(int argc, char *argv[]) {
     // under its context-property name, and its optional signals/slots connected by
     // introspection. The module ID lives in exactly one place per module.
     QQmlContext *ctx = engine.rootContext();
-    appCore.registerModule("com.240mp.local_files",  "localFilesBackend",  &localFiles,  ctx);
-    appCore.registerModule("com.240mp.plex",         "plexBackend",        &plexBackend, ctx);
-    appCore.registerModule("com.240mp.jellyfin",     "jellyfinBackend",    &jellyfinBackend, ctx);
-    appCore.registerModule("com.240mp.emby",         "embyBackend",        &embyBackend, ctx);
-    appCore.registerModule("com.240mp.ambient_mode", "ambientModeBackend", &ambientMode, ctx);
-    appCore.registerModule("com.240mp.nfc_reader",   "nfcReaderBackend",   &nfcReader,   ctx);
-    appCore.registerModule("com.240mp.youtube",      "youtubeBackend",     &youtubeBackend, ctx);
-    appCore.registerModule("com.240mp.weather",      "weatherBackend",     &weatherBackend, ctx);
-    appCore.registerModule("com.240mp.scripts",      "scriptsBackend",     &scriptsBackend, ctx);
-    appCore.registerModule("com.240mp.netflix",      "netflixBackend",     &netflixBackend, ctx);
-    appCore.registerModule("com.240mp.prime_video",  "primeVideoBackend",  &primeVideoBackend, ctx);
-    appCore.registerModule("com.240mp.playlists",    "playlistsBackend",   &playlistsBackend, ctx);
+    appCore.registerModule("com.osdos.local_files",  "localFilesBackend",  &localFiles,  ctx);
+    appCore.registerModule("com.osdos.plex",         "plexBackend",        &plexBackend, ctx);
+    appCore.registerModule("com.osdos.jellyfin",     "jellyfinBackend",    &jellyfinBackend, ctx);
+    appCore.registerModule("com.osdos.emby",         "embyBackend",        &embyBackend, ctx);
+    appCore.registerModule("com.osdos.ambient_mode", "ambientModeBackend", &ambientMode, ctx);
+    appCore.registerModule("com.osdos.nfc_reader",   "nfcReaderBackend",   &nfcReader,   ctx);
+    appCore.registerModule("com.osdos.youtube",      "youtubeBackend",     &youtubeBackend, ctx);
+    appCore.registerModule("com.osdos.weather",      "weatherBackend",     &weatherBackend, ctx);
+    appCore.registerModule("com.osdos.scripts",      "scriptsBackend",     &scriptsBackend, ctx);
+    appCore.registerModule("com.osdos.netflix",      "netflixBackend",     &netflixBackend, ctx);
+    appCore.registerModule("com.osdos.prime_video",  "primeVideoBackend",  &primeVideoBackend, ctx);
+    appCore.registerModule("com.osdos.playlists",    "playlistsBackend",   &playlistsBackend, ctx);
 
     ctx->setContextProperty("idleTracker",   &idleTracker);
     ctx->setContextProperty("appCore",       &appCore);
@@ -262,8 +271,8 @@ int main(int argc, char *argv[]) {
     engine.addImageProvider(QStringLiteral("osdicon"), new OsdIconProvider);
     // The picture of a video played inside this window (Transparent Background),
     // and a tape's noise, for the screen a video loads behind (LoadingScreen).
-    qmlRegisterType<VideoSurface>("MP240.Video", 1, 0, "VideoSurface");
-    qmlRegisterType<VhsNoise>("MP240.Video", 1, 0, "VhsNoise");
+    qmlRegisterType<VideoSurface>("OSDOS.Video", 1, 0, "VideoSurface");
+    qmlRegisterType<VhsNoise>("OSDOS.Video", 1, 0, "VhsNoise");
 
     engine.load(QUrl::fromLocalFile(appRoot + "/Main.qml"));
     if (engine.rootObjects().isEmpty()) {

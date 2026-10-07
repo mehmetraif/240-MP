@@ -1,6 +1,6 @@
 #!/bin/sh
 # ──────────────────────────────────────────────────────────────────────────────
-# AppImage entry point for 240-MP (Linux x86_64).
+# AppImage entry point for OSD/OS (Linux x86_64).
 #
 # Installed over the symlink linuxdeploy generates (see scripts/build-appimage.sh
 # step 8). Two jobs, both about surviving hosts that are not a normal desktop:
@@ -45,7 +45,7 @@ HERE="${APPDIR:-$(dirname "$(readlink -f "$0")")}"
 # with dependencies the app itself never has (libva-wayland is mpv's alone), so
 # tracing only the app would miss a host that can start the UI but not play.
 needs_fallback=1
-trace="$(LD_TRACE_LOADED_OBJECTS=1 "$HERE/usr/bin/240mp" 2>/dev/null
+trace="$(LD_TRACE_LOADED_OBJECTS=1 "$HERE/usr/bin/osdos" 2>/dev/null
          LD_TRACE_LOADED_OBJECTS=1 "$HERE/usr/bin/mpv" 2>/dev/null)"
 if [ -n "$trace" ]; then
     needs_fallback=0
@@ -103,16 +103,16 @@ fi
 # X11-vs-Wayland is a property of the user's machine: the session knows it better
 # than we do, and yielding is right. A widget style is a property of OUR design —
 # a fixed look, with nothing here to theme — so a value arriving in it is not a
-# choice made for 240-MP, it is ambient session state. ${VAR:-...} cannot tell
+# choice made for OSD/OS, it is ambient session state. ${VAR:-...} cannot tell
 # the two apart, because both reach us under the same name.
 #
 # Pin by name, never by namespace: QT_LOGGING_RULES / QSG_* are how we ask a user
 # to debug a black screen, and swallowing their launch option would make that
 # miserable. QT_QPA_PLATFORM and scale-factor variables stay theirs too.
 #
-# If an override is ever genuinely needed — 240-MP starts using real Qt Quick
+# If an override is ever genuinely needed — OSD/OS starts using real Qt Quick
 # Controls types, or someone hits a case where a pin here is wrong for their
-# hardware — add an MP240_-prefixed variable to read instead. Nothing else on any
+# hardware — add an OSDOS_-prefixed variable to read instead. Nothing else on any
 # system sets that prefix, so a value found in one is deliberate by construction,
 # while the session's broadcast stays locked out. Do not reopen these names.
 QT_QUICK_CONTROLS_STYLE=Basic
@@ -121,4 +121,4 @@ export QT_QUICK_CONTROLS_STYLE QT_QUICK_CONTROLS_FALLBACK_STYLE
 unset QT_QPA_PLATFORMTHEME QT_STYLE_OVERRIDE
 unset QT_PLUGIN_PATH QML2_IMPORT_PATH QML_IMPORT_PATH
 
-exec "$HERE/usr/bin/240mp" "$@"
+exec "$HERE/usr/bin/osdos" "$@"

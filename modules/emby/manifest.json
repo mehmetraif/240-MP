@@ -1,5 +1,5 @@
 {
-  "id": "com.240mp.emby",
+  "id": "com.osdos.emby",
   "name": "Emby",
   "icon": "assets/images/logo.svg",
   "entry_point_qml": "views/Root.qml",

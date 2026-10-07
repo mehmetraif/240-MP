@@ -1,5 +1,5 @@
 {
-  "id": "com.240mp.ambient_mode",
+  "id": "com.osdos.ambient_mode",
   "name": "Ambient:Mode",
   "icon": "assets/images/logo.svg",
   "entry_point_qml": "views/Root.qml",

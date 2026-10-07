@@ -1,0 +1,23 @@
+#!/bin/sh
+
+# OSD/OS image: mkfs.exfat in the initramfs, for resize_early's film partition
+# on the first boot (lsblk and parted come with raspberrypi-sys-mods' hook).
+
+PREREQ=""
+
+prereqs () {
+  echo "${PREREQ}"
+}
+
+case "${1}" in
+  prereqs)
+    prereqs
+    exit 0
+    ;;
+esac
+
+. /usr/share/initramfs-tools/hook-functions
+
+copy_exec /usr/sbin/mkfs.exfat /bin
+
+exit 0

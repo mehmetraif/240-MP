@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(240mp VERSION 1.0 LANGUAGES CXX)
+project(osdos VERSION 1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -60,8 +60,9 @@ if(APPLE)
     enable_language(OBJCXX)
 endif()
 
-add_executable(240mp
+add_executable(osdos
     src/main.cpp
+    src/util/LegacyNames.cpp
     src/AppCore.cpp
     src/modules/local_files/LocalFilesBackend.cpp
     src/modules/plex/PlexBackend.cpp
@@ -98,9 +99,9 @@ add_executable(240mp
     $<$<BOOL:${APPLE}>:src/util/MacosUtils.mm>
 )
 
-target_compile_definitions(240mp PRIVATE APP_VERSION="${APP_VERSION}" APP_BUILD="${APP_BUILD}")
+target_compile_definitions(osdos PRIVATE APP_VERSION="${APP_VERSION}" APP_BUILD="${APP_BUILD}")
 
-target_link_libraries(240mp PRIVATE
+target_link_libraries(osdos PRIVATE
     Qt6::Core
     Qt6::Gui
     Qt6::Quick
@@ -113,20 +114,20 @@ target_link_libraries(240mp PRIVATE
 )
 
 if(APPLE)
-    target_link_libraries(240mp PRIVATE "-framework AppKit")
+    target_link_libraries(osdos PRIVATE "-framework AppKit")
 endif()
 
 if(PCSC_FOUND)
-    target_compile_definitions(240mp PRIVATE MP240_NFC_PCSC_AVAILABLE=1)
+    target_compile_definitions(osdos PRIVATE OSDOS_NFC_PCSC_AVAILABLE=1)
     if(APPLE)
-        target_link_libraries(240mp PRIVATE ${PCSC_LIBRARIES})
+        target_link_libraries(osdos PRIVATE ${PCSC_LIBRARIES})
     else()
-        target_link_libraries(240mp PRIVATE PkgConfig::PCSC)
+        target_link_libraries(osdos PRIVATE PkgConfig::PCSC)
     endif()
 endif()
 
 if(NOT APPLE)
-    target_include_directories(240mp PRIVATE ${Libdrm_INCLUDE_DIRS})
+    target_include_directories(osdos PRIVATE ${Libdrm_INCLUDE_DIRS})
 endif()
 
 # libmpv's headers, for Transparent Background: video played inside the app's
@@ -140,9 +141,9 @@ if(PKG_CONFIG_FOUND)
     pkg_check_modules(MPV QUIET mpv)
 endif()
 if(MPV_FOUND)
-    target_compile_definitions(240mp PRIVATE MP240_EMBEDDED_MPV=1)
+    target_compile_definitions(osdos PRIVATE OSDOS_EMBEDDED_MPV=1)
     # client.h and render.h need nothing of the dependencies pkg-config lists.
-    target_include_directories(240mp PRIVATE ${MPV_INCLUDEDIR})
+    target_include_directories(osdos PRIVATE ${MPV_INCLUDEDIR})
 else()
     message(STATUS "libmpv headers not found — Transparent Background will be unavailable")
 endif()
@@ -153,54 +154,54 @@ if(NOT APPLE)
     find_package(Qt6 QUIET COMPONENTS DBus)
 endif()
 if(Qt6DBus_FOUND)
-    target_sources(240mp PRIVATE src/bluetooth/BluetoothAgent.cpp)
-    target_compile_definitions(240mp PRIVATE MP240_BLUETOOTH=1)
-    target_link_libraries(240mp PRIVATE Qt6::DBus)
+    target_sources(osdos PRIVATE src/bluetooth/BluetoothAgent.cpp)
+    target_compile_definitions(osdos PRIVATE OSDOS_BLUETOOTH=1)
+    target_link_libraries(osdos PRIVATE Qt6::DBus)
 else()
     message(STATUS "Qt D-Bus not found — Settings → Bluetooth will be unavailable")
 endif()
 
-target_include_directories(240mp PRIVATE
+target_include_directories(osdos PRIVATE
     src
 )
 
 # ── macOS bundle metadata ──────────────────────────────────────────────────────
-set_target_properties(240mp PROPERTIES
+set_target_properties(osdos PROPERTIES
     MACOSX_BUNDLE TRUE
-    MACOSX_BUNDLE_BUNDLE_NAME "240-MP"
+    MACOSX_BUNDLE_BUNDLE_NAME "OSD-OS"
     MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_VERSION}"
     MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}"
-    MACOSX_BUNDLE_GUI_IDENTIFIER "com.240mp.app"
-    MACOSX_BUNDLE_ICON_FILE "packaging/macos/240-mp"
+    MACOSX_BUNDLE_GUI_IDENTIFIER "com.osdos.app"
+    MACOSX_BUNDLE_ICON_FILE "packaging/macos/osd-os"
     INSTALL_RPATH_USE_LINK_PATH TRUE
 )
 
 # ── Dev bundle symlink (macOS only, non-CI) ───────────────────────────────────
-# Makes double-clicking build/240mp.app work during development by symlinking
+# Makes double-clicking build/osdos.app work during development by symlinking
 # Contents/Resources → repo root so resolveAppRoot() finds the QML files.
 # Skipped in CI (ENV{CI} is set by GitHub Actions) because cmake --install
 # populates Resources with real files — a symlink in the build tree would be
 # packaged into the DMG pointing to a CI path that doesn't exist on end-user Macs.
 if(APPLE AND NOT DEFINED ENV{CI})
-    add_custom_command(TARGET 240mp POST_BUILD
+    add_custom_command(TARGET osdos POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E remove -f
-            "$<TARGET_BUNDLE_CONTENT_DIR:240mp>/Resources"
+            "$<TARGET_BUNDLE_CONTENT_DIR:osdos>/Resources"
         COMMAND ${CMAKE_COMMAND} -E create_symlink
             "${CMAKE_SOURCE_DIR}"
-            "$<TARGET_BUNDLE_CONTENT_DIR:240mp>/Resources"
+            "$<TARGET_BUNDLE_CONTENT_DIR:osdos>/Resources"
         COMMENT "Symlinking repo root as bundle Resources (dev build)"
     )
 endif()
 
 # ── Install rules ──────────────────────────────────────────────────────────────
 if(APPLE)
-    install(TARGETS 240mp BUNDLE DESTINATION . COMPONENT Runtime)
+    install(TARGETS osdos BUNDLE DESTINATION . COMPONENT Runtime)
 
     # Use a hardcoded relative path — $<TARGET_BUNDLE_CONTENT_DIR> resolves to
     # the build tree, not the install prefix, inside install() rules.
     # LICENSE goes with every copy, as the GPL asks; Settings → About shows it.
     install(FILES "${CMAKE_SOURCE_DIR}/Main.qml" "${CMAKE_SOURCE_DIR}/LICENSE"
-        DESTINATION "240mp.app/Contents/Resources"
+        DESTINATION "osdos.app/Contents/Resources"
         COMPONENT Runtime)
 
     install(DIRECTORY
@@ -208,7 +209,7 @@ if(APPLE)
         "${CMAKE_SOURCE_DIR}/modules"
         "${CMAKE_SOURCE_DIR}/assets"
         "${CMAKE_SOURCE_DIR}/scripts"
-        DESTINATION "240mp.app/Contents/Resources"
+        DESTINATION "osdos.app/Contents/Resources"
         COMPONENT Runtime)
 
     # Icon lives under packaging/macos (not assets/) so it ships alongside the
@@ -216,19 +217,19 @@ if(APPLE)
     # keeps matching MACOSX_BUNDLE_ICON_FILE above.
     install(DIRECTORY
         "${CMAKE_SOURCE_DIR}/packaging/macos"
-        DESTINATION "240mp.app/Contents/Resources/packaging"
+        DESTINATION "osdos.app/Contents/Resources/packaging"
         COMPONENT Runtime)
 
     # macdeployqt is NOT run here — it requires Qt frameworks to be present and
     # is environment-specific. Run it manually in CI after cmake --install.
 else()
-    install(TARGETS 240mp
+    install(TARGETS osdos
         RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
         COMPONENT Runtime)
 
     # LICENSE goes with every copy, as the GPL asks; Settings → About shows it.
     install(FILES "${CMAKE_SOURCE_DIR}/Main.qml" "${CMAKE_SOURCE_DIR}/LICENSE"
-        DESTINATION "${CMAKE_INSTALL_DATADIR}/240mp"
+        DESTINATION "${CMAKE_INSTALL_DATADIR}/osdos"
         COMPONENT Runtime)
 
     install(DIRECTORY
@@ -236,19 +237,19 @@ else()
         "${CMAKE_SOURCE_DIR}/modules"
         "${CMAKE_SOURCE_DIR}/assets"
         "${CMAKE_SOURCE_DIR}/scripts"
-        DESTINATION "${CMAKE_INSTALL_DATADIR}/240mp"
+        DESTINATION "${CMAKE_INSTALL_DATADIR}/osdos"
         COMPONENT Runtime)
 endif()
 
 # ── CPack ──────────────────────────────────────────────────────────────────────
-set(CPACK_PACKAGE_NAME "240-MP")
+set(CPACK_PACKAGE_NAME "OSD-OS")
 set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "240-MP Media Player")
-set(CPACK_PACKAGE_VENDOR "240-MP")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "OSD/OS Media Player")
+set(CPACK_PACKAGE_VENDOR "OSD-OS")
 
 if(APPLE)
     set(CPACK_GENERATOR "DragNDrop")
-    set(CPACK_DMG_VOLUME_NAME "240-MP")
+    set(CPACK_DMG_VOLUME_NAME "OSD-OS")
     set(CPACK_DMG_FORMAT "UDZO")
 else()
     set(CPACK_GENERATOR "TGZ")

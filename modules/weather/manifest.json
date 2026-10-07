@@ -1,5 +1,5 @@
 {
-  "id": "com.240mp.weather",
+  "id": "com.osdos.weather",
   "name": "WEATHER",
   "icon": "assets/images/logo.svg",
   "entry_point_qml": "views/Root.qml",

@@ -1,4 +1,5 @@
 #include "Pn532SerialDriver.h"
+#include "util/LegacyNames.h"
 
 #include <QDebug>
 #include <QElapsedTimer>
@@ -222,7 +223,7 @@ bool Pn532SerialDriver::ensureConnected() {
     // Escape hatch for the auto-detect-only design: a reader on a bridge chip
     // outside the allowlist, or a machine with several matching ports, can be
     // pinned without a rebuild.
-    const QString forced = qEnvironmentVariable("MP240_NFC_SERIAL_DEVICE");
+    const QString forced = legacy::env("NFC_SERIAL_DEVICE");
     if (!forced.isEmpty()) {
         if (!probe(forced)) return false;
         if (!configure()) {

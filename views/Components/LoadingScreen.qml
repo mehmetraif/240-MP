@@ -1,5 +1,5 @@
 import QtQuick
-import MP240.Video
+import OSDOS.Video
 
 // What a player shows while its video starts: a VCR's screen as a tape loads.
 // The theme's ground in a tape's noise (VhsNoise), and a dubbing deck's

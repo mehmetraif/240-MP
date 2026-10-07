@@ -8,7 +8,7 @@
 #include <QJsonObject>
 #include <QDebug>
 
-static const char *kModuleId       = "com.240mp.scripts";
+static const char *kModuleId       = "com.osdos.scripts";
 // Deliberately NOT "scripts": $APP_ROOT/scripts already means the app's own Lua
 // and install scripts, and two different things called "the scripts dir" would
 // make every support thread ambiguous.

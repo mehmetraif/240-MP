@@ -32,7 +32,7 @@ FocusScope {
         }
     }
 
-    // The run mode decides the view: Console.qml keeps 240-MP on screen and shows
+    // The run mode decides the view: Console.qml keeps OSD/OS on screen and shows
     // the output; Takeover.qml hands the display to the script and reports back.
     function launch(entry) {
         var view = entry.mode === "takeover" ? "Takeover.qml" : "Console.qml"

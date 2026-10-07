@@ -646,8 +646,8 @@ FocusScope {
         choices: quitOptions
         onActivated: function(act) {
             if (act === "quit")          Qt.quit()
-            else if (act === "restart")  Qt.exit(12)   // 240mp-stop reboots on it
-            else if (act === "terminal") Qt.exit(10)   // matches EXIT_STATUS check in 240mp-stop
+            else if (act === "restart")  Qt.exit(12)   // osdos-stop reboots on it
+            else if (act === "terminal") Qt.exit(10)   // matches EXIT_STATUS check in osdos-stop
         }
         onClosed: settingsList.forceActiveFocus()
     }

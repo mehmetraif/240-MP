@@ -1,4 +1,5 @@
 #include "BootProgress.h"
+#include "util/LegacyNames.h"
 
 #include <QCoreApplication>
 #include <QFile>
@@ -32,7 +33,7 @@ BootProgress::BootProgress(QObject *parent)
 {
     m_clock.start();
 
-    const QString unitsFile = qEnvironmentVariable("MP240_BOOT_UNITS_FILE");
+    const QString unitsFile = legacy::env("BOOT_UNITS_FILE");
     if (unitsFile.isEmpty() || !loadSteps(unitsFile))
         return;
 
@@ -133,7 +134,7 @@ void BootProgress::markReady()
     m_readyMarked = true;
     qInfo("[boot] first frame %lld ms after start", static_cast<long long>(m_clock.elapsed()));
 
-    const QString path = qEnvironmentVariable("MP240_READY_FILE");
+    const QString path = legacy::env("READY_FILE");
     if (path.isEmpty())
         return;
     QFile file(path);

@@ -46,10 +46,10 @@ MpvController::MpvController(const QString &appRoot, const QString &dataRoot,
     , m_handoff(handoff)
     , m_appRoot(appRoot)
     , m_dataRoot(dataRoot)
-    , m_socketPath(QDir::tempPath() + "/240mp-mpv.sock")
-    , m_inputConfPath(QDir::tempPath() + "/240mp-input.conf")
-    , m_logFilePath(QDir::tempPath() + "/240mp-mpv.log")
-    , m_subInfoPath(QDir::tempPath() + "/240mp-mpv-subinfo.json")
+    , m_socketPath(QDir::tempPath() + "/osdos-mpv.sock")
+    , m_inputConfPath(QDir::tempPath() + "/osdos-input.conf")
+    , m_logFilePath(QDir::tempPath() + "/osdos-mpv.log")
+    , m_subInfoPath(QDir::tempPath() + "/osdos-mpv-subinfo.json")
 {
     m_videoProfile = detectVideoProfile();
     qInfo("[MpvController] video profile: %s",
@@ -63,18 +63,18 @@ MpvController::MpvController(const QString &appRoot, const QString &dataRoot,
     // open (its bindings are forced).
     QFile f(m_inputConfPath);
     if (f.open(QFile::WriteOnly | QFile::Text)) {
-        f.write("ESC script-message 240mp-menu\n");
-        f.write("BS script-message 240mp-menu\n");
+        f.write("ESC script-message osdos-menu\n");
+        f.write("BS script-message osdos-menu\n");
         f.write("ENTER cycle pause\n");
         f.close();
     }
     // Transparent Background: back returns to the menus and leaves the video
     // playing (detachToMenus), the deck's menu first here too.
-    m_embeddedInputConfPath = QDir::tempPath() + "/240mp-input-embedded.conf";
+    m_embeddedInputConfPath = QDir::tempPath() + "/osdos-input-embedded.conf";
     QFile ef(m_embeddedInputConfPath);
     if (ef.open(QFile::WriteOnly | QFile::Text)) {
-        ef.write("ESC script-message 240mp-menu\n");
-        ef.write("BS script-message 240mp-menu\n");
+        ef.write("ESC script-message osdos-menu\n");
+        ef.write("BS script-message osdos-menu\n");
         ef.write("ENTER cycle pause\n");
         ef.close();
     }
@@ -431,7 +431,7 @@ void MpvController::loadAndPlay(const QString &url, float startSeconds,
         QFile lf(m_logFilePath);
         if (lf.open(QFile::Append | QFile::Text)) {
             lf.setPermissions(QFile::ReadOwner | QFile::WriteOwner);
-            lf.write(QString("\n=== 240-MP session start %1 ===\n    url: %2\n\n")
+            lf.write(QString("\n=== OSD/OS session start %1 ===\n    url: %2\n\n")
                          .arg(QDateTime::currentDateTime().toString(Qt::ISODate))
                          .arg(redactSecrets(url))
                          .toUtf8());
@@ -690,7 +690,7 @@ void MpvController::onIpcReadyRead() {
                     const QString msg = args[0].toString();
                     if (msg == "skip-segment")
                         emit skipRequested();
-                    else if (msg == "240mp-menu")
+                    else if (msg == "osdos-menu")
                         videoActive() ? detachToMenus() : backFromProcess();
                     else if (msg == "cycle-sub")
                         emit subtitleCycleRequested();
@@ -1121,7 +1121,7 @@ void MpvController::detachToMenus() {
     m_playerMenu = m_sessionNote.value(QStringLiteral("menu")).toBool();
     emit backgroundChanged();
     // The deck's own menu, if it is open, goes with the full-screen view.
-    sendCommand({"script-message", "240mp-osd-menu-hide"});
+    sendCommand({"script-message", "osdos-osd-menu-hide"});
     // A player with a menu of its own opens it over the picture, and the
     // session stays its.
     if (m_playerMenu) {

@@ -1,5 +1,5 @@
 {
-  "id": "com.240mp.playlists",
+  "id": "com.osdos.playlists",
   "name": "Playlists",
   "icon": "assets/images/logo.svg",
   "entry_point_qml": "views/Root.qml",
@@ -15,7 +15,7 @@
       "label": "Download Folder",
       "type": "directory_browser",
       "default": "",
-      "description": "Where offline playlists' videos are downloaded, each video once whatever lists it is on\n[DEFAULT] A Playlists folder in Local Files' folder: on the OSD/OS image, the card's 240-MP partition"
+      "description": "Where offline playlists' videos are downloaded, each video once whatever lists it is on\n[DEFAULT] A Playlists folder in Local Files' folder: on the OSD/OS image, the card's OSD-OS partition"
     },
     {
       "key": "subtitles",

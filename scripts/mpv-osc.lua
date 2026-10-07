@@ -398,7 +398,7 @@ local function toggle_menu()
     else
         -- Tell the volume bar (mpv-media-keys.lua) to stand down — the two OSDs
         -- share the same spot and are mutually exclusive.
-        mp.commandv("script-message", "240mp-osd-volume-hide")
+        mp.commandv("script-message", "osdos-osd-volume-hide")
         menu_visible = true
         focus_row    = 1
         draw_menu()
@@ -417,14 +417,14 @@ end
 
 -- The volume bar (mpv-media-keys.lua) broadcasts this when it appears; close the
 -- menu so the two OSDs never overlap. toggle_menu() runs the full teardown.
-mp.register_script_message("240mp-osd-menu-hide", function()
+mp.register_script_message("osdos-osd-menu-hide", function()
     if menu_visible then toggle_menu() end
 end)
 
 -- mpv-media-keys.lua broadcasts this on seek / chapter changes so the nav menu
 -- pops up to show the new position. Open it if closed; otherwise just redraw
 -- and restart the auto-hide timer.
-mp.register_script_message("240mp-osd-menu-show", function()
+mp.register_script_message("osdos-osd-menu-show", function()
     if menu_visible then
         reset_idle_timer()
         draw_menu()

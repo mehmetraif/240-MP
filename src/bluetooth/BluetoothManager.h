@@ -9,7 +9,7 @@
 
 #include <functional>
 
-#ifdef MP240_BLUETOOTH
+#ifdef OSDOS_BLUETOOTH
 #include <QDBusMessage>
 class QDBusServiceWatcher;
 #endif
@@ -29,7 +29,7 @@ class QDBusServiceWatcher;
 //   (BluetoothAgent, org.bluez.Agent1) for what the device needs: a keyboard's
 //   is a code to type on it, which prompt holds while it is wanted.
 //
-// BlueZ is only called once it is on the bus. On 240-MP OS bluetooth.service
+// BlueZ is only called once it is on the bus. On the OSD/OS image bluetooth.service
 // starts after the app is on screen, and a call would start it early (D-Bus
 // activation). Built without Qt D-Bus (macOS), supported is false and nothing
 // here does anything.
@@ -92,7 +92,7 @@ public:
     Q_INVOKABLE void clearMessage();
     Q_INVOKABLE void collectDetails();
 
-#ifdef MP240_BLUETOOTH
+#ifdef OSDOS_BLUETOOTH
     // BluetoothAgent's calls: what BlueZ asks of the agent.
     QString agentRequestPinCode(const QString &device);
     void agentDisplayPinCode(const QString &device, const QString &pinCode);
@@ -110,7 +110,7 @@ signals:
     void messageChanged();
     void detailsChanged();
 
-#ifdef MP240_BLUETOOTH
+#ifdef OSDOS_BLUETOOTH
 private slots:
     void onServiceRegistered();
     void onServiceUnregistered();

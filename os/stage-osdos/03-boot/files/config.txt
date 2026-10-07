@@ -1,0 +1,63 @@
+# OSD/OS image boot configuration. More options: http://rptl.io/configtxt
+#
+# The display output is set in osdos-display.txt, next to this file. To switch
+# between a CRT (composite) and a modern TV (HDMI), copy one of these presets
+# over it, from any computer:
+#   osdos-display-hdmi.txt      HDMI, resolution auto-detected
+#   osdos-display-crt-ntsc.txt  composite, NTSC, 4:3
+#   osdos-display-crt-pal.txt   composite, PAL, 4:3
+#
+# The per-model settings below are the ones INSTALL.md documents.
+
+# --- Global ---
+auto_initramfs=1
+disable_splash=1
+disable_overscan=1
+dtparam=audio=on
+arm_64bit=1
+# No pause before loading the kernel (the firmware waits a second by default).
+boot_delay=0
+
+include osdos-display.txt
+
+# --- Pi 3B ---
+[pi3]
+
+# Drivers & Video
+dtoverlay=vc4-fkms-v3d,cma-256
+
+# Overclocking
+over_voltage=4
+arm_freq=1300
+core_freq=450
+sdram_freq=500
+
+# --- Pi 3B+ ---
+[pi3+]
+
+# Drivers & Video
+dtoverlay=vc4-fkms-v3d,cma-256
+
+# Overclocking
+over_voltage=2
+arm_freq=1500
+core_freq=500
+sdram_freq=500
+
+# --- Pi 4B ---
+[pi4]
+
+# Drivers & Video
+dtoverlay=vc4-fkms-v3d,cma-256
+dtoverlay=rpivid-v4l2
+
+# Overclocking
+over_voltage=2
+arm_freq=1750
+gpu_freq=600
+
+# --- Pi 5 ---
+# Its video overlay depends on the output, so it is set in osdos-display.txt.
+
+# --- Global ---
+[all]

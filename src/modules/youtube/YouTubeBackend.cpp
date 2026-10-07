@@ -746,7 +746,7 @@ QStringList YouTubeBackend::playbackArgs(const QVariantMap &settings) const {
 QVariantMap YouTubeBackend::playbackSettings() const {
     auto setting = [this](const char *key, const char *fallback) {
         const QString value = m_appCore
-            ? m_appCore->get_setting(QStringLiteral("com.240mp.youtube"), QLatin1String(key)).toString()
+            ? m_appCore->get_setting(QStringLiteral("com.osdos.youtube"), QLatin1String(key)).toString()
             : QString();
         return value.isEmpty() ? QString::fromLatin1(fallback) : value;
     };
@@ -955,7 +955,7 @@ static QVariantMap treeAction(const QString &name, const QString &kind, const QS
 QVariant YouTubeBackend::entries(const QString &path, bool preview) {
     QVariantList list;
     if (path == QLatin1String("favorites")) {
-        list = m_appCore ? m_appCore->get_list(QStringLiteral("com.240mp.youtube"), QStringLiteral("favorites"))
+        list = m_appCore ? m_appCore->get_list(QStringLiteral("com.osdos.youtube"), QStringLiteral("favorites"))
                          : QVariantList();
     } else {
         const QVariant listed = listing(path, preview);
@@ -968,7 +968,7 @@ QVariant YouTubeBackend::entries(const QString &path, bool preview) {
     }
     // Shorts are left out with DISPLAY SHORTS off; unset is on.
     const QVariant shorts = m_appCore
-        ? m_appCore->get_setting(QStringLiteral("com.240mp.youtube"), QStringLiteral("display_shorts")) : QVariant();
+        ? m_appCore->get_setting(QStringLiteral("com.osdos.youtube"), QStringLiteral("display_shorts")) : QVariant();
     const bool showShorts = !shorts.isValid() || shorts.isNull() || shorts.toBool()
                             || shorts.toString() == QLatin1String("ON");
     if (showShorts)

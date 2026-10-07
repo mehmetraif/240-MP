@@ -10,7 +10,7 @@ class QThread;
 struct mpv_handle;
 struct mpv_render_context;
 
-// mpv played inside 240-MP's own window rather than as a process of its own,
+// mpv played inside OSD/OS's own window rather than as a process of its own,
 // for the Transparent Background setting: the menus can then be drawn over the
 // picture while it plays (MpvController, VideoSurface).
 //

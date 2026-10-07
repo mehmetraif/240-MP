@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ──────────────────────────────────────────────────────────────────────────────
-# 240-MP NFC Reader Setup — grants access to supported NFC readers on Linux
+# OSD/OS NFC Reader Setup — grants access to supported NFC readers on Linux
 #
 # Two independent paths, because the two reader families need entirely
 # different things from the OS:
@@ -30,10 +30,10 @@
 set -euo pipefail
 
 # Under sudo, $USER is root — fall back to the invoking user so the polkit
-# rules and group membership apply to the account that will actually run 240-MP.
+# rules and group membership apply to the account that will actually run OSD/OS.
 AUTHORIZED_USER="${1:-${SUDO_USER:-$USER}}"
 
-UDEV_RULE=/etc/udev/rules.d/99-240mp-nfc.rules
+UDEV_RULE=/etc/udev/rules.d/99-osdos-nfc.rules
 NEEDS_RELOGIN=0
 
 if [[ "$(uname -s)" != "Linux" ]]; then
@@ -105,10 +105,10 @@ if [[ "${SKIP_PN532:-0}" != "1" ]]; then
 
     # Both TAG+="uaccess" and a group are set, because neither covers every case:
     # uaccess grants an ACL to the user logged in at the seat (a SteamOS or Pi
-    # desktop session), but 240-MP can also run headless from 240mp.service,
+    # desktop session), but OSD/OS can also run headless from osdos.service,
     # which has no seat and so gets no ACL — that case needs the group.
     {
-        echo '# 240-MP: PN532 USB NFC readers (USB-serial bridge chips).'
+        echo '# OSD/OS: PN532 USB NFC readers (USB-serial bridge chips).'
         echo '# uaccess covers a desktop session; the group covers headless/systemd runs.'
         # vid:pid pairs of the USB-serial bridges PN532 modules are built on.
         # Kept in sync with kAllowedVidPids in src/modules/nfc_reader/SerialPort.cpp.
@@ -119,6 +119,8 @@ if [[ "${SKIP_PN532:-0}" != "1" ]]; then
         done
     } | sudo tee "$UDEV_RULE" > /dev/null
     echo "  ✓ wrote ${UDEV_RULE}"
+    # The same rule under its 240-MP name, from a run before OSD/OS.
+    sudo rm -f /etc/udev/rules.d/99-240mp-nfc.rules
 
     if [[ -n "$SERIAL_GROUP" ]]; then
         if id -nG "$AUTHORIZED_USER" 2>/dev/null | tr ' ' '\n' | grep -qx "$SERIAL_GROUP"; then
@@ -167,7 +169,7 @@ else
             sudo zypper --non-interactive install pcsc-lite pcsc-ccid pcsc-tools
             ;;
     esac
-    echo "  (building 240-MP from source additionally needs the -dev/-devel package)"
+    echo "  (building OSD/OS from source additionally needs the -dev/-devel package)"
 
     echo ""
     echo "==> Blacklisting pn533 kernel modules..."

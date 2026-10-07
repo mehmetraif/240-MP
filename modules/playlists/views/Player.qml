@@ -77,7 +77,7 @@ FocusScope {
             spec.extraArgs = youtubeBackend.playbackArgs(yt)
         }
         if (spec.images) {
-            var seconds = parseFloat(setting("com.240mp.local_files", "image_duration", "5"))
+            var seconds = parseFloat(setting("com.osdos.local_files", "image_duration", "5"))
             spec.imageSec = isNaN(seconds) ? 5.0 : seconds
         }
         return spec

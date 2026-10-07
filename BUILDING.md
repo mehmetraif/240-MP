@@ -70,10 +70,10 @@ cmake --build build
 
 ### Run
 
-You can either double-click `build/240mp.app` in Finder, or run from the terminal:
+You can either double-click `build/osdos.app` in Finder, or run from the terminal:
 
 ```bash
-APP_ROOT=$(pwd) ./build/240mp.app/Contents/MacOS/240mp
+APP_ROOT=$(pwd) ./build/osdos.app/Contents/MacOS/osdos
 ```
 
 ### Configuration
@@ -81,7 +81,7 @@ APP_ROOT=$(pwd) ./build/240mp.app/Contents/MacOS/240mp
 On macOS all user configuration is stored at:
 
 ```
-~/Library/Application Support/240-MP/
+~/Library/Application Support/OSD-OS/
   config.json       ← app and module settings
   lists.json        ← each module's recently watched and favorites
   plex_auth.json    ← plex auth
@@ -133,7 +133,7 @@ sudo wget https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -O /u
 
 For full YouTube support, yt-dlp also uses an external JavaScript runtime; install the recommended Deno runtime by following yt-dlp's [EJS setup guide](https://github.com/yt-dlp/yt-dlp/wiki/EJS), and make sure `deno` is on the `PATH` of the user or systemd service that runs OSD/OS.
 
-The [OSD/OS](os/README.md) image comes with both: yt-dlp's nightly build in the data directory (`~/.local/share/240-MP/bin/yt-dlp`), which a timer updates after each boot and once a day, and Deno in `/usr/local/bin`.
+The [OSD/OS](os/README.md) image comes with both: yt-dlp's nightly build in the data directory (`~/.local/share/OSD-OS/bin/yt-dlp`), which a timer updates after each boot and once a day, and Deno in `/usr/local/bin`.
 
 If yt-dlp is current and Deno is detected but YouTube still returns `Sign in to confirm you're not a bot`, the response can be route-specific. On a system that already has working IPv6, compare:
 
@@ -176,13 +176,13 @@ No `CMAKE_PREFIX_PATH` needed — Qt 6 from apt is found automatically.
 **With a desktop** (RPi OS Full with a display server):
 
 ```bash
-APP_ROOT=$(pwd) ./build/240mp
+APP_ROOT=$(pwd) ./build/osdos
 ```
 
 **Without a Desktop** (RPi OS Lite with no display server):
 
 ```bash
-APP_ROOT=$(pwd) QT_QPA_PLATFORM=eglfs ./build/240mp
+APP_ROOT=$(pwd) QT_QPA_PLATFORM=eglfs ./build/osdos
 ```
 
 `eglfs` uses the KMS/DRM framebuffer directly without X11 or Wayland.
@@ -192,7 +192,7 @@ APP_ROOT=$(pwd) QT_QPA_PLATFORM=eglfs ./build/240mp
 On Raspberry Pi OS all user configuration is stored at:
 
 ```
-~/.local/share/240-MP/
+~/.local/share/OSD-OS/
   config.json      ← app and module settings
   lists.json       ← each module's recently watched and favorites
   plex_auth.json   ← plex auth
@@ -236,9 +236,9 @@ Qt 6 can come from your distro (`qt6-base-dev qt6-declarative-dev qt6-svg-dev qm
 CMAKE_PREFIX_PATH=/path/to/Qt/6.7.x/gcc_64 scripts/build-appimage.sh --configure
 ```
 
-This produces `240-MP-linux-x86_64.AppImage` in the repo root. On first run the script downloads `linuxdeploy`, `linuxdeploy-plugin-qt` and `appimagetool` into `.appimage-tools/` (cached). Drop `--configure` if you have already built into `build/` yourself.
+This produces `OSD-OS-linux-x86_64.AppImage` in the repo root. On first run the script downloads `linuxdeploy`, `linuxdeploy-plugin-qt` and `appimagetool` into `.appimage-tools/` (cached). Drop `--configure` if you have already built into `build/` yourself.
 
-The script installs into an `AppDir` using the FHS layout (`usr/bin/240mp`, `usr/share/240mp`), bundles a copy of `mpv`, deploys Qt, then prunes host-provided GPU/driver libraries (VA-API, GL, libdrm…) so the target's own drivers are used.
+The script installs into an `AppDir` using the FHS layout (`usr/bin/osdos`, `usr/share/osdos`), bundles a copy of `mpv`, deploys Qt, then prunes host-provided GPU/driver libraries (VA-API, GL, libdrm…) so the target's own drivers are used.
 
 #### Wayland client libraries and X11-only targets
 
@@ -246,7 +246,7 @@ Debian/Ubuntu build SDL2 and mpv with the Wayland backend on, so both hard-link 
 
 `libvulkan.so.1` is carried for a subtler reason: Batocera *has* one, but built without Wayland support, so mpv died on `undefined symbol: vkCreateWaylandSurfaceKHR` (via libplacebo) even though every library resolved. None of these are driver libraries — the `libwayland` ones are protocol shims, `libva-wayland` is 27 KB of `vaGetDisplayWl` glue delegating to `libva.so.2`, and `libvulkan.so.1` is the Khronos *loader*, which `dlopen`s the host's ICD from `vulkan/icd.d`. Hardware decode therefore still runs on the host's own driver in every case. So the build stages a copy in `usr/lib/fallback/` instead of pruning them, and `packaging/linux/AppRun` prepends that directory to `LD_LIBRARY_PATH` **only when the host cannot satisfy them itself**. A real Wayland host keeps using its own copies, matching whatever its Mesa EGL loads.
 
-`AppRun` decides by running both bundled binaries (`240mp` and `mpv`) through `LD_TRACE_LOADED_OBJECTS=1` and looking for `=> not found`, rather than checking whether files of that name exist. That distinction is load-bearing: Batocera keeps *32-bit* Wayland libraries in `/lib32` and registers them in `ld.so.cache` while shipping no 64-bit copies, so a filename check reports "the host has it" for libraries the 64-bit loader will correctly refuse. mpv is traced too because it is a separate executable with dependencies the app never has — `libva-wayland` is mpv's alone, so tracing only the app would miss a host that can start the UI but not play. Only the libraries we carry spares of are considered — a host missing Mesa reports `libGL => not found`, and reacting to that would wrongly pull our copies ahead of a host's working ones. A trace resolves libraries but not the symbols inside them, so `AppRun` additionally runs `mpv --version`: that is what catches a library which exists but is missing an entry point, and it is not something the build-time audit can ever detect — only the target can. `AppRun` also pins `QT_QPA_PLATFORM=xcb` when `DISPLAY` is set — the bundle ships the xcb platform plugin only.
+`AppRun` decides by running both bundled binaries (`osdos` and `mpv`) through `LD_TRACE_LOADED_OBJECTS=1` and looking for `=> not found`, rather than checking whether files of that name exist. That distinction is load-bearing: Batocera keeps *32-bit* Wayland libraries in `/lib32` and registers them in `ld.so.cache` while shipping no 64-bit copies, so a filename check reports "the host has it" for libraries the 64-bit loader will correctly refuse. mpv is traced too because it is a separate executable with dependencies the app never has — `libva-wayland` is mpv's alone, so tracing only the app would miss a host that can start the UI but not play. Only the libraries we carry spares of are considered — a host missing Mesa reports `libGL => not found`, and reacting to that would wrongly pull our copies ahead of a host's working ones. A trace resolves libraries but not the symbols inside them, so `AppRun` additionally runs `mpv --version`: that is what catches a library which exists but is missing an entry point, and it is not something the build-time audit can ever detect — only the target can. `AppRun` also pins `QT_QPA_PLATFORM=xcb` when `DISPLAY` is set — the bundle ships the xcb platform plugin only.
 
 #### Host-library audit
 
@@ -257,13 +257,13 @@ If the audit fails it prints each unsatisfied soname and the files needing it. U
 ### Run
 
 ```bash
-chmod +x 240-MP-linux-x86_64.AppImage
-./240-MP-linux-x86_64.AppImage
+chmod +x OSD-OS-linux-x86_64.AppImage
+./OSD-OS-linux-x86_64.AppImage
 ```
 
-Configuration lives at `~/.local/share/240-MP/` (same as the Pi). See [INSTALL.md](INSTALL.md) for the Steam Deck end-user flow (Desktop Mode + adding it to Steam for Gaming Mode).
+Configuration lives at `~/.local/share/OSD-OS/` (same as the Pi). See [INSTALL.md](INSTALL.md) for the Steam Deck end-user flow (Desktop Mode + adding it to Steam for Gaming Mode).
 
-`yt-dlp` is deliberately **not** bundled (it needs to be updatable independently of app releases). For the YouTube module on an immutable distro, drop a copy at `~/.local/share/240-MP/bin/yt-dlp` (`chmod +x`, update with `yt-dlp -U`); the app resolves it there first, then a `yt-dlp` sibling of the binary, then `PATH`, and hands the chosen path to mpv's ytdl hook via `--script-opts=ytdl_hook-ytdl_path=…` so both use the same copy. See [INSTALL.md](INSTALL.md#youtube-yt-dlp).
+`yt-dlp` is deliberately **not** bundled (it needs to be updatable independently of app releases). For the YouTube module on an immutable distro, drop a copy at `~/.local/share/OSD-OS/bin/yt-dlp` (`chmod +x`, update with `yt-dlp -U`); the app resolves it there first, then a `yt-dlp` sibling of the binary, then `PATH`, and hands the chosen path to mpv's ytdl hook via `--script-opts=ytdl_hook-ytdl_path=…` so both use the same copy. See [INSTALL.md](INSTALL.md#youtube-yt-dlp).
 
 ## Gamepad input (input.cfg)
 
@@ -348,7 +348,7 @@ On a multi-monitor machine (macOS or desktop Linux), the UI launches fullscreen 
 
 To see this output, launch the app from a terminal, or read it from Console.app / the log file — see [Debugging & logs](#debugging--logs) just below for where the output goes depending on how you launched. Pick the index whose name/resolution matches your target display.
 
-**2. Add the setting** as an integer under `"app"` in `config.json` (macOS: `~/Library/Application Support/240-MP/config.json`, Linux: `~/.local/share/240-MP/config.json`):
+**2. Add the setting** as an integer under `"app"` in `config.json` (macOS: `~/Library/Application Support/OSD-OS/config.json`, Linux: `~/.local/share/OSD-OS/config.json`):
 
 ```json
 {
@@ -376,32 +376,32 @@ Just run the binary in a terminal and the logs will print right there:
 
 ```bash
 # macOS
-APP_ROOT=$(pwd) ./build/240mp.app/Contents/MacOS/240mp
+APP_ROOT=$(pwd) ./build/osdos.app/Contents/MacOS/osdos
 
 # Raspberry Pi
-APP_ROOT=$(pwd) ./build/240mp                         # with a desktop
-APP_ROOT=$(pwd) QT_QPA_PLATFORM=eglfs ./build/240mp   # headless / Lite
+APP_ROOT=$(pwd) ./build/osdos                         # with a desktop
+APP_ROOT=$(pwd) QT_QPA_PLATFORM=eglfs ./build/osdos   # headless / Lite
 ```
 
 ### Option 2: Raspberry Pi installed via `install.sh`
 
 How you read logs depends on whether you installed the autostart service:
 
-- **Run it by hand** — type `240mp` over SSH and logs print to that terminal. Use this while debugging. (Note: the launcher does **not** power off on exit, unlike the service.)
+- **Run it by hand** — type `osdos` over SSH and logs print to that terminal. Use this while debugging. (Note: the launcher does **not** power off on exit, unlike the service.)
 - **Via the systemd service** — the service sends output to the journal, so:
     ```bash
-    journalctl -u 240mp -b        # logs from this boot
-    journalctl -u 240mp -f        # follow live
+    journalctl -u osdos -b        # logs from this boot
+    journalctl -u osdos -f        # follow live
     ```
-    Heads-up: the autostart service runs `ExecStopPost=240mp-stop`, which **powers the Pi off when you quit** (exit 0) — the console disappears with it. Stopping or restarting the service with `systemctl` leaves the Pi on (installs set up before this changed need the installer re-run once). To debug without powering off, either pick **Exit to Terminal** in the Quit dialog (drops to a login shell on `tty1` without removing the service — `sudo systemctl start 240mp` or `sudo reboot` to return to the service), or stop the service and run the binary directly:
+    Heads-up: the autostart service runs `ExecStopPost=osdos-stop`, which **powers the Pi off when you quit** (exit 0) — the console disappears with it. Stopping or restarting the service with `systemctl` leaves the Pi on (installs set up before this changed need the installer re-run once). To debug without powering off, either pick **Exit to Terminal** in the Quit dialog (drops to a login shell on `tty1` without removing the service — `sudo systemctl start osdos` or `sudo reboot` to return to the service), or stop the service and run the binary directly:
     ```bash
-    sudo systemctl stop 240mp
-    240mp
+    sudo systemctl stop osdos
+    osdos
     ```
 
 ### mpv playback logs
 
-During playback the app hands off to mpv as a subprocess (see [ARCHITECTURE.md → Playback Hand-off](ARCHITECTURE.md#playback-hand-off-mpvcontroller)). `MpvController` writes mpv's own output to a log file in the temp dir alongside its IPC socket (`/tmp/240mp-mpv.sock`) — useful when a video won't play or transcoding misbehaves.
+During playback the app hands off to mpv as a subprocess (see [ARCHITECTURE.md → Playback Hand-off](ARCHITECTURE.md#playback-hand-off-mpvcontroller)). `MpvController` writes mpv's own output to a log file in the temp dir alongside its IPC socket (`/tmp/osdos-mpv.sock`) — useful when a video won't play or transcoding misbehaves.
 
 ### Qt / QML debugging knobs
 
@@ -413,7 +413,7 @@ QML_IMPORT_TRACE=1                 # trace QML import resolution (missing module
 QT_QPA_EGLFS_DEBUG=1               # EGLFS/DRM detail on Raspberry Pi headless
 ```
 
-Set them inline, e.g. `QML_IMPORT_TRACE=1 APP_ROOT=$(pwd) ./build/240mp`.
+Set them inline, e.g. `QML_IMPORT_TRACE=1 APP_ROOT=$(pwd) ./build/osdos`.
 
 ## GitHub Actions
 
@@ -441,9 +441,9 @@ These build jobs run in parallel:
 
 | Job | Runner | Output |
 |---|---|---|
-| `build-macos-arm64` | `macos-15` (Apple Silicon) | `240-MP-<tag>-macOS-arm64.dmg` |
-| `build-linux-arm64` | `ubuntu-24.04-arm` (native arm64) | `240-MP-<tag>-linux-arm64.tar.gz` |
-| `build-linux-x86_64` | `ubuntu-24.04` | `240-MP-linux-x86_64.AppImage` (version-less — self-updates in place) |
+| `build-macos-arm64` | `macos-15` (Apple Silicon) | `OSD-OS-<tag>-macOS-arm64.dmg` |
+| `build-linux-arm64` | `ubuntu-24.04-arm` (native arm64) | `OSD-OS-<tag>-linux-arm64.tar.gz` |
+| `build-linux-x86_64` | `ubuntu-24.04` | `OSD-OS-linux-x86_64.AppImage` (version-less — self-updates in place) |
 
 macOS job: installs Qt via the Qt CDN, builds, runs `macdeployqt` to embed Qt frameworks (including `libSDL2.dylib`), ad-hoc codesign, package as `.dmg`. mpv is not bundled — users install it via `brew install mpv`.
 

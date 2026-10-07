@@ -11,7 +11,7 @@ class DisplayHandoff;
 
 // Runs one user script at a time, in one of two modes:
 //
-// * console  — 240-MP keeps the screen and the script's merged stdout/stderr is
+// * console  — OSD/OS keeps the screen and the script's merged stdout/stderr is
 //              streamed into a QML view. Identical on every target.
 // * takeover — the script owns the screen. On macOS / desktop Linux / SteamOS
 //              that needs nothing: the child's window covers ours, exactly like

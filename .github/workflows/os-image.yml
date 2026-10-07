@@ -1,7 +1,7 @@
 name: OS image
 
-# Builds the 240-MP OS image (os/README.md): the app from this branch as an
-# arm64 tarball, then Raspberry Pi OS Lite plus os/stage-240mp through pi-gen.
+# Builds the OSD/OS image (os/README.md): the app from this branch as an
+# arm64 tarball, then Raspberry Pi OS Lite plus os/stage-osdos through pi-gen.
 # Both jobs run on GitHub's native arm64 runner, so pi-gen needs no emulation.
 
 on:
@@ -24,7 +24,7 @@ concurrency:
 
 jobs:
   app:
-    name: 240-MP (linux arm64)
+    name: OSD/OS (linux arm64)
     runs-on: ubuntu-24.04-arm
 
     steps:
@@ -69,13 +69,13 @@ jobs:
       - name: Create tarball
         run: |
           cd "${GITHUB_WORKSPACE}/install"
-          tar -czf "${GITHUB_WORKSPACE}/240-MP-dev-linux-arm64.tar.gz" .
+          tar -czf "${GITHUB_WORKSPACE}/OSD-OS-dev-linux-arm64.tar.gz" .
 
       - name: Upload tarball
         uses: actions/upload-artifact@v7.0.1
         with:
           name: tarball-linux-arm64
-          path: 240-MP-dev-linux-arm64.tar.gz
+          path: OSD-OS-dev-linux-arm64.tar.gz
           if-no-files-found: error
 
   image:
@@ -105,12 +105,12 @@ jobs:
         env:
           # Optional: without it the first user's password is locked.
           FIRST_USER_PASS: ${{ secrets.OS_FIRST_USER_PASS }}
-        run: os/build.sh 240-MP-dev-linux-arm64.tar.gz
+        run: os/build.sh OSD-OS-dev-linux-arm64.tar.gz
 
       - name: Upload image
         uses: actions/upload-artifact@v7.0.1
         with:
-          name: 240mp-os-image
+          name: osdos-image
           path: |
             os/work/pi-gen/deploy/*.img.xz
             os/work/pi-gen/deploy/*.info
