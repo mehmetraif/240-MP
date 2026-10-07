@@ -19,7 +19,8 @@ jobs:
     runs-on: macos-15
     # With the Apple Developer ID secrets the app is signed with them and the
     # DMG notarized; without them (a fork) it is signed ad hoc, which Apple
-    # Silicon needs to run it at all, and Gatekeeper asks before its first run.
+    # Silicon needs to run it at all, and Gatekeeper stops its first run until
+    # it is allowed in System Settings (Privacy & Security → Open Anyway).
     env:
       DEVELOPER_ID: ${{ secrets.APPLE_CERT_P12_BASE64 != '' }}
     outputs:
@@ -452,7 +453,7 @@ jobs:
             echo "- Raspberry Pi OS Trixie (arm64), on a system you set up yourself: ${REPO}/blob/${TAG}/INSTALL.md#on-a-raspberry-pi (\`install.sh\` installs \`OSD-OS-${TAG}-linux-arm64.tar.gz\`)."
             echo "- macOS (Apple Silicon): download the \`.dmg\`, open it and move osdos.app to your Applications folder."
             if [ "$NOTARIZED" != "true" ]; then
-              echo "  This build is not notarized: the first time, right-click osdos.app and choose Open (or run \`xattr -dr com.apple.quarantine /Applications/osdos.app\`)."
+              echo "  This build is not notarized, so macOS refuses to open it the first time: then go to System Settings → Privacy & Security and choose **Open Anyway** (or run \`xattr -dr com.apple.quarantine /Applications/osdos.app\` before opening it)."
             fi
             echo "- Steam Deck / Linux (x86_64): download \`OSD-OS-linux-x86_64.AppImage\`, make it executable (\`chmod +x\`) and run it: ${REPO}/blob/${TAG}/INSTALL.md#on-steamos--linux-x86_64"
             echo
@@ -464,7 +465,7 @@ jobs:
             echo "- macOS: Settings → Update, or the \`.dmg\` as above."
             echo "- Steam Deck / Linux (x86_64): Settings → Update (it swaps the AppImage in place), or the latest AppImage over your copy."
             echo
-            echo "\`SHA256SUMS\` has the checksum of every file."
+            echo "\`SHA256SUMS\` has the checksums of the image, the \`.dmg\`, the \`.tar.gz\` and the AppImage."
           } > release-notes.md
           cat release-notes.md
 
