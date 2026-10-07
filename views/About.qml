@@ -72,7 +72,7 @@ FocusScope {
     }
 
     // The wordmark, as on the logo: the letters in the scheme's colour, the
-    // slash in its own three, and SMART TV FOR CRTS under a rule, in the
+    // slash in its own three, and SMART TV FOR CRT under a rule, in the
     // deck's own letters so a CRT reads it.
     Item {
         id: mark
@@ -111,7 +111,7 @@ FocusScope {
             id: tagline
             anchors.horizontalCenter: parent.horizontalCenter
             y: rule.y + rule.height + root.px * 3
-            text: "SMART TV FOR CRTS"
+            text: "SMART TV FOR CRT"
             color: root.primaryColor
             font.family: root.globalFont
             font.pixelSize: root.sh * 0.0291667 //14

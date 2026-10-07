@@ -130,4 +130,4 @@ systemd-analyze blame
 
 ## Notes
 
-- An image built from a release tarball keeps in-app updates, which install releases from [anthonycaccese/240-mp](https://github.com/anthonycaccese/240-mp). A release without `BootProgress` still runs on this image. It just never writes the ready file, so the held-back services start after their 20-second timeout instead of right away.
+- An image built from a release tarball keeps in-app updates, which install releases from [mehmetraif/OSD-OS](https://github.com/mehmetraif/OSD-OS). A release without `BootProgress` still runs on this image. It just never writes the ready file, so the held-back services start after their 20-second timeout instead of right away.
