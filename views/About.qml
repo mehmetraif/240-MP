@@ -21,7 +21,7 @@ FocusScope {
     // Who makes OSD/OS, and whose work it carries on.
     readonly property string developer: "Mehmet Raif"
     readonly property string developerUrl: "github.com/mehmetraif"
-    readonly property string sourceUrl: "github.com/mehmetraif/240-MP"
+    readonly property string sourceUrl: "github.com/mehmetraif/OSD-OS"
     readonly property string upstreamAuthor: "Anthony Caccese"
     readonly property string upstreamUrl: "github.com/anthonycaccese/240-MP"
     readonly property string year: "2026"

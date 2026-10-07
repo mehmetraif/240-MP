@@ -1,4 +1,6 @@
-<img src="https://github.com/user-attachments/assets/73c3e46f-a74a-4d96-9c4f-ae30f28378be" />
+<p align="center"><img src="docs/images/osdos-logo.svg" width="560" alt="OSD/OS: Smart TV for CRTs" /></p>
+
+<img src="docs/images/osdos-on-a-crt.jpg" width="100%" alt="OSD/OS's Settings on a Sony CRT" />
 
 # OSD/OS
 
@@ -220,22 +222,6 @@ Once signed in, each opens on the server's Continue Watching and its libraries. 
 <tr><td>OSD/OS's logo in a corner of the picture while a video plays, the way a channel's sits in a broadcast. Settings → Channel Logo picks the corner, all four, or none.</td><td>It is in the picture itself, so with Transparent Background the menus lie over it.</td></tr>
 </table>
 
-## Video Overview
-
-Watch on YouTube: https://youtu.be/r-gylGDoELY
-
-## Photos
-
-Photos of an earlier version, before the menus above, on a CRT.
-
-| Module Selection | Item Detail |
-| --- | --- |
-| <img src="https://github.com/user-attachments/assets/9472d55a-4617-4a7f-80c4-32aa28494048" /> | <img src="https://github.com/user-attachments/assets/4f7d8230-860a-4ace-9370-9f59f43289c0" /> |
-
-| Resume Option | Playback | Settings |
-| --- | --- | --- |
-| <img src="https://github.com/user-attachments/assets/490e9ebd-fab2-4fd1-9959-35ebb619eff0" /> | <img src="https://github.com/user-attachments/assets/a3c768c7-6ede-4cdf-9d03-90aee7b8cdfb" /> | <img src="https://github.com/user-attachments/assets/0fd48977-8776-4334-b34e-d12256f23b97" /> |
-
 ## Modules
 
 ### Ambient:Mode ([Wiki](https://github.com/anthonycaccese/240-MP/wiki/Module:-Ambient-Mode))
@@ -429,3 +415,10 @@ OSD/OS is free software under the GNU General Public License v3.0. See [LICENSE]
 OSD/OS is a modified version of [240-MP](https://github.com/anthonycaccese/240-MP), Copyright (C) 2026 Anthony Caccese and the 240-MP contributors. The modifications, from 2026 on, are Copyright (C) 2026 Mehmet Raif. The whole stays under GPL-3.0.
 
 You are free to use, study, and modify this code. If you distribute a modified version, you must also distribute it under GPL-3.0 and make the source available.
+
+## 240-MP
+
+OSD/OS grew out of [240-MP](https://github.com/anthonycaccese/240-MP), Anthony Caccese's VCR-style frontend for CRTs. Its own pictures show where it started, before the menus above:
+
+- Photos of 240-MP on a CRT: [the picture that headed its README](https://github.com/user-attachments/assets/73c3e46f-a74a-4d96-9c4f-ae30f28378be), [module selection](https://github.com/user-attachments/assets/9472d55a-4617-4a7f-80c4-32aa28494048), [an item's page](https://github.com/user-attachments/assets/4f7d8230-860a-4ace-9370-9f59f43289c0), [the resume option](https://github.com/user-attachments/assets/490e9ebd-fab2-4fd1-9959-35ebb619eff0), [playback](https://github.com/user-attachments/assets/a3c768c7-6ede-4cdf-9d03-90aee7b8cdfb) and [settings](https://github.com/user-attachments/assets/0fd48977-8776-4334-b34e-d12256f23b97).
+- Its video overview, on YouTube: https://youtu.be/r-gylGDoELY
