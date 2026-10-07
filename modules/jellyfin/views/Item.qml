@@ -191,7 +191,9 @@ FocusScope {
     Keys.onRightPressed: {
         if (isLaunching) return
         if (!detail) return
-        if (focusRow === 1 && detail.audioStreams && detail.audioStreams.length > 1) {
+        if (focusRow === 0 && adder.available(moduleRoot.moduleId)) {
+            adder.offer(moduleRoot.moduleId, playlistEntry())
+        } else if (focusRow === 1 && detail.audioStreams && detail.audioStreams.length > 1) {
             audioIdx = (audioIdx + 1) % detail.audioStreams.length
             userChangedTracks = true
             debounceSaveTimer.restart()
@@ -221,6 +223,12 @@ FocusScope {
             goBack()
             event.accepted = true
         }
+    }
+
+    // The video as a playlist keeps it: an episode with its show.
+    function playlistEntry() {
+        return { itemId: detail.itemId, title: detail.title,
+                 seriesName: detail.type === "episode" ? (detail.grandparentTitle || "") : "" }
     }
 
     // Safety net: save the current selection when the view is destroyed
@@ -687,14 +695,25 @@ FocusScope {
         }
     }
 
-    // Footer
+    // Footer. On PLAY, right puts the video on a playlist.
     HintBar {
         id: footer
-        text: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE " + root.hints.change + ":CHANGE " + root.hints.select + ":SELECT"
+        text: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE "
+              + (focusRow === 0 ? (adder.available(moduleRoot.moduleId) ? root.hints.browse + ":PLAYLIST " : "")
+                                : root.hints.change + ":CHANGE ")
+              + root.hints.select + ":SELECT"
         anchors.bottom: parent.bottom
         anchors.left: parent.left
         anchors.bottomMargin: root.sh * 0.1041667 //50
         anchors.leftMargin: root.sw * 0.125 //80
+    }
+
+    // Right on PLAY: the video on one of the app's playlists.
+    PlaylistAdder {
+        id: adder
+        anchors.fill: parent
+        z: 50
+        onClosed: detailRoot.forceActiveFocus()
     }
 
     // Launch overlay — covers the detail screen while the stream URL is prepared.

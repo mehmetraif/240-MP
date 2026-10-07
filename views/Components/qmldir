@@ -24,3 +24,4 @@ PlayerMenu PlayerMenu.qml
 MousePointer MousePointer.qml
 LoadingScreen LoadingScreen.qml
 PromptScreen PromptScreen.qml
+PlaylistAdder PlaylistAdder.qml

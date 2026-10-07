@@ -1,10 +1,13 @@
 import QtQuick
 
 // An entry's options, from right on it in a tree (or on its info screen): put
-// it on the module's FAVORITES, or take it off, and make it the favourite the
-// app plays straight after the boot screen (PLAY AT STARTUP). A host can offer
-// its own as well (moreChoices, acted on in onActivated as with any
-// ChoiceOverlay), and refreshes its FAVORITES folder on favoritesEdited.
+// it on the module's FAVORITES, or take it off, make it the favourite the
+// app plays straight after the boot screen (PLAY AT STARTUP), and put it on a
+// playlist (ADD TO PLAYLIST, where the Playlists module takes the module's
+// videos: PlaylistAdder, over the host's view, closed() again as it closes).
+// A host can offer its own as well (moreChoices, acted on in onActivated as
+// with any ChoiceOverlay), and refreshes its FAVORITES folder on
+// favoritesEdited.
 // FAVORITES is one of the module's lists in AppCore (get_list(moduleId,
 // "favorites")), keeping the entries as offer() was given them; the startup
 // favourite is the app setting "startup_favorite": { module, path, name }.
@@ -26,6 +29,8 @@ ChoiceOverlay {
     property bool favorite: false
     // Whether it is the startup favourite.
     property bool atStartup: false
+    // Whether it can go on a playlist.
+    property bool playlists: false
     // The host's own, after FAVORITES': [{ label, action }].
     property var moreChoices: []
 
@@ -36,6 +41,7 @@ ChoiceOverlay {
         favorite = appCore.list_contains(moduleId, "favorites", item.path)
         var startup = appCore.get_setting("", "startup_favorite")
         atStartup = !!startup && startup.module === moduleId && startup.path === item.path
+        playlists = !item.isFolder && adder.available(moduleId)
         open()
     }
 
@@ -43,6 +49,7 @@ ChoiceOverlay {
     subtitleText: entry ? (entry.title || entry.name || "") : ""
     choices: [{ label: favorite ? "Remove from Favorites" : "Add to Favorites", action: "favorite" },
               { label: atStartup ? "Don't Play at Startup" : "Play at Startup", action: "startup" }]
+             .concat(playlists ? [{ label: "Add to Playlist", action: "playlist" }] : [])
              .concat(moreChoices)
 
     onActivated: function(action) {
@@ -70,6 +77,17 @@ ChoiceOverlay {
             }
             appCore.save_setting("", "startup_favorite",
                                  { module: moduleId, path: entry.path, name: entry.title || entry.name || "" })
+        } else if (action === "playlist") {
+            adder.offer(moduleId, entry)
         }
+    }
+
+    // Over the host's view: these options are closed by the time it opens.
+    PlaylistAdder {
+        id: adder
+        parent: options.parent
+        anchors.fill: parent
+        z: 50
+        onClosed: options.closed()
     }
 }
