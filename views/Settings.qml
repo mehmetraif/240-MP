@@ -16,8 +16,6 @@ FocusScope {
     // Flat model: mix of section headers and rows
     property var settingsItems: []
 
-    property bool quitOverlayVisible: false
-    property int quitChoiceIndex: 0
 
     // Quit overlay choices. Under the autostart service (headless RPi) the quit menu has an
     // "Exit to Terminal" option that drops to a tty1 login without powering off, and a
@@ -503,8 +501,7 @@ FocusScope {
                 else
                     settingsRoot.navigateTo("views/ModuleSettings.qml", { moduleId: row.moduleId }, { currentIndex: settingsList.currentIndex })
             } else if (row && row.type === "quit") {
-                settingsRoot.quitChoiceIndex = 0
-                settingsRoot.quitOverlayVisible = true
+                quitPrompt.open()
             } else if (row && row.type === "slider" && row.on !== undefined) {
                 toggleSlider()
             }
@@ -588,29 +585,16 @@ FocusScope {
     }
 
     // --- QUIT CONFIRMATION OVERLAY ---
-    PromptScreen {
-        visible: quitOverlayVisible
-        focus: quitOverlayVisible
-        title: "Really quit?"
+    ChoiceOverlay {
+        id: quitPrompt
+        anchors.fill: parent
+        promptText: "Really quit?"
         choices: quitOptions
-        currentIndex: quitChoiceIndex
-        hint: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE " + root.hints.select + ":SELECT"
-
-        Keys.onUpPressed:   { quitChoiceIndex = Math.max(0, quitChoiceIndex - 1) }
-        Keys.onDownPressed: { quitChoiceIndex = Math.min(quitOptions.length - 1, quitChoiceIndex + 1) }
-        Keys.onReturnPressed: {
-            var act = quitOptions[quitChoiceIndex].action
+        onActivated: function(act) {
             if (act === "quit")          Qt.quit()
             else if (act === "restart")  Qt.exit(12)   // 240mp-stop reboots on it
             else if (act === "terminal") Qt.exit(10)   // matches EXIT_STATUS check in 240mp-stop
-            else { quitOverlayVisible = false; settingsList.forceActiveFocus() }
         }
-        Keys.onPressed: function(event) {
-            if (event.key === Qt.Key_Escape || event.key === Qt.Key_Backspace || event.key === Qt.Key_Back) {
-                quitOverlayVisible = false
-                settingsList.forceActiveFocus()
-                event.accepted = true
-            }
-        }
+        onClosed: settingsList.forceActiveFocus()
     }
 }

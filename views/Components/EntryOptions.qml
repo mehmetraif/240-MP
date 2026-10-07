@@ -4,10 +4,10 @@ import QtQuick
 // it on the module's FAVORITES, or take it off, make it the favourite the
 // app plays straight after the boot screen (PLAY AT STARTUP), and put it on a
 // playlist (ADD TO PLAYLIST, where the Playlists module takes the module's
-// videos: PlaylistAdder, over the host's view, closed() again as it closes).
-// A host can offer its own as well (moreChoices, acted on in onActivated as
-// with any ChoiceOverlay), and refreshes its FAVORITES folder on
-// favoritesEdited.
+// videos: PlaylistAdder, over these options, which close with it, closed()
+// once). A host can offer its own as well (moreChoices, acted on in
+// onActivated as with any ChoiceOverlay), and refreshes its FAVORITES folder
+// on favoritesEdited.
 // FAVORITES is one of the module's lists in AppCore (get_list(moduleId,
 // "favorites")), keeping the entries as offer() was given them; the startup
 // favourite is the app setting "startup_favorite": { module, path, name }.
@@ -52,6 +52,18 @@ ChoiceOverlay {
              .concat(playlists ? [{ label: "Add to Playlist", action: "playlist" }] : [])
              .concat(moreChoices)
 
+    // ADD TO PLAYLIST opens the adder over these options, which stay under
+    // it and close with it; any other choice closes them first, as a
+    // ChoiceOverlay's does.
+    function choose(action) {
+        if (action === "playlist") {
+            adder.offer(moduleId, entry)
+            return
+        }
+        close()
+        activated(action)
+    }
+
     onActivated: function(action) {
         if (!entry)
             return
@@ -77,17 +89,12 @@ ChoiceOverlay {
             }
             appCore.save_setting("", "startup_favorite",
                                  { module: moduleId, path: entry.path, name: entry.title || entry.name || "" })
-        } else if (action === "playlist") {
-            adder.offer(moduleId, entry)
         }
     }
 
-    // Over the host's view: these options are closed by the time it opens.
     PlaylistAdder {
         id: adder
-        parent: options.parent
         anchors.fill: parent
-        z: 50
-        onClosed: options.closed()
+        onClosed: options.close()
     }
 }

@@ -16,7 +16,6 @@ import QtQuick
 //         message: itemTitle
 //         choices: ["Resume from 0:23", "Start from the beginning"]
 //         currentIndex: choiceIndex
-//         hint: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE " + root.hints.select + ":SELECT"
 //     }
 Item {
     id: prompt
@@ -34,35 +33,19 @@ Item {
     // More answers than this show a window of them that follows the cursor,
     // with ▲ / ▼ while some are hidden above or below it.
     property int maxChoices: 5
-    // The hint line.
+    // The hint line: unless set, back, with navigate and select while there
+    // are answers.
     property string hint: ""
 
     default property alias content: extra.data
 
     anchors.fill: parent
 
+    onCurrentIndexChanged: answers.keep()
+
     // Over the view it asks in, on the ground every view has (OSD BACKGROUND).
     OsdGround {
         anchors.fill: parent
-    }
-
-    // The first answer in the window.
-    property int firstShown: 0
-    readonly property bool windowed: choices.length > maxChoices
-    onCurrentIndexChanged: keepShown()
-    onChoicesChanged: keepShown()
-    onMaxChoicesChanged: keepShown()
-    function keepShown() {
-        if (!windowed) {
-            firstShown = 0
-            return
-        }
-        var first = firstShown
-        if (currentIndex < first)
-            first = currentIndex
-        else if (currentIndex >= first + maxChoices)
-            first = currentIndex - maxChoices + 1
-        firstShown = Math.max(0, Math.min(first, choices.length - maxChoices))
     }
 
     AppBar {
@@ -109,27 +92,35 @@ Item {
             height: childrenRect.height
         }
 
-        Column {
+        // The answers, as many as maxChoices at a time, the cursor's among
+        // them.
+        Item {
             visible: prompt.choices.length > 0
             width: parent.width
+            height: answers.height
 
-            Text {
-                visible: prompt.windowed
-                opacity: prompt.firstShown > 0 ? 1 : 0
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: "\u25B2"
-                color: root.tertiaryColor
-                font.family: root.globalFont
-                font.pixelSize: root.sh * 0.0333333 //16
-            }
+            ListView {
+                id: answers
+                readonly property real rowHeight: root.sh * 0.0583333 //28
+                width: parent.width
+                height: Math.min(count, prompt.maxChoices) * rowHeight
+                clip: true
+                interactive: false
+                highlightFollowsCurrentItem: false
+                model: prompt.choices
 
-            Repeater {
-                model: prompt.windowed ? prompt.choices.slice(prompt.firstShown, prompt.firstShown + prompt.maxChoices)
-                                       : prompt.choices
+                // The cursor's answer in view, as the cursor moves and as the
+                // answers change.
+                function keep() {
+                    if (prompt.currentIndex >= 0 && prompt.currentIndex < count)
+                        positionViewAtIndex(prompt.currentIndex, ListView.Contain)
+                }
+                onCountChanged: Qt.callLater(keep)
+
                 delegate: Item {
-                    readonly property bool current: index + prompt.firstShown === prompt.currentIndex
-                    width: parent.width
-                    height: root.sh * 0.0583333 //28
+                    readonly property bool current: index === prompt.currentIndex
+                    width: answers.width
+                    height: answers.rowHeight
 
                     Rectangle {
                         anchors.fill: label
@@ -155,21 +146,20 @@ Item {
                 }
             }
 
-            Text {
-                visible: prompt.windowed
-                opacity: prompt.firstShown + prompt.maxChoices < prompt.choices.length ? 1 : 0
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: "\u25BC"
-                color: root.tertiaryColor
-                font.family: root.globalFont
-                font.pixelSize: root.sh * 0.0333333 //16
+            // ▲ / ▼ while answers are hidden above or below.
+            ScrollMarks {
+                anchors.fill: answers
+                list: answers
             }
         }
     }
 
     HintBar {
         id: hintBar
-        text: prompt.hint
+        text: prompt.hint !== "" ? prompt.hint
+              : prompt.choices.length > 0
+                ? root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE " + root.hints.select + ":SELECT"
+                : root.hints.back + ":BACK"
         anchors.bottom: parent.bottom
         anchors.left: parent.left
         anchors.bottomMargin: root.sh * 0.1041667 //50

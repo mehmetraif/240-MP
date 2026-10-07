@@ -71,31 +71,11 @@ FocusScope {
         anchors.leftMargin: root.sw * 0.125 //80
     }
 
-    ListView {
+    MenuList {
         id: list
         model: listRoot.rows
-        anchors.top: parent.top
-        anchors.left: parent.left
-        anchors.topMargin: root.sh * 0.25 //120
-        anchors.leftMargin: root.sw * 0.115625 //74
-        width: root.sw * 0.76875 //492
-        // One row short of the space, so the ▼ fits above the help line.
-        height: root.sh * 0.4666667 //224
-        clip: true
         focus: !osk.visible
 
-        function step(delta) {
-            if (count === 0)
-                return
-            var i = currentIndex
-            do {
-                i = (i + delta + count) % count
-            } while (listRoot.rows[i].type === "section")
-            currentIndex = i
-            positionViewAtIndex(i, ListView.Contain)
-        }
-        Keys.onUpPressed: step(-1)
-        Keys.onDownPressed: step(1)
         Keys.onReturnPressed: {
             var row = listRoot.rows[currentIndex]
             if (!row)
@@ -124,12 +104,6 @@ FocusScope {
             value: modelData.value || ""
             selected: list.currentIndex === index
         }
-    }
-
-    // ▲ / ▼ while lines are hidden above or below.
-    ScrollMarks {
-        anchors.fill: list
-        list: list
     }
 
     HelpLine {

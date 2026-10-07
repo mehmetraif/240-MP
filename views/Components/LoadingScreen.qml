@@ -50,8 +50,7 @@ Item {
 
     function counter(seconds) {
         var s = Math.max(0, Math.floor(seconds))
-        function two(n) { return n < 10 ? "0" + n : "" + n }
-        return two(Math.floor(s / 3600)) + ":" + two(Math.floor(s % 3600 / 60)) + ":" + two(s % 60)
+        return root.pad(Math.floor(s / 3600)) + ":" + root.pad(Math.floor(s % 3600 / 60)) + ":" + root.pad(s % 60)
     }
 
     onVisibleChanged: {

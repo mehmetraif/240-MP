@@ -7,13 +7,21 @@ import QtQuick
 //
 // The host binds `choices` to a list of { label, action } maps and acts on the
 // action in onActivated — the action is what drives behavior, never the label
-// text, which is free to change with state.
+// text, which is free to change with state. Select closes it before acting,
+// unless closeOnSelect is off: then the host closes it (close()) once it is
+// done, as one that shows what became of the choice does. A host that acts on
+// a choice before anything closes overrides choose(action).
 FocusScope {
     id: overlayRoot
 
     property string promptText:   ""
     property string subtitleText: ""
     property var    choices:      []
+    // PromptScreen's kind: "question" or "notice".
+    property string promptKind:   "question"
+    // The hint line: PromptScreen's own unless set.
+    property string hintText:     ""
+    property bool   closeOnSelect: true
 
     property int choiceIndex: 0
 
@@ -21,6 +29,8 @@ FocusScope {
     signal closed()
 
     visible: false
+    // Hidden, it lets go of the keys.
+    enabled: visible
     focus: visible
 
     function open() {
@@ -34,35 +44,44 @@ FocusScope {
         closed()
     }
 
-    Keys.onPressed: function(event) {
-        if (event.key === Qt.Key_Escape || event.key === Qt.Key_Backspace || event.key === Qt.Key_Back) {
+    // Select on a choice.
+    function choose(action) {
+        // Close first, so the host's onClosed focus restore lands before any
+        // navigation the action triggers.
+        if (closeOnSelect)
             close()
-            event.accepted = true
-            return
-        }
-        if (choices.length === 0) return
+        activated(action)
+    }
 
-        if (event.key === Qt.Key_Up) {
-            choiceIndex = (choiceIndex - 1 + choices.length) % choices.length
-            event.accepted = true
-        } else if (event.key === Qt.Key_Down) {
-            choiceIndex = (choiceIndex + 1) % choices.length
-            event.accepted = true
-        } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-            var choice = choices[choiceIndex]
-            // Close first, so the host's onClosed focus restore lands before any
-            // navigation the action triggers.
+    Keys.onPressed: function(event) {
+        var back = event.key === Qt.Key_Escape || event.key === Qt.Key_Backspace || event.key === Qt.Key_Back
+        var enter = event.key === Qt.Key_Return || event.key === Qt.Key_Enter
+        if (back) {
             close()
-            if (choice) activated(choice.action)
-            event.accepted = true
+        } else if (enter) {
+            // With nothing to choose (a notice), select closes it too.
+            var choice = choices[choiceIndex]
+            if (choice)
+                choose(choice.action)
+            else
+                close()
+        } else if (event.key === Qt.Key_Up && choices.length > 0) {
+            choiceIndex = (choiceIndex - 1 + choices.length) % choices.length
+        } else if (event.key === Qt.Key_Down && choices.length > 0) {
+            choiceIndex = (choiceIndex + 1) % choices.length
         }
+        // A window over the host's view: its keys stop here (the host may
+        // have uses for ◄ ►), but for a chord like Ctrl+Q.
+        if (!(event.modifiers & Qt.ControlModifier))
+            event.accepted = true
     }
 
     PromptScreen {
+        kind: overlayRoot.promptKind
         title: overlayRoot.promptText
         message: overlayRoot.subtitleText
         choices: overlayRoot.choices
         currentIndex: overlayRoot.choiceIndex
-        hint: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE " + root.hints.select + ":SELECT"
+        hint: overlayRoot.hintText
     }
 }

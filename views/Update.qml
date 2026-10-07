@@ -15,8 +15,6 @@ FocusScope {
     property var navListState: ({})
 
     property bool autostartSession: false
-    property bool confirmOverlayVisible: false
-    property int confirmChoiceIndex: 0
 
     // Null guards: context properties resolve to null while the view Loader
     // tears down; guarded bindings stay teardown-safe (see Main.qml mirrors).
@@ -87,8 +85,7 @@ FocusScope {
             if (canDownload) updateManager.download()
             break
         case "readyToApply":
-            confirmChoiceIndex = 0
-            confirmOverlayVisible = true
+            confirmPrompt.open()
             break
         }
     }
@@ -239,21 +236,14 @@ FocusScope {
         }
     }
 
-    // --- INSTALL CONFIRMATION OVERLAY --- (mirrors the Settings quit overlay)
-    PromptScreen {
-        visible: confirmOverlayVisible
-        focus: confirmOverlayVisible
-        title: "Install update?"
-        message: updateRoot.latestVersion
+    // --- INSTALL CONFIRMATION OVERLAY --- (as the Settings quit overlay)
+    ChoiceOverlay {
+        id: confirmPrompt
+        anchors.fill: parent
+        promptText: "Install update?"
+        subtitleText: updateRoot.latestVersion
         choices: confirmOptions
-        currentIndex: confirmChoiceIndex
-        hint: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE " + root.hints.select + ":SELECT"
-
-        Keys.onUpPressed:   { confirmChoiceIndex = Math.max(0, confirmChoiceIndex - 1) }
-        Keys.onDownPressed: { confirmChoiceIndex = Math.min(confirmOptions.length - 1, confirmChoiceIndex + 1) }
-        Keys.onReturnPressed: {
-            var act = confirmOptions[confirmChoiceIndex].action
-            confirmOverlayVisible = false
+        onActivated: function(act) {
             if (act === "apply" && updateManager) {
                 // Linux exits with code 11 under autostart (see 240mp-stop in
                 // scripts/install.sh) or quits for apply-on-next-launch; macOS
@@ -261,17 +251,8 @@ FocusScope {
                 updateManager.applyAndRestart()
             } else if (act === "discard" && updateManager) {
                 updateManager.discardStagedUpdate()
-                content.forceActiveFocus()
-            } else {
-                content.forceActiveFocus()
             }
         }
-        Keys.onPressed: function(event) {
-            if (event.key === Qt.Key_Escape || event.key === Qt.Key_Backspace || event.key === Qt.Key_Back) {
-                confirmOverlayVisible = false
-                content.forceActiveFocus()
-                event.accepted = true
-            }
-        }
+        onClosed: content.forceActiveFocus()
     }
 }

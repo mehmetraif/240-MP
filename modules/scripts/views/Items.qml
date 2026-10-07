@@ -334,7 +334,6 @@ FocusScope {
             message: itemsRoot.pendingScript ? itemsRoot.pendingScript.name : ""
             choices: confirmOverlay.choices
             currentIndex: confirmOverlay.choiceIndex
-            hint: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE " + root.hints.select + ":SELECT"
         }
     }
 

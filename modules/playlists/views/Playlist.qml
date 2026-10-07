@@ -56,7 +56,7 @@ FocusScope {
         if (items.length > 0)
             out.push({ type: "section", label: "Videos" })
         for (var j = 0; j < items.length; j++)
-            out.push({ type: "item", item: items[j], key: items[j].key, label: items[j].title })
+            out.push({ type: "item", item: items[j], label: items[j].title })
         return out
     }
 
@@ -116,34 +116,14 @@ FocusScope {
         anchors.leftMargin: root.sw * 0.125 //80
     }
 
-    ListView {
+    MenuList {
         id: list
         model: pageRoot.rows
-        anchors.top: parent.top
-        anchors.left: parent.left
-        anchors.topMargin: root.sh * 0.25 //120
-        anchors.leftMargin: root.sw * 0.115625 //74
-        width: root.sw * 0.76875 //492
-        // One row short of the space, so the ▼ fits above the help line.
-        height: root.sh * 0.4666667 //224
-        clip: true
         focus: true
 
-        function step(delta) {
-            if (count === 0)
-                return
-            var i = currentIndex
-            do {
-                i = (i + delta + count) % count
-            } while (pageRoot.rows[i].type === "section")
-            currentIndex = i
-            positionViewAtIndex(i, ListView.Contain)
-        }
         function toggleOrder() {
             playlistsBackend.setOrder(pageRoot.playlistId, pageRoot.playlist.order === "shuffle" ? "inorder" : "shuffle")
         }
-        Keys.onUpPressed: step(-1)
-        Keys.onDownPressed: step(1)
         Keys.onLeftPressed: { if (pageRoot.currentRow && pageRoot.currentRow.type === "order") toggleOrder() }
         Keys.onRightPressed: { if (pageRoot.currentRow && pageRoot.currentRow.type === "order") toggleOrder() }
         Keys.onReturnPressed: {
@@ -170,9 +150,7 @@ FocusScope {
                 playlistsBackend.retryDownloads(pageRoot.playlistId)
                 break
             case "delete":
-                confirm.choiceIndex = 0
-                confirm.visible = true
-                confirm.forceActiveFocus()
+                confirm.open()
                 break
             case "item":
                 itemOptions.item = row.item
@@ -197,12 +175,6 @@ FocusScope {
             value: modelData.type === "item" ? pageRoot.itemValue(modelData.item) : (modelData.value || "")
             selected: list.currentIndex === index
         }
-    }
-
-    // ▲ / ▼ while lines are hidden above or below.
-    ScrollMarks {
-        anchors.fill: list
-        list: list
     }
 
     HelpLine {
@@ -266,30 +238,17 @@ FocusScope {
     }
 
     // Deleting asks first, Cancel under the cursor.
-    PromptScreen {
+    ChoiceOverlay {
         id: confirm
-        visible: false
-        property int choiceIndex: 0
-        title: "Delete playlist?"
-        message: pageRoot.playlist.name || ""
-        choices: ["Cancel", "Delete"]
-        currentIndex: choiceIndex
-        hint: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE " + root.hints.select + ":SELECT"
-        Keys.onUpPressed: choiceIndex = 0
-        Keys.onDownPressed: choiceIndex = 1
-        Keys.onReturnPressed: {
-            visible = false
-            list.forceActiveFocus()
-            if (choiceIndex === 1)
+        anchors.fill: parent
+        promptText: "Delete playlist?"
+        subtitleText: pageRoot.playlist.name || ""
+        choices: [{ label: "Cancel", action: "cancel" }, { label: "Delete", action: "delete" }]
+        onActivated: function(action) {
+            if (action === "delete")
                 playlistsBackend.deletePlaylist(pageRoot.playlistId)
         }
-        Keys.onPressed: function(event) {
-            if (event.key === Qt.Key_Escape || event.key === Qt.Key_Backspace || event.key === Qt.Key_Back) {
-                visible = false
-                list.forceActiveFocus()
-                event.accepted = true
-            }
-        }
+        onClosed: list.forceActiveFocus()
     }
 
     OnScreenKeyboard {
