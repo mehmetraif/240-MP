@@ -68,13 +68,12 @@ FocusScope {
                 font.capitalization: Font.AllUppercase
                 font.pixelSize: root.sh * 0.0375 //18
                 wrapMode: Text.WordWrap
-                leftPadding: root.sw * 0.009375 //6
-                rightPadding: root.sw * 0.009375 //6
+                horizontalAlignment: Text.AlignHCenter
             }
 
             // The code, a box per digit: those typed so far solid.
             Row {
-                x: root.sw * 0.009375 //6
+                anchors.horizontalCenter: parent.horizontalCenter
                 spacing: root.sw * 0.0125 //8
                 Repeater {
                     model: promptRoot.code.length

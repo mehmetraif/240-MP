@@ -2,13 +2,13 @@ import QtQuick
 
 // A question or a notice, full screen, in the window every view has: the
 // question in the title bar behind a ? (a notice, an error say, behind a !),
-// what it is about under the bar, the answers as the menus' rows, and the
-// hint line at the foot, where every view keeps it. However few lines it has,
-// nothing moves up into the middle of the screen.
+// the hint line at the foot, where every view keeps it, and between them, in
+// the middle of the space they leave both ways, what it is about and the
+// answers. However few lines it has, the bars stay where they are.
 //
 // It only draws: the host keeps its keys and the cursor (currentIndex), and
 // shows it (visible). Items declared inside it go under the message, above the
-// answers (BluetoothPrompt's code).
+// answers (BluetoothPrompt's code); they centre themselves across its width.
 //
 //     PromptScreen {
 //         visible: overlayVisible
@@ -40,6 +40,7 @@ Rectangle {
     color: root.surfaceColor
 
     AppBar {
+        id: titleBar
         iconSource: prompt.kind === "notice" ? "../../assets/images/notice.svg"
                                              : "../../assets/images/question.svg"
         title: prompt.title
@@ -49,14 +50,19 @@ Rectangle {
         anchors.leftMargin: root.sw * 0.125 //80
     }
 
-    // Where the menus' rows start, their text lined up with the bar's.
-    Column {
-        anchors.top: parent.top
+    // The space between the bars.
+    Item {
+        id: middle
+        anchors.top: titleBar.bottom
+        anchors.bottom: hintBar.top
         anchors.left: parent.left
-        anchors.topMargin: root.sh * 0.25 //120
-        anchors.leftMargin: root.sw * 0.115625 //74
+        anchors.right: parent.right
+    }
+
+    Column {
+        anchors.centerIn: middle
         width: root.sw * 0.76875 //492
-        spacing: root.sh * 0.0333333 //16
+        spacing: root.sh * 0.05 //24
 
         Text {
             visible: prompt.message !== ""
@@ -67,8 +73,7 @@ Rectangle {
             font.capitalization: Font.AllUppercase
             font.pixelSize: root.sh * 0.0416667 //20
             wrapMode: Text.WordWrap
-            leftPadding: root.sw * 0.009375 //6
-            rightPadding: root.sw * 0.009375 //6
+            horizontalAlignment: Text.AlignHCenter
         }
 
         Item {
@@ -96,7 +101,7 @@ Rectangle {
 
                     Text {
                         id: label
-                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.centerIn: parent
                         width: Math.min(implicitWidth, parent.width)
                         text: typeof modelData === "string" ? modelData : (modelData.label || "")
                         color: index === prompt.currentIndex ? root.surfaceColor : root.primaryColor
@@ -115,6 +120,7 @@ Rectangle {
     }
 
     HintBar {
+        id: hintBar
         text: prompt.hint
         anchors.bottom: parent.bottom
         anchors.left: parent.left

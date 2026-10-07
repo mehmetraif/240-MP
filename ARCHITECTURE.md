@@ -620,7 +620,7 @@ The module's logo stands at its left end, in the theme's text colour, a fifth ta
 
 ### PromptScreen (`views/Components/PromptScreen.qml`)
 
-A question or a notice, full screen, in the window every view has, so a dialog's lines never move up into the middle of the screen: the question in the title bar (an `AppBar`) behind a **?**, or a notice's (an error, a code to type, a button to press) behind a **!**; what it is about under the bar; the answers as the main menu's rows, where its rows start; and the hint line in its fixed place at the foot. However few lines it has, the bar and the hint line stay where every view has them.
+A question or a notice, full screen, in the window every view has: the question in the title bar (an `AppBar`) behind a **?**, or a notice's (an error, a code to type, a button to press) behind a **!**; the hint line in its fixed place at the foot; and between them, centred both ways in the space the bars leave, what it is about and the answers, as the main menu's rows. However few lines it has, the bar and the hint line stay where every view has them.
 
 | Property | Type | Description |
 |---|---|---|
@@ -631,7 +631,7 @@ A question or a notice, full screen, in the window every view has, so a dialog's
 | `currentIndex` | `int` | The answer under the cursor |
 | `hint` | `string` | The hint line |
 
-It only draws: the host keeps its keys, its cursor and its visibility, so a dialog becomes one by swapping its drawing for it. Items declared inside it go between the message and the answers (the pairing code in `BluetoothPrompt`). Every question and notice in the app is one: the players' resume prompts and error screens, Settings' quit, the update's install, the script's run, a new button for Controls, Bluetooth pairing, and `ChoiceOverlay` (so `EntryOptions` and the Plex PLAY chooser) too.
+It only draws: the host keeps its keys, its cursor and its visibility, so a dialog becomes one by swapping its drawing for it. Items declared inside it go between the message and the answers, centring themselves across its width (the pairing code in `BluetoothPrompt`). Every question and notice in the app is one: the players' resume prompts and error screens, Settings' quit, the update's install, the script's run, a new button for Controls, Bluetooth pairing, and `ChoiceOverlay` (so `EntryOptions` and the Plex PLAY chooser) too.
 
 ### VCR OSD elements
 
