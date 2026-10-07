@@ -43,7 +43,7 @@ Everything else (the launcher, in-app updates, Exit to Terminal, the data direct
 
 ## Flashing
 
-1. In Raspberry Pi Imager, choose **Use custom** and pick the `.img.xz` (take it out of the zip GitHub's artifact comes in first).
+1. Download the image from the [latest release](https://github.com/mehmetraif/OSD-OS/releases/latest), `OSD-OS-<version>-raspberry-pi.img.xz` (or take the `.img.xz` out of the zip an OS image workflow run's artifact comes in). In Raspberry Pi Imager, choose **Use custom** and pick it.
 2. Raspberry Pi Imager 2 skips OS customisation for an image chosen with **Use custom**: it can't tell which kind the image takes. For Wi-Fi, a user, SSH, the locale and the keyboard, open the image through a local manifest instead, one that gives it `"init_format": "cloudinit-rpi"` ([Imager's notes on it](https://github.com/raspberrypi/rpi-imager/tree/main/doc/local_json)). Imager 1 seems to apply it, but on Trixie its settings never take effect. Without one, Wi-Fi can be set up by hand: before the first boot, add it to `network-config` on the boot partition, following the example in that file. With Ethernet there is nothing to do.
 3. The image's own user is `pi` (or whatever `FIRST_USER_NAME` was at build time), and the app runs as that user. Logging in is only needed for Exit to Terminal or SSH:
    - If the image was built with a password (`FIRST_USER_PASS`), you can log in as `pi`. The OS image workflow takes it from the repository secret `OS_FIRST_USER_PASS`, if there is one.
@@ -86,6 +86,8 @@ The image needs the app's arm64 tarball (`OSD-OS-<version>-linux-arm64.tar.gz`, 
 The run gives the `pi` user the repository secret `OS_FIRST_USER_PASS` as its password. Without that secret the account is locked.
 
 The app in these images is built as `dev`, which turns its self-update off. That way a branch image can't swap itself for a release that doesn't have its changes.
+
+**With a release:** pushing a version tag (see [BUILDING.md](../BUILDING.md#github-actions)) builds the image from that release's own tarball and attaches it to the release as `OSD-OS-<tag>-raspberry-pi.img.xz`, with its `.info` (the packages on it). Its app is the release's, and updates itself from later releases.
 
 **Locally:** with Docker on an arm64 Linux host (an x86 host works too, through QEMU emulation, but takes hours), run:
 

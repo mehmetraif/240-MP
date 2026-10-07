@@ -268,7 +268,8 @@ YouTube without the YouTube app: your subscriptions, channels and playlists, sea
 - Needs yt-dlp, and Deno for full YouTube support ([BUILDING.md](BUILDING.md)). The [OSD/OS](os/README.md) image comes with both and keeps yt-dlp up to date
 
 ## Install
-- [On a Raspberry Pi](INSTALL.md#on-a-raspberry-pi)
+- **The OSD/OS image**, the whole system for a Raspberry Pi: download `OSD-OS-<version>-raspberry-pi.img.xz` from the [latest release](https://github.com/mehmetraif/OSD-OS/releases/latest) and flash it ([how](os/README.md#flashing))
+- [On a Raspberry Pi](INSTALL.md#on-a-raspberry-pi), as an app on a Raspberry Pi OS you set up yourself
 - [On macOS (ARM)](INSTALL.md#on-macos-arm)
 - [On SteamOS / Linux x86_64](INSTALL.md#on-steamos--linux-x86_64)
 

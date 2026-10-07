@@ -17,6 +17,13 @@ jobs:
     # found"). Unpin only after bumping Qt to a release that supports the new
     # SDK (6.9.3+).
     runs-on: macos-15
+    # With the Apple Developer ID secrets the app is signed with them and the
+    # DMG notarized; without them (a fork) it is signed ad hoc, which Apple
+    # Silicon needs to run it at all, and Gatekeeper asks before its first run.
+    env:
+      DEVELOPER_ID: ${{ secrets.APPLE_CERT_P12_BASE64 != '' }}
+    outputs:
+      notarized: ${{ steps.signing.outputs.notarized }}
 
     steps:
       - name: Checkout
@@ -80,6 +87,7 @@ jobs:
           ! ls "$FW" | grep -qi sdl3 || { echo "SDL3 leaked into bundle"; exit 1; }
 
       - name: Import signing certificate
+        if: env.DEVELOPER_ID == 'true'
         env:
           CERT_P12: ${{ secrets.APPLE_CERT_P12_BASE64 }}
           CERT_PASSWORD: ${{ secrets.APPLE_CERT_PASSWORD }}
@@ -97,6 +105,7 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASS" "$KEYCHAIN_PATH"
 
       - name: Sign app
+        if: env.DEVELOPER_ID == 'true'
         run: |
           APP="${GITHUB_WORKSPACE}/install/osdos.app"
           IDENTITY="Developer ID Application"
@@ -104,6 +113,17 @@ jobs:
             -exec codesign --force --options runtime --sign "$IDENTITY" {} \;
           codesign --force --deep --options runtime --sign "$IDENTITY" "$APP"
           codesign --verify --deep --strict "$APP"
+
+      - name: Sign app ad hoc
+        if: env.DEVELOPER_ID != 'true'
+        run: |
+          APP="${GITHUB_WORKSPACE}/install/osdos.app"
+          codesign --force --deep --sign - "$APP"
+          codesign --verify --deep --strict "$APP"
+
+      - name: Signing used
+        id: signing
+        run: echo "notarized=${DEVELOPER_ID}" >> "$GITHUB_OUTPUT"
 
       - name: Create DMG
         run: |
@@ -122,6 +142,7 @@ jobs:
             "OSD-OS-${{ github.ref_name }}-macOS-arm64.dmg"
 
       - name: Notarize and staple
+        if: env.DEVELOPER_ID == 'true'
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
@@ -136,7 +157,7 @@ jobs:
           xcrun stapler staple "$DMG"
 
       - name: Remove signing keychain
-        if: always()
+        if: always() && env.DEVELOPER_ID == 'true'
         run: security delete-keychain "$RUNNER_TEMP/signing.keychain-db"
 
       - name: Upload artifact
@@ -318,11 +339,78 @@ jobs:
           if-no-files-found: error
 
   # ──────────────────────────────────────────────────────────────────────────────
+  # The OSD/OS image for the Raspberry Pi (os/README.md): Raspberry Pi OS Lite
+  # with this release's arm64 tarball and os/stage-osdos, built by pi-gen on
+  # the native arm64 runner, as the OS image workflow builds it.
+  # ──────────────────────────────────────────────────────────────────────────────
+  build-os-image:
+    name: OSD/OS image
+    needs: build-linux-arm64
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 180
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Download tarball
+        uses: actions/download-artifact@v8.0.1
+        with:
+          name: tarball-linux-arm64
+
+      # pi-gen keeps a root filesystem per stage plus the image itself; make
+      # room by dropping toolchains this job never uses.
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+            /opt/hostedtoolcache /usr/local/share/boost || true
+          df -h /
+
+      - name: Build image
+        env:
+          # Optional: without it the first user's password is locked.
+          FIRST_USER_PASS: ${{ secrets.OS_FIRST_USER_PASS }}
+        run: os/build.sh "OSD-OS-${{ github.ref_name }}-linux-arm64.tar.gz"
+
+      # pi-gen names its output after the build date; the release names it
+      # after the tag. Neither name ends like the app's packages, which the
+      # in-app updater picks by their endings.
+      - name: Name the image
+        run: |
+          cd os/work/pi-gen/deploy
+          images=(./*.img.xz)
+          infos=(./*.info)
+          if [ "${#images[@]}" -ne 1 ] || [ "${#infos[@]}" -ne 1 ] || [ ! -e "${images[0]}" ] || [ ! -e "${infos[0]}" ]; then
+            ls -l
+            exit 1
+          fi
+          mv -v -- "${images[0]}" "OSD-OS-${{ github.ref_name }}-raspberry-pi.img.xz"
+          mv -v -- "${infos[0]}" "OSD-OS-${{ github.ref_name }}-raspberry-pi.info"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: os-image
+          path: |
+            os/work/pi-gen/deploy/OSD-OS-*-raspberry-pi.img.xz
+            os/work/pi-gen/deploy/OSD-OS-*-raspberry-pi.info
+          if-no-files-found: error
+          compression-level: 0
+
+      - name: Upload build logs
+        if: failure()
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: pi-gen-logs
+          path: os/work/pi-gen/deploy/*.log
+          if-no-files-found: ignore
+
+  # ──────────────────────────────────────────────────────────────────────────────
   # Publish GitHub Release
   # ──────────────────────────────────────────────────────────────────────────────
   release:
     name: Publish Release
-    needs: [build-macos-arm64, build-linux-arm64, build-linux-x86_64]
+    needs: [build-macos-arm64, build-linux-arm64, build-linux-x86_64, build-os-image]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -343,7 +431,42 @@ jobs:
         run: |
           cd artifacts
           sha256sum dmg-arm64/*.dmg tarball-linux-arm64/*.tar.gz appimage-linux-x86_64/*.AppImage \
+            os-image/*.img.xz \
             | sed 's|  .*/|  |' > SHA256SUMS
+
+      # The notes, with absolute links (a release's body doesn't resolve the
+      # repository's relative ones), and a word on a DMG that isn't notarized.
+      - name: Write release notes
+        env:
+          TAG: ${{ github.ref_name }}
+          NOTARIZED: ${{ needs.build-macos-arm64.outputs.notarized }}
+          REPO: ${{ github.server_url }}/${{ github.repository }}
+        run: |
+          {
+            echo "## The OSD/OS image (Raspberry Pi)"
+            echo
+            echo "\`OSD-OS-${TAG}-raspberry-pi.img.xz\` is the whole system: flash it with Raspberry Pi Imager (**Use custom**), put the card in the Pi, and it boots straight into OSD/OS. Raspberry Pi OS Lite (64-bit), based on Debian 13 trixie, with OSD/OS on top; tested on the Raspberry Pi 4. How to flash it, and set up Wi-Fi and a user: ${REPO}/blob/${TAG}/os/README.md#flashing. What it is made of, under which licences: ${REPO}/blob/${TAG}/os/NOTICE (the \`.info\` file lists its packages)."
+            echo
+            echo "## The app"
+            echo
+            echo "- Raspberry Pi OS Trixie (arm64), on a system you set up yourself: ${REPO}/blob/${TAG}/INSTALL.md#on-a-raspberry-pi (\`install.sh\` installs \`OSD-OS-${TAG}-linux-arm64.tar.gz\`)."
+            echo "- macOS (Apple Silicon): download the \`.dmg\`, open it and move osdos.app to your Applications folder."
+            if [ "$NOTARIZED" != "true" ]; then
+              echo "  This build is not notarized: the first time, right-click osdos.app and choose Open (or run \`xattr -dr com.apple.quarantine /Applications/osdos.app\`)."
+            fi
+            echo "- Steam Deck / Linux (x86_64): download \`OSD-OS-linux-x86_64.AppImage\`, make it executable (\`chmod +x\`) and run it: ${REPO}/blob/${TAG}/INSTALL.md#on-steamos--linux-x86_64"
+            echo
+            echo "Only the Raspberry Pi 4 has been tested so far."
+            echo
+            echo "## Updating"
+            echo
+            echo "- The image and a Raspberry Pi install: Settings → Update in the app, or ${REPO}/blob/${TAG}/INSTALL.md#update"
+            echo "- macOS: Settings → Update, or the \`.dmg\` as above."
+            echo "- Steam Deck / Linux (x86_64): Settings → Update (it swaps the AppImage in place), or the latest AppImage over your copy."
+            echo
+            echo "\`SHA256SUMS\` has the checksum of every file."
+          } > release-notes.md
+          cat release-notes.md
 
       - name: Publish
         uses: softprops/action-gh-release@v3
@@ -353,19 +476,12 @@ jobs:
           draft: false
           prerelease: ${{ contains(github.ref_name, '-rc') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-alpha') }}
           files: |
+            artifacts/os-image/*.img.xz
+            artifacts/os-image/*.info
             artifacts/dmg-arm64/*.dmg
             artifacts/tarball-linux-arm64/*.tar.gz
             artifacts/appimage-linux-x86_64/*.AppImage
             artifacts/SHA256SUMS
             scripts/install.sh
             scripts/setup-nfc-reader.sh
-          body: |
-            Install:
-            - Raspberry Pi OS Trixie (arm64): Please follow [these instructions](INSTALL.md#on-a-raspberry-pi)
-            - macOS (Apple Silicon): Download the `.dmg`, open and move osdos.app to your applications folder
-            - Steam Deck / Linux (x86_64): Download `OSD-OS-linux-x86_64.AppImage`, make it executable (`chmod +x`), and run it. See [these instructions](INSTALL.md#on-a-steam-deck--linux-x86_64)
-
-            Update:
-            - Raspberry Pi OS Trixie (arm64): Use the in-app updater or follow [these instructions](INSTALL.md#update)
-            - macOS (Apple Silicon): Use the in-app updater or download the `.dmg`, open and move osdos.app to your applications folder
-            - Steam Deck / Linux (x86_64): Use the in-app updater (it swaps the AppImage in place) or download the latest `OSD-OS-linux-x86_64.AppImage` and replace your copy
+          body_path: release-notes.md
