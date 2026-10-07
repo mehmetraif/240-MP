@@ -15,6 +15,9 @@ FocusScope {
 
     // Flat model: mix of section headers and rows
     property var settingsItems: []
+    // Counted up as a row changes in place, so the rows read theirs again:
+    // the model stays as it is, and the list where it is.
+    property int revision: 0
 
 
     // Quit overlay choices. Under the autostart service (headless RPi) the quit menu has an
@@ -454,16 +457,13 @@ FocusScope {
                 contentY = Math.max(bottom.y - height, originY)
         }
 
-        // The current row, changed, in place of the old one. A new model
-        // starts the list from the top, so it is put back where it was.
+        // The current row, changed, in place of the old one. The model is
+        // not replaced: a new one starts the list over, and it is not put
+        // back where it was for sure once the list has been scrolled about
+        // (a row's height is not known until it is drawn).
         function replaceCurrentRow(row) {
-            var updated = settingsItems.slice()
-            updated[currentIndex] = row
-            var savedIndex = currentIndex
-            var savedY = contentY
-            settingsItems = updated
-            currentIndex = savedIndex
-            contentY = savedY
+            settingsItems[currentIndex] = row
+            settingsRoot.revision++
         }
 
         // A slider's step toward one end (-1 left, 1 right), kept and saved.
@@ -551,7 +551,9 @@ FocusScope {
 
         delegate: Item {
             id: rowItem
-            readonly property bool slider: modelData.type === "slider"
+            // The row as it is now, read again as one changes.
+            readonly property var row: (settingsRoot.revision, settingsRoot.settingsItems[index])
+            readonly property bool slider: row.type === "slider"
             readonly property real lineHeight: root.sh * 0.0583333 //28
             // A slider's bar takes whole lines under its own, so every line
             // keeps to the list's rule as it scrolls.
@@ -564,10 +566,10 @@ FocusScope {
             MenuRow {
                 width: parent.width
                 height: rowItem.lineHeight
-                heading: modelData.type === "section"
-                label: modelData.label || ""
-                value: modelData.type === "list_single" ? (modelData.value || "")
-                     : rowItem.slider && modelData.on !== undefined ? (modelData.on ? "On" : "Off") : ""
+                heading: rowItem.row.type === "section"
+                label: rowItem.row.label || ""
+                value: rowItem.row.type === "list_single" ? (rowItem.row.value || "")
+                     : rowItem.slider && rowItem.row.on !== undefined ? (rowItem.row.on ? "On" : "Off") : ""
                 selected: settingsList.currentIndex === index
             }
 
@@ -577,15 +579,15 @@ FocusScope {
             Loader {
                 id: tape
                 active: rowItem.slider
-                visible: modelData.on !== false
+                visible: rowItem.row.on !== false
                 x: root.sw * 0.009375 //6
                 y: rowItem.lineHeight + Math.round((rowItem.barLines * rowItem.lineHeight - height) / 2)
                 width: parent.width - 2 * x
                 sourceComponent: OsdTapeBar {
                     fontSize: root.sh * 0.0333333 //16
-                    value: modelData.value / 100
-                    startText: modelData.startText
-                    endText: modelData.endText
+                    value: rowItem.row.value / 100
+                    startText: rowItem.row.startText
+                    endText: rowItem.row.endText
                 }
             }
         }
