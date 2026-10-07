@@ -102,12 +102,18 @@ Every other screen, from each module to the player's menus, playlists, the tape 
 ## Modules
 
 ### Ambient:Mode ([Wiki](https://github.com/anthonycaccese/240-MP/wiki/Module:-Ambient-Mode))
+
+A backdrop for the room, like the art or wallpaper modes of modern TVs: a video of your choice (a fireplace, an aquarium, rain on a window) plays on a loop, with your own music over it if you like.
+
 - Supported video file types: `"mp4", "mkv", "avi", "mov", "m4v", "webm", "wmv", "flv", "f4v", "mpg", "mpeg", "vob"`
 - Playlist support for audio tracks using `m3u` and `m3u8` files
 - Mix video with a different audio track
 - Loops forever until you stop it
 
 ### Emby Module ([Wiki](https://github.com/anthonycaccese/240-MP/wiki/Module:-Emby))
+
+Your films and series from an [Emby](https://emby.media) media server, on your network or through Emby Connect: browse its libraries, carry on where you stopped, and watch.
+
 - Supported library types: `movies, tvshows, homevideos, boxsets`
 - Username / password authentication, or Emby Connect (emby.media cloud account, with server picker)
 - Select specific libraries to display
@@ -121,6 +127,9 @@ Every other screen, from each module to the player's menus, playlists, the tape 
 - Video quality selection: Direct Playback (Default) or Transcode options
 
 ### Jellyfin ([Wiki](https://github.com/anthonycaccese/240-MP/wiki/Module:-Jellyfin))
+
+Your films and series from a [Jellyfin](https://jellyfin.org) media server, the free and open one: sign in with Quick Connect, browse its libraries, carry on where you stopped, and watch.
+
 - Supported library types: `movies, tvshows, homevideos, boxsets`
 - "Quick Connect" authentication
 - Select specific libraries to display
@@ -133,6 +142,9 @@ Every other screen, from each module to the player's menus, playlists, the tape 
 - Video quality selection: Direct Playback (Default) or Transcode options
 
 ### Local Files ([Wiki](https://github.com/anthonycaccese/240-MP/wiki/Module:-Local-Files))
+
+The films, videos and photos you keep yourself, in a folder on the device, a USB drive or a network share (on the OSD/OS image, the SD card's own film partition): browse the folders and play.
+
 - Supported file types: `"mp4", "mkv", "avi", "mov", "m4v", "webm", "wmv", "flv", "f4v", "mpg", "mpeg", "vob"`
 - On the OSD/OS image, films go on the SD card itself: its **OSD-OS** partition opens on Windows and macOS like a USB stick, and Local Files opens it ([os/README.md](os/README.md#films-on-the-card))
 - Playlist support using `m3u` and `m3u8` files
@@ -145,6 +157,9 @@ Every other screen, from each module to the player's menus, playlists, the tape 
 - Back during a video opens its menu: subtitles, looping and Scaling, then Favorites, Play at Startup, Browse Local Files and Close Video. With Transparent Background it lies over the picture, which plays on: looping and Scaling change as it plays, and the subtitles reload it from where it is when you go back to it. Without, the video stops for the menu and starts again from where it was when you go back to it, with the settings as you left them
 
 ### Netflix and Prime Video
+
+What Netflix and Prime Video carry in your country, browsed in OSD/OS's own menus and played in the service's own player: OSD/OS shows the catalogue, the service plays the title.
+
 - Browse what the service carries in your country in the same tree as Local Files: **Recently Watched** and **Favorites** first, then **Search** (on an on-screen keyboard), **Movies** and **Series** by Popular and by genre, a page of titles at a time with **More…** at the end
 - Select on a title plays it straight away in the service's own web player, full screen. It opens at the title's own page on the service where [Wikidata](https://www.wikidata.org) knows it (by its TMDB or IMDb id), and at the service's search for it otherwise. **Netflix Home** / **Prime Video Home** opens the service as it is. OSD/OS comes back when the player closes, with the tree as you left it
 - The catalogue comes from [TMDB](https://www.themoviedb.org)'s API, which needs a free API key: put it (a v3 key or a v4 read access token) on the first line of `tmdb_api_key.txt` in the data folder. Each module's settings set the country and the language of the titles
@@ -158,6 +173,9 @@ Every other screen, from each module to the player's menus, playlists, the tape 
 - This product uses the TMDB API but is not endorsed or certified by TMDB. Which service carries a title where comes from [JustWatch](https://www.justwatch.com), through TMDB
 
 ### NFC Reader ([Wiki](https://github.com/anthonycaccese/240-MP/wiki/Module:-NFC-Reader))
+
+Tap a card to play, the way a tape goes in a deck: each NFC card stands for a video, a file, a YouTube video or a Plex title, and plays it when it touches the reader.
+
 - Start video playback via NFC cards
   - Supports the mapping of video paths, YouTube URLs and content from a Plex library
 - Reader support:
@@ -168,6 +186,9 @@ Every other screen, from each module to the player's menus, playlists, the tape 
 - Tapping an unknown card auto-creates a stub tag file for it
 
 ### Playlists
+
+Your own lists of videos, like a mixtape, from several modules at once: Local Files, YouTube, Jellyfin and Emby on one list, played from where they live or downloaded to play without the network.
+
 - Lists of videos from Local Files, YouTube, Jellyfin and Emby together, played as one: **In Order**, carrying on from where the list stopped (it asks), or **Shuffle**, in a new order each time. **Play from Here** on a video starts there. mpv's display has ◄ ► for the previous and next video
 - **Online** playlists play each video from where it lives: a file from Local Files, a YouTube video as the YouTube module plays it (its Advanced settings, through yt-dlp), a Jellyfin or Emby item streamed from its server
 - **Offline** playlists play only what is on the device: Local Files' files as they are, and a copy of every other video, downloaded in the background into a **Playlists** folder in Local Files' folder (the **Download Folder** setting can name another). On OSD/OS image that is the card's OSD-OS partition. A video is downloaded once, whatever lists it is on, and deleted once no offline list has it
@@ -177,6 +198,9 @@ Every other screen, from each module to the player's menus, playlists, the tape 
 - Netflix and Prime Video play in the service's own player, so they can't go on a playlist
 
 ### Plex ([Wiki](https://github.com/anthonycaccese/240-MP/wiki/Module:-Plex))
+
+Your films and series from a [Plex](https://www.plex.tv) Media Server: sign in with a code at plex.tv/link, choose the server and the profile, browse its libraries, carry on where you stopped, and watch.
+
 - Supported library types: `Movies, TV Shows, Other Videos`
 - Server switching
 - User profile switching and auto sign in
@@ -193,6 +217,9 @@ Every other screen, from each module to the player's menus, playlists, the tape 
 - Video quality selection: Direct Playback (Default) or Transcode options
 
 ### Scripts ([Wiki](https://github.com/anthonycaccese/240-MP/wiki/Module:-Scripts))
+
+Other programs on the machine, started from the menu through your own shell scripts: FieldStation42, RetroArch, an update, anything a script can run.
+
 - Run your own `.sh` scripts from a folder, so OSD/OS can launch anything else on the machine (FieldStation42, RetroArch, `yt-dlp -U`, updates)
 - Two run modes per script, set in its `.txt` file:
     - `console` — OSD/OS stays on screen and shows the script's output
@@ -203,6 +230,9 @@ Every other screen, from each module to the player's menus, playlists, the tape 
 - Off by default; enable it in Settings and point it at your scripts folder
 
 ### Weather ([Wiki](https://github.com/anthonycaccese/240-MP/wiki/Module:-Weather))
+
+The weather, shown the way a cable weather channel showed it in the 90s: current conditions and a three-day forecast for your town, and for up to six more places.
+
 - Inspired by [WeatherStar 3000+](https://github.com/netbymatt/ws3kp) by netbymatt
 - Integrates with Open-Meteo to provide weather forecasts for worldwide locations
 - Integrates with NWS to provide current conditions for US locations
@@ -211,6 +241,9 @@ Every other screen, from each module to the player's menus, playlists, the tape 
 - Supports background music, US/Metric Units and 12-hour/24-hour time display
 
 ### YouTube ([Wiki](https://github.com/anthonycaccese/240-MP/wiki/Module:-YouTube))
+
+YouTube without the YouTube app: your subscriptions, channels and playlists, search, and playback through mpv and yt-dlp, with no account needed.
+
 - List content from YouTube RSS feeds and playback via mpv + yt-dl (no account needed)
 - Browse it all in the same tree as Local Files: **Recently Watched**, **Favorites**, **Search**, **Subscriptions**, **Channels**, **Playlists** and **Watch Later**
 - Search YouTube on an on-screen keyboard (through yt-dlp), twenty matches at a time with **More…** at the end
@@ -240,6 +273,7 @@ Every other screen, from each module to the player's menus, playlists, the tape 
 - [On SteamOS / Linux x86_64](INSTALL.md#on-steamos--linux-x86_64)
 
 ## Hardware Testing
+OSD/OS runs where 240-MP, which it grew out of, does. 240-MP's notes on each board:
 - [Raspberry Pi 3B](https://github.com/anthonycaccese/240-MP/wiki/Hardware-Testing#raspberry-pi-3b)
 - [Raspberry Pi 3B+](https://github.com/anthonycaccese/240-MP/wiki/Hardware-Testing#raspberry-pi-3b-1)
 - [Raspberry Pi 4B](https://github.com/anthonycaccese/240-MP/wiki/Hardware-Testing#raspberry-pi-4b)
@@ -248,29 +282,27 @@ Every other screen, from each module to the player's menus, playlists, the tape 
 
 ## FAQs
 
-- Why didn't you use Kodi/LibreELEC/OSMC?
-    - I've used all of those distros and they are all excellent but I also like making things and wanted something simpler without as many options.  Something that felt like a VCR from my youth.
-- Should I use OSD/OS instead of Kodi/LibreELEC/OSMC?
-    - I would recommend thinking about it like this...
-    - All of those distros are amazing, feature rich, work across a ton of devices and have awesome supportive teams behind them.
-    - I on the other hand am just one person making nostalgic things for my own niche use cases.
-    - If those use cases match with what you're looking for, then OSD/OS is a bunch of fun and I'd be happy for you to try it.
-    - Otherwise, the well known distros are spectacular and you should likely open those doors instead.
+- Why not Kodi, LibreELEC or OSMC?
+    - They are all excellent, and LibreELEC is the closest relative: a system that boots straight into a media centre. OSD/OS is simpler on purpose, with far fewer options, and it looks and works like the on-screen display of a VCR from the 80s and 90s, on a CRT, with a remote.
+    - 240-MP began the same way. In Anthony's words: "I've used all of those distros and they are all excellent but I also like making things and wanted something simpler without as many options. Something that felt like a VCR from my youth."
+- Should I use OSD/OS instead of Kodi, LibreELEC or OSMC?
+    - Those are feature rich, run on a great many devices and have big, supportive teams behind them. OSD/OS is a small project for a niche: old TVs, a remote and a VCR's look.
+    - If that is what you are after, OSD/OS is a lot of fun and you are welcome to try it. Otherwise, the well known distros are the better door.
 - Will this work on other Raspberry Pi models? (like the 5, 2 zero, etc...)
-    - I've tested on the 4b, 3b+ and 3b. Other users have confimred the 5 works well too and all the details on what we've confimred can be found here: https://github.com/anthonycaccese/240-MP/wiki/Hardware-Testing
-    - If its not on that list then the short answer is "we don't know but please feel free try and let us know if it works"
+    - OSD/OS targets the Raspberry Pi 4. 240-MP was tested on the 4B, 3B+ and 3B, and its users have confirmed the 5 works well too: see [its hardware notes](https://github.com/anthonycaccese/240-MP/wiki/Hardware-Testing).
+    - On any other model the short answer is "we don't know": please try it and tell us in an [issue](https://github.com/mehmetraif/OSD-OS/issues) whether it works.
 - Where does the name "OSD/OS" come from?
     - OSD is the on-screen display: the menu a VCR or a TV draws over the picture, which is all this app ever shows. OS because on a Raspberry Pi it can be the whole system ([os/README.md](os/README.md)).
     - It started as 240-MP. 240 had a double meaning referring to the longest [VHS tape length](https://en.wikipedia.org/wiki/VHS#Tape_lengths) and love for [CRT TVs](https://consolemods.org/wiki/CRT:What_is_240p%3F) as a display type, and MP a double meaning of "Media Player" and a play on the "SP/LP/EP/SLP" terminology that was used to refer to the recording quality for VHS recordings. OSD/OS takes over what 240-MP set up: on its first start it moves 240-MP's data folder, with its settings, lists and NFC cards, over to its own; the installer replaces a 240-MP install; and scripts and launch settings under the old names (`MP240_…`) still work.
 - Does it output at 240p resolution?
     - The UI scales based on the OS config and output cables you are using.
-    - For example: the output resolution for the menu and video playback when using it on a CRT with the configs I use is 480i/576i
+    - For example, on a CRT with the CRT configs OSD/OS comes with (`config.txt`, see [INSTALL.md](INSTALL.md) and [os/README.md](os/README.md#hdmi-or-a-crt)), the menus and the videos go out at 480i (NTSC) or 576i (PAL).
 - Does OSD/OS support RGB out instead of composite?
-    - Installed on your own Raspberry Pi OS, OSD/OS is just an app on top of an already configured Operating System. If you are able to configure that OS to output over RGB then OSD/OS will simply scale and display to that output when it boots up as well.
-    - If you have a combination of RGB out + OS configuration that works well then please add a comment here with your set up details: https://github.com/anthonycaccese/240-MP/discussions/44
+    - OSD/OS draws to whatever output the system is set up for, so if `config.txt` sets the Pi to output RGB (through an RGB or VGA add-on board), OSD/OS scales to it and displays there from the moment it boots.
+    - 240-MP's users share the RGB setups that work for them in [its discussion](https://github.com/anthonycaccese/240-MP/discussions/44).
 - Does OSD/OS work over HDMI on a modern television too?
     - Yes! The UI was built to scale on modern televisions over HDMI as well.
-    - Please make sure you use the config.txt I provide for HDMI and it will output at the proper resolution for a modern tv.
+    - Use the HDMI `config.txt` (the OSD/OS image's default, or the one in [INSTALL.md](INSTALL.md)) and it outputs at the right resolution for a modern TV.
 - Does OSD/OS support bluetooth keyboards/remotes/controllers?
     - Yes. On Linux (a Raspberry Pi included) pair them in Settings → Bluetooth: SEARCH, then select the device. A keyboard shows a code on screen to type on it. Once paired, a device comes back by itself after a restart, and OSD/OS sees it as it would a USB one.
     - On a Mac, pair them in the Mac's own Bluetooth settings.
