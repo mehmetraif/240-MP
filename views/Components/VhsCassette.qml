@@ -1,19 +1,21 @@
 import QtQuick
 
-// Pixel-art VHS cassette, drawn after the flat cassette icon in two colours:
-// the shell is solid `ink`, and its cut-outs are left clear so the background
-// shows through. The cut-outs are a line under the top edge, the label in the
-// middle (its three lines are ink again) and, either side of the label, the
-// tape wound on a reel around an ink hub. As `progress` goes from 0 to 1 the tape winds off the left (supply) reel onto
-// the right (take-up) one, so the left pack shrinks while the right one grows.
-// Each reel turns at the speed its tape radius gives it, the full reel slowly
-// and the nearly empty one fast, like a real deck.
+// Pixel-art VHS cassette, the owner's drawing (the boot screen's), in two
+// colours: the shell is solid `ink`, and its cut-outs are left clear so the
+// background shows through. The cut-outs are the line under the top edge with
+// its mark, the label with OSD/OS between two rules (the slash in its three
+// colours), the window either side of it with the tape wound on a reel around
+// an ink hub, and the two feet. As `progress` goes from 0 to 1 the tape winds
+// off the left (supply) reel onto the right (take-up) one, so the left pack
+// shrinks while the right one grows. Each reel turns at the speed its tape
+// radius gives it, the full reel slowly and the nearly empty one fast, like a
+// real deck.
 //
-// The art lives on a fixed gridWidth × gridHeight grid and every grid cell is
-// drawn as a pixelSize × pixelSize block, so the picture stays crisp at any
-// integer scale (and a single-pixel line never lands on one interlaced CRT
-// field). The shell and label are painted once; only the two reel windows are
-// repainted per tick.
+// The art is a grid of cells (`art`, a character a cell: '#' ink, '.' clear,
+// 'r', 'b' and 'g' the slash's colours), each drawn as a pixelSize × pixelSize
+// block, so the picture stays crisp at any integer scale (and a single-pixel
+// line never lands on one interlaced CRT field). The shell is painted once;
+// only the two reel windows are repainted per tick.
 Item {
     id: cassette
 
@@ -23,48 +25,89 @@ Item {
     property real progress: 0
     property bool running: visible
 
-    readonly property int gridWidth: 80
-    readonly property int gridHeight: 46
+    // The one colour drawn; everything else is the background. The host sets
+    // it to the theme's text colour.
+    property string ink: "#ffffff"
+    readonly property var slashColours: ({ "r": "#ff3d3d", "b": "#2f6bff", "g": "#2fe063" })
+
+    // The drawing, 102 × 47 cells (assets: the owner's osdos-vhs-acilis.png,
+    // sampled a cell per 6 of its pixels). The windows' interiors are left
+    // clear here: the reels are painted into them.
+    readonly property var art: [
+        "..##################################################################################################..",
+        ".####################################################################################################.",
+        "######################################################################################################",
+        "######################################################################################################",
+        "##################################################..##################################################",
+        "#....................................................................................................#",
+        "#..#############################################.......############################################..#",
+        "#.##############################################...#...#############################################.#",
+        "#.##############################################..###..#############################################.#",
+        "#.##############################################.#####.#############################################.#",
+        "######################################################################################################",
+        "######################################################################################################",
+        "######################################################################################################",
+        "####..............................................................................................####",
+        "###................................................................................................###",
+        "###..#####################...############################################...#####################...##",
+        "###.#....................#...#############################################..#....................#.###",
+        "###.#....................#...#############################################..#....................#.###",
+        "###.#....................#...#############################################..#....................#.###",
+        "###.#....................#...#############################################..#....................#.###",
+        "###.#....................#...####.....................................####..#....................#.###",
+        "###.#....................#...#############################################..#....................#.###",
+        "###.#....................#...#############################################..#....................#.###",
+        "###.#....................#...#############################################..#....................#.###",
+        "###.#....................#...#############################################..#....................#.###",
+        "###.#....................#...#####....##....##...#####rbg#b...##....######..#....................#.###",
+        "###.#....................#...####..##.##.##.##.##.b##rbg#b.##.##.#########..#....................#.###",
+        "###.#....................#...####..##.##...###.##.b##rbg#b.##.##....######..#....................#.###",
+        "###.#....................#...####..##.#####.##.##.b#rbg##b.##.#####..#####..#....................#.###",
+        "###.#....................#...####..##.##.##.##.##.##rbg##b.##.##.##..#####..#....................#.###",
+        "###.#....................#...#####...####..###...##rbg####b..####...######..#....................#.###",
+        "###.#....................#...#############################################..#....................#.###",
+        "###.#....................#...#############################################..#....................#.###",
+        "###.#....................#...#############################################..#....................#.###",
+        "###.#....................#...#############################################..#....................#.###",
+        "###.#....................#...####.....................................####..#....................#.###",
+        "###.#....................#...#############################################..#....................#.###",
+        "###.#....................#...#############################################..#....................#.###",
+        "###.#....................#...#############################################..#....................#.###",
+        "###..#####################...############################################...#####################..###",
+        "####.............................................................................................#####",
+        "######################################################################################################",
+        "######################################################################################################",
+        "###...##########################################################################################...###",
+        "###...##########################################################################################...###",
+        ".####################################################################################################.",
+        "..##################################################################################################.."
+    ]
+    readonly property int gridWidth: 102
+    readonly property int gridHeight: 47
 
     width: gridWidth * pixelSize
     height: gridHeight * pixelSize
 
-    // The one colour drawn; everything else is the background. The host sets
-    // it to the theme's text colour.
-    property string ink: "#ffffff"
-    // The label reads OSD/OS, as the logo does (OSD, the slash in its three
-    // colours, OS, in the deck's letters and on the grid), in place of its
-    // lines.
-    property bool wordmark: false
-    readonly property var slashColours: ["#ff3d3d", "#2f6bff", "#2fe063"]
-
     // --- Geometry (grid cells, inclusive bounds) ---
-    // The clear line that splits the top edge off the rest of the shell.
-    readonly property int lineY0: 7
-    readonly property int lineY1: 8
-    // The label, and the rows and span of its three lines.
-    readonly property int labelX0: 23
-    readonly property int labelX1: 56
-    readonly property int labelY0: 19
-    readonly property int labelY1: 39
-    readonly property var labelLines: [24, 29, 34]
-    readonly property int labelLineX0: 27
-    readonly property int labelLineX1: 52
-    // The tape shows level with the label, beyond a 2-cell gap on either side
-    // of it: columns 0..20 and 59..79. Only these two windows are repainted.
-    readonly property int windowWidth: labelX0 - 2
-    readonly property int windowHeight: labelY1 - labelY0 + 1
-    // Reel centres sit on the label's edges, so the gap and the label hide
-    // the inner half of each reel, as on the icon.
-    readonly property real leftReelX: 22
-    readonly property real rightReelX: gridWidth - leftReelX
-    readonly property real reelY: (labelY0 + labelY1 + 1) / 2
+    // The windows' interiors; their frames are in the art.
+    readonly property int windowY0: 16
+    readonly property int windowY1: 38
+    readonly property int leftWindowX0: 5
+    readonly property int rightWindowX0: 77
+    readonly property int windowWidth: 20
+    readonly property int windowHeight: windowY1 - windowY0 + 1
+    // Reel centres sit on the frame between each window and the label, so
+    // the frame and the label hide the inner half of each reel, as in the
+    // drawing.
+    readonly property real leftReelX: leftWindowX0 + windowWidth + 0.5
+    readonly property real rightReelX: rightWindowX0 - 0.5
+    readonly property real reelY: (windowY0 + windowY1 + 1) / 2
     // Radii that rest on screen are kept off half-integers: those leave a
     // one-cell nub on the circle's outer edge.
-    readonly property real hubRadius: 6.9
-    readonly property real toothRadius: 4.6
-    readonly property real emptyRadius: 8.3   // a reel never shows bare hub
-    readonly property real fullRadius: 19.4
+    readonly property real hubRadius: 9.4
+    readonly property real toothRadius: 6.6
+    readonly property real emptyRadius: 11.3  // a reel never shows bare hub
+    readonly property real fullRadius: 20.4
     // Linear tape speed in grid cells per second; each reel's angular speed is
     // this over its current tape radius.
     readonly property real tapeSpeed: 20
@@ -103,30 +146,20 @@ Item {
         }
     }
 
-    // True for the cells a corner of `size` cells cuts off the given box.
-    function cornerCut(x, y, x0, y0, x1, y1, size) {
-        return (x - x0) + (y - y0) < size || (x1 - x) + (y - y0) < size
-            || (x - x0) + (y1 - y) < size || (x1 - x) + (y1 - y) < size
+    function inWindow(x, y) {
+        return y >= windowY0 && y <= windowY1
+            && ((x >= leftWindowX0 && x < leftWindowX0 + windowWidth)
+                || (x >= rightWindowX0 && x < rightWindowX0 + windowWidth))
     }
 
     function shellColor(x, y) {
-        if (cornerCut(x, y, 0, 0, gridWidth - 1, gridHeight - 1, 2))
+        // The reel windows, left to their own layer.
+        if (inWindow(x, y))
             return ""
-        if (y >= lineY0 && y <= lineY1)
-            return ""
-        if (y >= labelY0 && y <= labelY1) {
-            // The reel windows, left to their own layer.
-            if (x < windowWidth || x >= gridWidth - windowWidth)
-                return ""
-            if (x >= labelX0 && x <= labelX1) {
-                if (cornerCut(x, y, labelX0, labelY0, labelX1, labelY1, 1))
-                    return ink
-                if (!wordmark && labelLines.indexOf(y) >= 0 && x >= labelLineX0 && x <= labelLineX1)
-                    return ink
-                return ""
-            }
-        }
-        return ink
+        var c = art[y].charAt(x)
+        if (c === "#")
+            return ink
+        return slashColours[c] || ""
     }
 
     // Colours the reel window that starts at column x0, for a reel centred on
@@ -140,7 +173,7 @@ Item {
                         Math.round(reelY + toothRadius * Math.sin(a) - 1)])
         }
         return function(lx, ly) {
-            var x = x0 + lx, y = labelY0 + ly
+            var x = x0 + lx, y = windowY0 + ly
             var dx = x + 0.5 - cx, dy = y + 0.5 - reelY
             var r2 = dx * dx + dy * dy
             if (r2 > tapeRadius * tapeRadius)
@@ -170,7 +203,8 @@ Item {
 
     Canvas {
         id: leftWindow
-        y: cassette.labelY0 * cassette.pixelSize
+        x: cassette.leftWindowX0 * cassette.pixelSize
+        y: cassette.windowY0 * cassette.pixelSize
         width: cassette.windowWidth * cassette.pixelSize
         height: cassette.windowHeight * cassette.pixelSize
         antialiasing: false
@@ -179,14 +213,15 @@ Item {
             var ctx = getContext("2d")
             ctx.reset()
             cassette.paintCells(ctx, cassette.windowWidth, cassette.windowHeight,
-                                cassette.reelPainter(0, cassette.leftReelX, cassette.leftRadius, cassette.leftAngle))
+                                cassette.reelPainter(cassette.leftWindowX0, cassette.leftReelX,
+                                                     cassette.leftRadius, cassette.leftAngle))
         }
     }
 
     Canvas {
         id: rightWindow
-        x: (cassette.gridWidth - cassette.windowWidth) * cassette.pixelSize
-        y: cassette.labelY0 * cassette.pixelSize
+        x: cassette.rightWindowX0 * cassette.pixelSize
+        y: cassette.windowY0 * cassette.pixelSize
         width: cassette.windowWidth * cassette.pixelSize
         height: cassette.windowHeight * cassette.pixelSize
         antialiasing: false
@@ -195,56 +230,8 @@ Item {
             var ctx = getContext("2d")
             ctx.reset()
             cassette.paintCells(ctx, cassette.windowWidth, cassette.windowHeight,
-                                cassette.reelPainter(cassette.gridWidth - cassette.windowWidth, cassette.rightReelX,
+                                cassette.reelPainter(cassette.rightWindowX0, cassette.rightReelX,
                                                      cassette.rightRadius, cassette.rightAngle))
-        }
-    }
-
-    // The wordmark on the label.
-    Item {
-        visible: cassette.wordmark
-        x: cassette.labelX0 * cassette.pixelSize
-        y: cassette.labelY0 * cassette.pixelSize
-        width: (cassette.labelX1 - cassette.labelX0 + 1) * cassette.pixelSize
-        height: (cassette.labelY1 - cassette.labelY0 + 1) * cassette.pixelSize
-
-        Row {
-            anchors.centerIn: parent
-            spacing: cassette.pixelSize
-
-            Text {
-                id: osd
-                text: "OSD"
-                color: cassette.ink
-                font.family: root.globalFont
-                font.pixelSize: cassette.pixelSize * 7
-            }
-            // The slash: three stripes a cell wide, one cell over for every
-            // two rows, as tall as the capitals and level with them.
-            Canvas {
-                id: slash
-                readonly property int rows: 5
-                readonly property int cols: 3 + Math.floor((rows - 1) / 2)
-                width: cols * cassette.pixelSize
-                height: rows * cassette.pixelSize
-                y: Math.round(osd.y + osd.baselineOffset - osd.font.pixelSize * 800 / 2048 - height / 2)
-                antialiasing: false
-                smooth: false
-                onPaint: {
-                    var ctx = getContext("2d")
-                    ctx.reset()
-                    cassette.paintCells(ctx, cols, rows, function(x, y) {
-                        var i = x - Math.floor((slash.rows - 1 - y) / 2)
-                        return i >= 0 && i < 3 ? cassette.slashColours[i] : ""
-                    })
-                }
-            }
-            Text {
-                text: "OS"
-                color: cassette.ink
-                font.family: root.globalFont
-                font.pixelSize: cassette.pixelSize * 7
-            }
         }
     }
 
@@ -252,7 +239,6 @@ Item {
         shellCanvas.requestPaint()
         leftWindow.requestPaint()
         rightWindow.requestPaint()
-        slash.requestPaint()
     }
     onPixelSizeChanged: repaintAll()
     onInkChanged: repaintAll()

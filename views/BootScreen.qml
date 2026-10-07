@@ -113,7 +113,6 @@ FocusScope {
         // 160×92 at 640×480.
         pixelSize: root.px
         ink: root.primaryColor
-        wordmark: true
         x: Math.round((root.sw - width) / 2)
         y: bootRoot.blockY
         progress: bootRoot.shownProgress

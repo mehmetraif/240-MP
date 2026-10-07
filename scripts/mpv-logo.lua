@@ -4,7 +4,8 @@
 -- so it goes through mpv's OSD like a subtitle: in the picture, in both of the
 -- app's modes, and under whatever the app draws over the picture.
 -- MpvController loads it for every session while Settings' CHANNEL LOGO is
--- on, with the corner in script-opts (logo-corner=tl|tr|bl|br). It stands 7%
+-- on, with the corner in script-opts (logo-corner=tl|tr|bl|br, or all for
+-- one in each of the four). It stands 7%
 -- of the output's height tall and 10% of the picture's width and height in
 -- from the picture's corner (the letterbox bars are outside it), inside a
 -- CRT's safe area, and follows the output's size.
@@ -66,28 +67,31 @@ local function draw()
     local s = h / ART.h
     local w = ART.w * s
     local mx, my = vw * 0.10, vh * 0.10
-    local left = opts.corner == "tl" or opts.corner == "bl"
-    local top = opts.corner == "tl" or opts.corner == "tr"
-    local x0 = left and (vx0 + mx) or (vx1 - mx - w)
-    local y0 = top and (vy0 + my) or (vy1 - my - h)
+    local corners = opts.corner == "all" and { "tl", "tr", "bl", "br" } or { opts.corner }
 
     local ass = assdraw.ass_new()
-    for _, shape in ipairs(SHAPES) do
-        ass:new_event()
-        ass:append(string.format("{\\an7\\pos(0,0)\\bord0\\shad0\\blur0\\1c&H%s&\\1a&H00&}", shape.colour))
-        ass:draw_start()
-        for _, contour in ipairs(shape.contours) do
-            for i, p in ipairs(contour) do
-                local x = x0 + (p[1] - ART.x) * s
-                local y = y0 + (p[2] - ART.y) * s
-                if i == 1 then
-                    ass:move_to(x, y)
-                else
-                    ass:line_to(x, y)
+    for _, corner in ipairs(corners) do
+        local left = corner == "tl" or corner == "bl"
+        local top = corner == "tl" or corner == "tr"
+        local x0 = left and (vx0 + mx) or (vx1 - mx - w)
+        local y0 = top and (vy0 + my) or (vy1 - my - h)
+        for _, shape in ipairs(SHAPES) do
+            ass:new_event()
+            ass:append(string.format("{\\an7\\pos(0,0)\\bord0\\shad0\\blur0\\1c&H%s&\\1a&H00&}", shape.colour))
+            ass:draw_start()
+            for _, contour in ipairs(shape.contours) do
+                for i, p in ipairs(contour) do
+                    local x = x0 + (p[1] - ART.x) * s
+                    local y = y0 + (p[2] - ART.y) * s
+                    if i == 1 then
+                        ass:move_to(x, y)
+                    else
+                        ass:line_to(x, y)
+                    end
                 end
             end
+            ass:draw_stop()
         end
-        ass:draw_stop()
     end
     mp.set_osd_ass(W, H, ass.text)
 end

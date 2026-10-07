@@ -226,8 +226,8 @@ FocusScope {
         // CHANNEL LOGO — OSD/OS's logo in a corner of the picture while a
         // video plays, drawn by mpv (scripts/mpv-logo.lua, loaded by
         // MpvController at each launch, so it applies from the next video).
-        var logoVals = ["off", "tl", "tr", "bl", "br"]
-        var logoOpts = ["Off", "Top Left", "Top Right", "Bottom Left", "Bottom Right"]
+        var logoVals = ["off", "tl", "tr", "bl", "br", "all"]
+        var logoOpts = ["Off", "Top Left", "Top Right", "Bottom Left", "Bottom Right", "All Corners"]
         var logoIdx = logoVals.indexOf(appSettings["video_logo"] || "tr")
         items.push({
             type: "list_single",
@@ -236,7 +236,7 @@ FocusScope {
             options: logoOpts,
             values: logoVals,
             value: logoOpts[logoIdx < 0 ? logoVals.indexOf("tr") : logoIdx],
-            description: "OSD/OS's logo in a corner of the picture while a video plays, like a channel's, from the next video on\n[OFF] None",
+            description: "OSD/OS's logo in a corner of the picture while a video plays, like a channel's, from the next video on\n[ALL CORNERS] In all four  [OFF] None",
             moduleId: ""
         })
 

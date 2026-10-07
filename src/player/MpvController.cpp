@@ -200,7 +200,8 @@ QStringList MpvController::sessionArgs(const QString &url, float startSeconds,
         const QString logoScript = m_appRoot + "/scripts/mpv-logo.lua";
         if (corner != QLatin1String("off") && QFile::exists(logoScript)) {
             logoCorner = (corner == QLatin1String("tl") || corner == QLatin1String("bl")
-                          || corner == QLatin1String("br")) ? corner : QStringLiteral("tr");
+                          || corner == QLatin1String("br") || corner == QLatin1String("all"))
+                         ? corner : QStringLiteral("tr");
             args << QString("--script=%1").arg(logoScript);
         }
     }
