@@ -33,6 +33,7 @@ The guiding idea: **browse structured content, then hand off to the right tool f
       MpvController.h/.cpp          # mpv subprocess controller: QProcess launch + IPC socket
       EmbeddedMpv.h/.cpp            # mpv inside the app's window (Transparent Background), libmpv opened at run time
       VideoSurface.h/.cpp           # the QML item that shows EmbeddedMpv's picture
+      VhsNoise.h/.cpp               # a tape's noise, drawn afresh each frame, for LoadingScreen
     boot/
       BootProgress.h/.cpp           # boot screen state on the 240-MP OS image (inert elsewhere)
     bluetooth/
@@ -51,7 +52,7 @@ The guiding idea: **browse structured content, then hand off to the right tool f
     ModuleList.qml
     Settings.qml
     ...
-    Components/                     # shared QML components (AppBar, HintBar, MenuRow, HelpLine, ScrollMarks, TreeBrowser, InfoPanel, EntryOptions, PlayerMenu, MousePointer, OnScreenKeyboard, WebPlayerBrowse, WebPlayerLaunch, the Osd* elements, ChoiceOverlay, qmldir)
+    Components/                     # shared QML components (AppBar, HintBar, MenuRow, HelpLine, ScrollMarks, TreeBrowser, InfoPanel, EntryOptions, PlayerMenu, LoadingScreen, MousePointer, OnScreenKeyboard, WebPlayerBrowse, WebPlayerLaunch, the Osd* elements, ChoiceOverlay, qmldir)
     BootScreen.qml                  # boot screen of the 240-MP OS image (see os/README.md)
   Main.qml                          # app root
   CMakeLists.txt
@@ -299,7 +300,7 @@ The order is load-bearing and was established against real Pi hardware — read 
 - **`releaseDeferred(owner, cb)`**: after 200 ms (>3 VSync at 60 Hz, so the child's last pending KMS commit can clear), `drmSetMaster` → restore CRTC → switch back, then run `cb`. The restore uses **legacy** `drmModeSetCrtc`, not an atomic commit: the child's atomic cleanup leaves `CRTC_ACTIVE=0` and EGLFS would get `EINVAL` on its first page flip.
 - **`releaseNow(owner)`**: synchronous, for shutdown; `MpvController`'s destructor calls it so quitting mid-playback no longer leaves the Pi on a blank VT.
 
-The `owner` token means two subsystems can never both believe they hold the screen — `acquire()` refuses if someone else holds it, and `isHeldBy()` is the re-entrancy guard for relaunching a child without releasing first. All of it is Linux-only in effect (`isHeadless()` is false on macOS and whenever a compositor is present), where the hand-off is just a fullscreen window swap.
+The `owner` token means two subsystems can never both believe they hold the screen — `acquire()` refuses if someone else holds it, and `isHeldBy()` is the re-entrancy guard for relaunching a child without releasing first. Its `held` property (`heldChanged`) is true from a successful `acquire()` until the restore; it is the context property **`displayHandoff`**, read in views as `root.screenHandedOff` (Main.qml), so that an animation can rest while nothing it draws reaches the screen (LoadingScreen does). All of it is Linux-only in effect (`isHeadless()` is false on macOS and whenever a compositor is present), where the hand-off is just a fullscreen window swap.
 
 Two consequences that are easy to get wrong, both of them Pi-only and both invisible on any other target:
 
@@ -703,6 +704,28 @@ A video's own menu, over the picture while it plays on (Transparent Background, 
 | `actions` | `var` | The host's own lines after them: `{ label, action }` |
 
 ◄ ► change a setting and save it at once, as the module's settings do, then emit `settingChanged(key, value)` for the host to put on the video. Select on a line of `actions`, or on **Close Video** (always last, `action: "close"`), emits `activated(action)`. Back emits `closed()`. `open(title)` shows it with the cursor on the first line; `refresh()` rebuilds the lines where they are, for labels that change with state (`Add to Favorites` / `Remove from Favorites`). `applyScaling(value)` puts a Scaling on the video as it plays, `Default` being Settings'. A key it has no use for goes on to its player, so play/pause still pauses the video under it. As with ChoiceOverlay, behaviour keys off `action`, never the label.
+
+### LoadingScreen (`views/Components/LoadingScreen.qml`)
+
+What a player shows while its video starts, in place of a black screen: a VCR's screen as a tape loads, after a dubbing deck's on-screen display. The theme's background, in a tape's noise. Its corners:
+
+- top left: TAPE A, PLAY, and the point the video starts from;
+- top middle: the tracking mark, its bars searching;
+- top right: TAPE B, LOADING blinking, and the seconds it has been up;
+- bottom left: SLP ▶ and the source;
+- bottom right: SLP ◀ and DEST.
+
+The tracking band jitters across the top and, every few seconds, rolls down the picture, breaking up the letters it passes. The display jumps sideways now and then.
+
+| Property | Type | Description |
+|---|---|---|
+| `source` | `string` | Under SLP ▶: what plays (the players give their module's name) |
+| `startMs` | `int` | TAPE A's counter: where the video starts |
+| `title` | `string` | Optional, across the middle: what loads, when the player knows before it plays (a card's title) |
+
+The noise is **`VhsNoise`** (`src/player/VhsNoise.h/.cpp`, `import MP240.Video`), a C++ item that draws a new frame about twenty times a second: short horizontal streaks of its `color` at random strengths, at the art pixel (`pixel`, `root.px`), scaled up without smoothing. `streaks` sets how many cover the picture. `bands` adds the tracking band and the head-switching strip along the bottom, and with a `shade` (the background colour), dropouts in them cut into whatever lies under the noise. LoadingScreen lays one under its text and one with only the bands over it. Both, and the screen's timers, run only while it is visible and the screen is the app's: while another process has it (`root.screenHandedOff`, see [the hand-off](#raspberry-pi-headless-hand-off-eglfs)), nothing drawn would reach it, so they rest (`running: false` on VhsNoise keeps its last frame) and leave the CPU to mpv.
+
+Every video player shows one until the first position arrives, and the launch overlays of Plex, Jellyfin and Emby's detail screens (while the stream is prepared) are one too. A still image never moves mpv's position, so Local Files ends it as image content is launched. On the Pi, with Transparent Background off, mpv takes the screen as soon as it starts, and what stays on it until the picture comes is the frame drawn last: the players start mpv a moment late (`startTimer`), so that it is the loading screen, still. With Transparent Background on, it goes on moving until the picture comes.
 
 ### NfcCardWriter (`views/Components/NfcCardWriter.qml`)
 

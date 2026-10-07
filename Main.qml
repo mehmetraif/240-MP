@@ -312,6 +312,10 @@ Window {
     // back as its first row. Empty for a player that notes nothing.
     readonly property var behindNote: mpvController ? mpvController.backgroundNote : ({})
     property int backdropSolidity: 100
+    // Another process has the screen: mpv, or a script, on the Pi's console
+    // (see DisplayHandoff). Nothing drawn here reaches it until it is back,
+    // so what animates rests meanwhile (LoadingScreen).
+    readonly property bool screenHandedOff: displayHandoff ? displayHandoff.held : false
 
     // "transparent_background": how solid the menus' ground is over a video
     // behind them, 0 (TRANSPARENT) to 100 (SOLID: none of it shows, but it

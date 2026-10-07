@@ -463,13 +463,10 @@ FocusScope {
         // Shown while mpv launches and buffers the stream (before its window
         // takes over). Hidden once the first position update arrives, or while
         // the resume prompt is up.
-        Text {
-            text: "LOADING..."
-            // White to match mpv's own overlay text color.
-            color: "white"
-            font.family: root.globalFont
-            anchors.centerIn: parent
-            font.pixelSize: root.sh * 0.05 //24
+        LoadingScreen {
+            anchors.fill: parent
+            source: moduleRoot.moduleName
+            startMs: playerRoot.viewOffset
             visible: streamUrl !== "" && !overlayVisible && !playbackStarted
         }
     }

@@ -26,6 +26,7 @@
 #include "modules/web_player/WebPlayerBackend.h"
 #include "player/MpvController.h"
 #include "player/VideoSurface.h"
+#include "player/VhsNoise.h"
 #include "input/InputManager.h"
 #include "input/IdleTracker.h"
 #include "update/UpdateManager.h"
@@ -234,6 +235,8 @@ int main(int argc, char *argv[]) {
     ctx->setContextProperty("updateManager", &updateManager);
     ctx->setContextProperty("bootProgress",  &bootProgress);
     ctx->setContextProperty("bluetoothManager", &bluetoothManager);
+    // Whether a child has the screen (Main.qml: root.screenHandedOff).
+    ctx->setContextProperty("displayHandoff", &displayHandoff);
 #ifdef Q_OS_MAC
     // Target display geometry in Qt coordinates (top-left origin), so the QML
     // Window bindings position onto the chosen screen. The native fullscreen
@@ -250,8 +253,10 @@ int main(int argc, char *argv[]) {
     // The title bar's logos, in the theme's colour on the art-pixel grid
     // (image://osdicon/…). The engine owns it.
     engine.addImageProvider(QStringLiteral("osdicon"), new OsdIconProvider);
-    // The picture of a video played inside this window (Transparent Background).
+    // The picture of a video played inside this window (Transparent Background),
+    // and a tape's noise, for the screen a video loads behind (LoadingScreen).
     qmlRegisterType<VideoSurface>("MP240.Video", 1, 0, "VideoSurface");
+    qmlRegisterType<VhsNoise>("MP240.Video", 1, 0, "VhsNoise");
 
     engine.load(QUrl::fromLocalFile(appRoot + "/Main.qml"));
     if (engine.rootObjects().isEmpty()) {

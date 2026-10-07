@@ -172,6 +172,7 @@ FocusScope {
     }
 
     function play(startMs) {
+        lastStartMs = startMs
         startTimer.pendingStartMs = startMs
         startTimer.restart()
     }
@@ -312,12 +313,10 @@ FocusScope {
         // Shown while mpv launches and buffers the stream (before its window
         // takes over). Hidden once the first position update arrives, or while
         // the resume prompt is up.
-        Text {
-            text: "LOADING..."
-            color: "white"
-            font.family: root.globalFont
-            anchors.centerIn: parent
-            font.pixelSize: root.sh * 0.05 //24
+        LoadingScreen {
+            anchors.fill: parent
+            source: moduleRoot.moduleName
+            startMs: playerRoot.lastStartMs
             visible: !overlayVisible && !playbackStarted && errorMessage === ""
         }
 

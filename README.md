@@ -89,9 +89,9 @@ Every screen below is the app itself, running at 640×480. The film and YouTube 
 ### Playing
 
 <table>
-<tr><th width="50%">Resume</th><th width="50%">Deck menu</th></tr>
-<tr><td><img src="docs/screenshots/resume.png" width="100%" alt="Resume" /></td><td><img src="docs/screenshots/playback-menu.png" width="100%" alt="Deck menu" /></td></tr>
-<tr><td>Pick up where you left off, or start from the beginning.</td><td>▲ or ▼ during playback opens the deck's menu: the position bar, audio and subtitle tracks, crop (the four Scalings in turn) and stop.</td></tr>
+<tr><th width="33%">Resume</th><th width="33%">Loading</th><th width="33%">Deck menu</th></tr>
+<tr><td><img src="docs/screenshots/resume.png" width="100%" alt="Resume" /></td><td><img src="docs/screenshots/loading.png" width="100%" alt="Loading" /></td><td><img src="docs/screenshots/playback-menu.png" width="100%" alt="Deck menu" /></td></tr>
+<tr><td>Pick up where you left off, or start from the beginning.</td><td>While a video starts, a tape loads: live VHS noise in the theme's colours, the tracking band rolling through, and a dubbing deck's display, TAPE A playing from where the video starts and TAPE B LOADING.</td><td>▲ or ▼ during playback opens the deck's menu: the position bar, audio and subtitle tracks, crop (the four Scalings in turn) and stop.</td></tr>
 </table>
 
 <table>

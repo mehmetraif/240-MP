@@ -67,6 +67,7 @@ add_executable(240mp
     src/player/MpvController.cpp
     src/player/EmbeddedMpv.cpp
     src/player/VideoSurface.cpp
+    src/player/VhsNoise.cpp
     src/util/YtDlpLocator.cpp
     src/util/MpvLocator.cpp
     src/util/ExecPath.cpp

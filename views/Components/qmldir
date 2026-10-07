@@ -22,3 +22,4 @@ InfoPanel InfoPanel.qml
 EntryOptions EntryOptions.qml
 PlayerMenu PlayerMenu.qml
 MousePointer MousePointer.qml
+LoadingScreen LoadingScreen.qml

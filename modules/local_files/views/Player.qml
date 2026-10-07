@@ -29,6 +29,11 @@ FocusScope {
     // mpv subtitle-track flag derived from subtitleMode: 0 = on, -1 = forced only, -2 = off.
     property int    subFlag:             (subtitleMode == "on") ? 0 : ((subtitleMode == "forced") ? -1 : -2)
 
+    // The video has shown its first position: the loading screen goes.
+    property bool   playbackStarted:      false
+    // Where the last start began, for the loading screen's counter.
+    property int    lastStartMs:          0
+
     // Track last non-null values during playback for robust save on exit
     property int    lastKnownPositionMs:  0
     property int    lastKnownDurationMs:  0
@@ -206,7 +211,10 @@ FocusScope {
         }
 
         function onPositionChanged(ms) {
-            if (ms > 0) playerRoot.lastKnownPositionMs = ms
+            if (ms > 0) {
+                playerRoot.lastKnownPositionMs = ms
+                playerRoot.playbackStarted = true
+            }
         }
         function onDurationChanged(ms) {
             if (ms > 0) playerRoot.lastKnownDurationMs = ms
@@ -338,7 +346,24 @@ FocusScope {
         }
     }
 
+    // Starting mpv runs synchronously and, on the Pi, switches VT at once
+    // (suspending Qt's render thread) before the loading screen can paint:
+    // the launch waits a tick so that it is drawn first, as YouTube's does.
+    Timer {
+        id: startTimer
+        interval: 50
+        property var pending: ({})
+        onTriggered: playerRoot.launch(pending.startMs, pending.plPos, pending.shuffle)
+    }
+
     function play(startMs, plPos, shuffle) {
+        playbackStarted = false
+        lastStartMs = startMs
+        startTimer.pending = { startMs: startMs, plPos: plPos, shuffle: shuffle }
+        startTimer.restart()
+    }
+
+    function launch(startMs, plPos, shuffle) {
         mpvController.loadAndPlay(filePath, startMs > 0 ? startMs / 1000.0 : 0.0, 0, subFlag, [], subtitleLangs, loopOn, plPos, 0.0, "", false, "", shuffle, [], imageDurationSec, imageContent)
         // How the main menu takes it back once it plays behind the menus, and
         // how it was started, which taking it back repeats.
@@ -347,6 +372,10 @@ FocusScope {
                                     params: { filePath: filePath, title: itemTitle },
                                     plPos: plPos, shuffle: shuffle, menu: true })
         startedShuffled = shuffle
+        // A still image never moves mpv's clock (its position stays 0), so no
+        // first position comes to end the loading screen: it is up with mpv.
+        if (imageContent)
+            playbackStarted = true
     }
 
     Rectangle {
@@ -354,6 +383,15 @@ FocusScope {
         color: "black"
         // The video shows through its menu.
         visible: !playerMenu.visible
+
+        // While mpv starts (before its picture takes over), and while it
+        // starts again after its menu.
+        LoadingScreen {
+            anchors.fill: parent
+            source: moduleRoot.moduleName
+            startMs: playerRoot.lastStartMs
+            visible: !overlayVisible && !playbackStarted
+        }
     }
 
     PlayerMenu {
