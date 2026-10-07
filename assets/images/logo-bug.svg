@@ -1,6 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="6 31.856 275.82 129.114" width="551" height="258">
 <title>OSD/OS corner bug</title>
-<!-- The logo as a channel's corner bug: the slash and OSD over OS.
+<!-- The OSD/OS logo, made with ChatGPT (OpenAI) for the owner, as a channel's
+     corner bug: the slash and OSD over OS.
      scripts/mpv-logo.lua draws the same shapes over the picture. -->
 <polygon points="59.75,31.86 78.42,31.86 24.67,160.97 6,160.97" fill="#ff3d3d"/>
 <polygon points="78.42,31.86 97.08,31.86 43.33,160.97 24.67,160.97" fill="#2f6bff"/>

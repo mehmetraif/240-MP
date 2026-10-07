@@ -1,7 +1,7 @@
 import QtQuick
 
-// The VHS cassette on the boot screen, the owner's drawing itself
-// (assets/images/cassette.png: white where the drawing is ink, with its own
+// The VHS cassette on the boot screen, the owner's drawing itself, made with
+// ChatGPT (assets/images/cassette.png: white where the drawing is ink, with its own
 // edges) in the theme's text colour, the slash on its label in its three
 // colours. As `progress` goes from 0 to 1 the tape winds off the left
 // (supply) reel onto the right (take-up) one: each window shows its reel's
