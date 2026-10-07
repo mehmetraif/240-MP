@@ -2,7 +2,8 @@ import QtQuick
 
 // A full-screen keyboard-driven chooser: a prompt, the thing being acted on, and
 // a short list of options. Factored out of NfcCardWriter.qml's chooser so every
-// prompt in the app reads the same way.
+// prompt in the app reads the same way, in the standard window (PromptScreen):
+// the prompt in the title bar, the thing under it.
 //
 // The host binds `choices` to a list of { label, action } maps and acts on the
 // action in onActivated — the action is what drives behavior, never the label
@@ -57,81 +58,11 @@ FocusScope {
         }
     }
 
-    Rectangle {
-        anchors.fill: parent
-        color: root.surfaceColor
-
-        Column {
-            anchors.centerIn: parent
-            width: root.sw * 0.76875
-            spacing: root.sh * 0.05 //24
-
-            Column {
-                width: parent.width
-                spacing: root.sh * 0.0166667 //8
-
-                Text {
-                    text: overlayRoot.promptText
-                    color: root.secondaryColor
-                    font.family: root.globalFont
-                    font.capitalization: Font.AllUppercase
-                    font.pixelSize: root.sh * 0.0333333 //16
-                    width: parent.width
-                    wrapMode: Text.WordWrap
-                    horizontalAlignment: Text.AlignHCenter
-                }
-
-                Text {
-                    visible: overlayRoot.subtitleText !== ""
-                    text: overlayRoot.subtitleText
-                    color: root.primaryColor
-                    font.family: root.globalFont
-                    font.capitalization: Font.AllUppercase
-                    font.pixelSize: root.sh * 0.0416667 //20
-                    width: parent.width
-                    wrapMode: Text.WordWrap
-                    horizontalAlignment: Text.AlignHCenter
-                }
-            }
-
-            Column {
-                width: parent.width
-
-                Repeater {
-                    model: overlayRoot.choices
-                    delegate: Item {
-                        width: parent.width
-                        height: root.sh * 0.0583333
-
-                        Rectangle {
-                            anchors.fill: choiceText
-                            color: root.accentColor
-                            visible: index === overlayRoot.choiceIndex
-                        }
-
-                        Text {
-                            id: choiceText
-                            anchors.verticalCenter: parent.verticalCenter
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            text: modelData.label
-                            color: index === overlayRoot.choiceIndex ? root.surfaceColor : root.primaryColor
-                            font.family: root.globalFont
-                            font.capitalization: Font.AllUppercase
-                            topPadding: root.sh * 0.0041667
-                            leftPadding: root.sw * 0.009375
-                            rightPadding: root.sw * 0.009375
-                            bottomPadding: root.sh * 0.00625
-                            font.pixelSize: root.sh * 0.0416667
-                        }
-                    }
-                }
-            }
-
-            HintBar {
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE "
-                      + root.hints.select + ":SELECT"
-            }
-        }
+    PromptScreen {
+        title: overlayRoot.promptText
+        message: overlayRoot.subtitleText
+        choices: overlayRoot.choices
+        currentIndex: overlayRoot.choiceIndex
+        hint: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE " + root.hints.select + ":SELECT"
     }
 }

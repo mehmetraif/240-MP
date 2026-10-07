@@ -329,62 +329,12 @@ FocusScope {
             }
         }
 
-        Rectangle {
-            color: root.surfaceColor
-            anchors.centerIn: parent
-            width: root.sw * 0.76875   //492
-            height: root.sh * 0.2833333 //136
-
-            Column {
-                id: confirmColumn
-                anchors.fill: parent
-                spacing: root.sh * 0.05 //24
-
-                Text {
-                    text: "RUN " + (itemsRoot.pendingScript ? itemsRoot.pendingScript.name : "") + "?"
-                    color: root.secondaryColor
-                    font.family: root.globalFont
-                    font.capitalization: Font.AllUppercase
-                    font.pixelSize: root.sh * 0.0333333 //16
-                    anchors.horizontalCenter: parent.horizontalCenter
-                }
-
-                Column {
-                    Repeater {
-                        model: confirmOverlay.choices
-                        delegate: Item {
-                            width: confirmColumn.width
-                            height: root.sh * 0.0583333 //28
-
-                            Rectangle {
-                                anchors.fill: choiceText
-                                color: root.accentColor
-                                visible: index === confirmOverlay.choiceIndex
-                            }
-
-                            Text {
-                                id: choiceText
-                                anchors.verticalCenter: parent.verticalCenter
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                text: modelData.label
-                                color: index === confirmOverlay.choiceIndex ? root.surfaceColor : root.primaryColor
-                                font.family: root.globalFont
-                                font.capitalization: Font.AllUppercase
-                                topPadding: root.sh * 0.0041667 //2
-                                leftPadding: root.sw * 0.009375 //6
-                                rightPadding: root.sw * 0.009375 //6
-                                bottomPadding: root.sh * 0.00625 //3
-                                font.pixelSize: root.sh * 0.05 //24
-                            }
-                        }
-                    }
-                }
-
-                HintBar {
-                    text: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE " + root.hints.select + ":SELECT"
-                    anchors.horizontalCenter: parent.horizontalCenter
-                }
-            }
+        PromptScreen {
+            title: "Run script?"
+            message: itemsRoot.pendingScript ? itemsRoot.pendingScript.name : ""
+            choices: confirmOverlay.choices
+            currentIndex: confirmOverlay.choiceIndex
+            hint: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE " + root.hints.select + ":SELECT"
         }
     }
 

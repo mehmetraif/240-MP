@@ -52,7 +52,7 @@ The guiding idea: **browse structured content, then hand off to the right tool f
     ModuleList.qml
     Settings.qml
     ...
-    Components/                     # shared QML components (AppBar, HintBar, MenuRow, HelpLine, ScrollMarks, TreeBrowser, InfoPanel, EntryOptions, PlayerMenu, LoadingScreen, MousePointer, OnScreenKeyboard, WebPlayerBrowse, WebPlayerLaunch, the Osd* elements, ChoiceOverlay, qmldir)
+    Components/                     # shared QML components (AppBar, HintBar, MenuRow, HelpLine, ScrollMarks, TreeBrowser, InfoPanel, EntryOptions, PlayerMenu, LoadingScreen, PromptScreen, MousePointer, OnScreenKeyboard, WebPlayerBrowse, WebPlayerLaunch, the Osd* elements, ChoiceOverlay, qmldir)
     BootScreen.qml                  # boot screen of the 240-MP OS image (see os/README.md)
   Main.qml                          # app root
   CMakeLists.txt
@@ -618,6 +618,21 @@ Shared QML components live in `views/Components/` (registered via `qmldir`, impo
 
 The module's logo stands at its left end, in the theme's text colour, a fifth taller than the bar so it stands out of it above and below, an art pixel clear of it on each side. Then comes a solid bar in the same colour with the title and subtitle in the background colour, the way a deck's on-screen menu starts. The logo is drawn by `OsdIconProvider` (`src/util/`, `image://osdicon/<rrggbb>/<url>`): trimmed to its shape and drawn from the original at the bar's size (a vector is rendered at that height, not scaled from a bitmap), in one colour with its own smooth edges. It does not use a shader effect, which the software scene graph draws as nothing.
 
+### PromptScreen (`views/Components/PromptScreen.qml`)
+
+A question or a notice, full screen, in the window every view has, so a dialog's lines never move up into the middle of the screen: the question in the title bar (an `AppBar`) behind a **?**, or a notice's (an error, a code to type, a button to press) behind a **!**; what it is about under the bar; the answers as the main menu's rows, where its rows start; and the hint line in its fixed place at the foot. However few lines it has, the bar and the hint line stay where every view has them.
+
+| Property | Type | Description |
+|---|---|---|
+| `title` | `string` | The question (`"Resume playback?"`), or what happened (`"Playback failed"`) |
+| `kind` | `string` | `"question"` (the default: `assets/images/question.svg`) or `"notice"` (`notice.svg`) |
+| `message` | `string` | Under the bar: what it is about (the video, the device), or a notice's details. Wraps |
+| `choices` | `var` | The answers: labels, or maps with a `label` (`{ label, action }`) |
+| `currentIndex` | `int` | The answer under the cursor |
+| `hint` | `string` | The hint line |
+
+It only draws: the host keeps its keys, its cursor and its visibility, so a dialog becomes one by swapping its drawing for it. Items declared inside it go between the message and the answers (the pairing code in `BluetoothPrompt`). Every question and notice in the app is one: the players' resume prompts and error screens, Settings' quit, the update's install, the script's run, a new button for Controls, Bluetooth pairing, and `ChoiceOverlay` (so `EntryOptions` and the Plex PLAY chooser) too.
+
 ### VCR OSD elements
 
 The UI keeps to two colours, like a deck's on-screen display: the theme's `primary` on its `surface`. `Main.qml` maps `secondaryColor`, `tertiaryColor` and `accentColor` to `primaryColor`, so existing views follow without change. Within that:
@@ -630,7 +645,7 @@ Pixel-drawn pieces of a deck's on-screen menu, built on `root.px` (one pixel of 
 
 | Component | What it draws |
 |---|---|
-| `HintBar` | The footer hint line on a solid bar. It is a `Text`, so a view sets `text` and anchors exactly as on one. It owns its font size, steps it down only as far as a long hint needs to fit the safe width. Every view's footer and every dialog's hint line uses it. |
+| `HintBar` | The footer hint line on a solid bar. It is a `Text`, so a view sets `text` and anchors exactly as on one. It owns its font size, steps it down only as far as a long hint needs to fit the safe width. Every view's footer and every dialog's hint line uses it, always in the same place: anchored to the bottom, `bottomMargin: root.sh * 0.1041667`, `leftMargin: root.sw * 0.125`, never under a dialog's last line (a `PromptScreen` does this for a dialog). |
 | `MenuRow` | A settings line the way a camcorder's menu lays one out, `DISPLAY······ON`: `label`, a dot per character cell, then `value` against the line's right end (none for a submenu), with `selected` as a solid bar. With `heading` it heads a group instead: the label and a rule to the line's end (`MODULES ─────`). Settings, every module's settings and Controls use it. |
 | `ScrollMarks` | The ▲ above a list while lines are hidden above it and the ▼ below while lines are hidden below. Laid over a list (`anchors.fill` and `list`); the main menu and the settings menus use it. |
 | `HelpLine` | The help line under a settings menu: the focused line's description in an outlined box, on one line. A description too long for the box scrolls through it like a ticker; one written as several lines reads as one, joined with `•`. |
@@ -679,7 +694,7 @@ Typing with a remote: a grid of letters and digits under the line being typed, t
 
 ### ChoiceOverlay (`views/Components/ChoiceOverlay.qml`)
 
-Full-screen keyboard-driven chooser: a prompt, the thing being acted on, and a short list of options. Use it whenever a single button has to ask "which way?" — the Plex show/season PLAY button asks next-episode vs shuffle through it.
+Full-screen keyboard-driven chooser: a prompt, the thing being acted on, and a short list of options, drawn as a `PromptScreen` (the prompt in the title bar, the thing under it). Use it whenever a single button has to ask "which way?" — the Plex show/season PLAY button asks next-episode vs shuffle through it.
 
 | Property | Type | Description |
 |---|---|---|

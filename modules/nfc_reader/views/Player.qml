@@ -153,7 +153,7 @@ FocusScope {
             // A bad mapping path or missing yt-dlp surfaces as an mpv failure
             // before any position event — show the error instead of leaving.
             if (reason === "failed" && !playbackStarted) {
-                playerRoot.errorMessage = "PLAYBACK FAILED\n\nCHECK THE MAPPED PATH OR URL\n(YOUTUBE LINKS REQUIRE YT-DLP)"
+                playerRoot.errorMessage = "Check the mapped path or URL\n(YouTube links require yt-dlp)"
                 return
             }
             var pos   = lastKnownPositionMs || finalPositionMs
@@ -246,95 +246,27 @@ FocusScope {
             visible: !overlayVisible && !playbackStarted && errorMessage === ""
         }
 
-        Column {
-            anchors.centerIn: parent
-            spacing: root.sh * 0.05 //24
+        PromptScreen {
             visible: errorMessage !== ""
-
-            Text {
-                text: errorMessage
-                color: "white"
-                font.family: root.globalFont
-                width: root.sw * 0.5625 //360
-                wrapMode: Text.WordWrap
-                horizontalAlignment: Text.AlignHCenter
-                anchors.horizontalCenter: parent.horizontalCenter
-                font.pixelSize: root.sh * 0.0375 //18
-            }
-            HintBar {
-                text: root.hints.back + ":BACK " + root.hints.select + ":RETRY"
-                anchors.horizontalCenter: parent.horizontalCenter
-            }
+            kind: "notice"
+            title: "Playback failed"
+            message: errorMessage
+            hint: root.hints.back + ":BACK " + root.hints.select + ":RETRY"
         }
     }
 
-    Rectangle {
-        anchors.fill: parent
-        color: root.surfaceColor
+    PromptScreen {
         visible: overlayVisible
-
-        Rectangle {
-            id: dialogRect
-            color: root.surfaceColor
-            anchors.centerIn: parent
-            width: root.sw * 0.76875 //492
-            height: root.sh * 0.2833333 //136
-
-            Column {
-                id: dialogColumn
-                anchors.fill: parent
-                spacing: root.sh * 0.05 //24
-
-                Text {
-                    text: "RESUME PLAYBACK?"
-                    color: root.secondaryColor
-                    font.family: root.globalFont
-                    font.pixelSize: root.sh * 0.0333333 //16
-                    anchors.horizontalCenter: parent.horizontalCenter
-                }
-
-                Column {
-                    Repeater {
-                        model: [
-                            savedPlaylistPos >= 0
-                                ? "Resume video " + (savedPlaylistPos + 1) + " at " + formatTime(savedPositionMs)
-                                : "Resume from " + formatTime(savedPositionMs),
-                            "Start from the beginning"
-                        ]
-                        delegate: Item {
-                            width: dialogColumn.width
-                            height: root.sh * 0.0583333 //28
-
-                            Rectangle {
-                                anchors.fill: delegateText
-                                color: root.accentColor
-                                visible: index === choiceIndex
-                            }
-
-                            Text {
-                                id: delegateText
-                                anchors.verticalCenter: parent.verticalCenter
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                text: modelData
-                                color: index === choiceIndex ? root.surfaceColor : root.primaryColor
-                                font.family: root.globalFont
-                                font.capitalization: Font.AllUppercase
-                                topPadding: root.sh * 0.0041667 //2
-                                leftPadding: root.sw * 0.009375 //6
-                                rightPadding: root.sw * 0.009375 //6
-                                bottomPadding: root.sh * 0.00625 //3
-                                font.pixelSize: root.sh * 0.0416667 //20
-                            }
-                        }
-                    }
-                }
-
-                HintBar {
-                    text: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE " + root.hints.select + ":SELECT"
-                    anchors.horizontalCenter: parent.horizontalCenter
-                }
-            }
-        }
+        title: "Resume playback?"
+        message: videoTitle
+        choices: [
+            savedPlaylistPos >= 0
+                ? "Resume video " + (savedPlaylistPos + 1) + " at " + formatTime(savedPositionMs)
+                : "Resume from " + formatTime(savedPositionMs),
+            "Start from the beginning"
+        ]
+        currentIndex: choiceIndex
+        hint: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE " + root.hints.select + ":SELECT"
     }
 
     function formatTime(ms) {

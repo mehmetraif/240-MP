@@ -575,11 +575,13 @@ FocusScope {
     }
 
     // --- QUIT CONFIRMATION OVERLAY ---
-    Rectangle {
-        anchors.fill: parent
-        color: root.surfaceColor
+    PromptScreen {
         visible: quitOverlayVisible
         focus: quitOverlayVisible
+        title: "Really quit?"
+        choices: quitOptions
+        currentIndex: quitChoiceIndex
+        hint: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE " + root.hints.select + ":SELECT"
 
         Keys.onUpPressed:   { quitChoiceIndex = Math.max(0, quitChoiceIndex - 1) }
         Keys.onDownPressed: { quitChoiceIndex = Math.min(quitOptions.length - 1, quitChoiceIndex + 1) }
@@ -595,65 +597,6 @@ FocusScope {
                 quitOverlayVisible = false
                 settingsList.forceActiveFocus()
                 event.accepted = true
-            }
-        }
-
-        Rectangle {
-            color: root.surfaceColor
-            anchors.centerIn: parent
-            width: root.sw * 0.76875   //492
-            // As tall as its lines, so it stays in the middle however many
-            // choices it has.
-            height: quitDialogColumn.implicitHeight
-
-            Column {
-                id: quitDialogColumn
-                anchors.fill: parent
-                spacing: root.sh * 0.05 //24
-
-                Text {
-                    text: "REALLY QUIT?"
-                    color: root.secondaryColor
-                    font.family: root.globalFont
-                    font.pixelSize: root.sh * 0.0333333 //16
-                    anchors.horizontalCenter: parent.horizontalCenter
-                }
-
-                Column {
-                    Repeater {
-                        model: quitOptions
-                        delegate: Item {
-                            width: quitDialogColumn.width
-                            height: root.sh * 0.0583333 //28
-
-                            Rectangle {
-                                anchors.fill: quitOptionText
-                                color: root.accentColor
-                                visible: index === quitChoiceIndex
-                            }
-
-                            Text {
-                                id: quitOptionText
-                                anchors.verticalCenter: parent.verticalCenter
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                text: modelData.label
-                                color: index === quitChoiceIndex ? root.surfaceColor : root.primaryColor
-                                font.family: root.globalFont
-                                font.capitalization: Font.AllUppercase
-                                topPadding: root.sh * 0.0041667 //2
-                                leftPadding: root.sw * 0.009375 //6
-                                rightPadding: root.sw * 0.009375 //6
-                                bottomPadding: root.sh * 0.00625 //3
-                                font.pixelSize: root.sh * 0.05 //24
-                            }
-                        }
-                    }
-                }
-
-                HintBar {
-                    text: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE " + root.hints.select + ":SELECT"
-                    anchors.horizontalCenter: parent.horizontalCenter
-                }
             }
         }
     }

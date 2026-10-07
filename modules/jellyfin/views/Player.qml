@@ -739,70 +739,15 @@ FocusScope {
         }
     }
 
-    Rectangle {
-        anchors.fill: parent
-        color: root.surfaceColor
+    PromptScreen {
         visible: overlayVisible
-
-        Rectangle {
-            id: dialogRect
-            color: root.surfaceColor
-            anchors.centerIn: parent
-            width: root.sw * 0.76875
-            height: root.sh * 0.2833333
-
-            Column {
-                id: dialogColumn
-                anchors.fill: parent
-                spacing: root.sh * 0.05
-
-                Text {
-                    text: "RESUME PLAYBACK?"
-                    color: root.secondaryColor
-                    font.family: root.globalFont
-                    font.pixelSize: root.sh * 0.0333333
-                    anchors.horizontalCenter: parent.horizontalCenter
-                }
-
-                Column {
-                    Repeater {
-                        model: [
-                            "Resume from " + formatTime(viewOffset),
-                            "Start from the beginning"
-                        ]
-                        delegate: Item {
-                            width: dialogColumn.width
-                            height: root.sh * 0.0583333
-
-                            Rectangle {
-                                anchors.fill: delegateText
-                                color: root.accentColor
-                                visible: index === choiceIndex
-                            }
-
-                            Text {
-                                id: delegateText
-                                anchors.verticalCenter: parent.verticalCenter
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                text: modelData
-                                color: index === choiceIndex ? root.surfaceColor : root.primaryColor
-                                font.family: root.globalFont
-                                font.capitalization: Font.AllUppercase
-                                topPadding: root.sh * 0.0041667
-                                leftPadding: root.sw * 0.009375
-                                rightPadding: root.sw * 0.009375
-                                bottomPadding: root.sh * 0.00625
-                                font.pixelSize: root.sh * 0.0416667
-                            }
-                        }
-                    }
-                }
-
-                HintBar {
-                    text: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE " + root.hints.select + ":SELECT"
-                    anchors.horizontalCenter: parent.horizontalCenter
-                }
-            }
-        }
+        title: "Resume playback?"
+        message: itemTitle
+        choices: [
+            "Resume from " + formatTime(viewOffset),
+            "Start from the beginning"
+        ]
+        currentIndex: choiceIndex
+        hint: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE " + root.hints.select + ":SELECT"
     }
 }
