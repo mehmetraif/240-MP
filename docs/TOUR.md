@@ -9,7 +9,7 @@ Every screen below is the app itself, running at 640×480. The film and YouTube 
 <table>
 <tr><th width="33%">Boot screen</th><th width="33%">Main menu</th><th width="33%">Quit</th></tr>
 <tr><td><img src="screenshots/boot.png" width="100%" alt="Boot screen" /></td><td><img src="screenshots/main-menu.png" width="100%" alt="Main menu" /></td><td><img src="screenshots/quit.png" width="100%" alt="Quit" /></td></tr>
-<tr><td>On the OSD/OS image, the OSD/OS cassette while the services start, <code>[ OK ]</code> once each is up. It closes by itself when the last one has settled.</td><td>The modules, like the inputs on a deck. Select opens one; back opens Settings.</td><td>Settings → Quit. When OSD/OS starts with the system, it offers Power Off, Restart or Exit to Terminal instead.</td></tr>
+<tr><td>On the OSD/OS image, the OSD/OS cassette winds its tape from reel to reel while the services start, <code>[ OK ]</code> once each is up. It closes by itself when the last one has settled.</td><td>The modules, like the inputs on a deck. Select opens one; back opens Settings.</td><td>Settings → Quit. When OSD/OS starts with the system, it offers Power Off, Restart or Exit to Terminal instead.</td></tr>
 </table>
 
 ### Local Files

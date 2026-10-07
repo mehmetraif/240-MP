@@ -11,7 +11,7 @@ It is a folder of its own because the image is a build of its own: pi-gen's, not
 - The image's release name is **OSD/OS** (`PI_GEN_RELEASE`, written to `/boot/firmware/issue.txt`), not pi-gen's default, which pi-gen keeps for Raspberry Pi's own builds.
 - What it is made of, and under which licences, is in [NOTICE](NOTICE); see [Licences](#licences).
 
-<img src="boot-screen.gif" width="480" alt="The boot screen: the OSD/OS cassette, a progress bar that fills, and the list of services coming up">
+<img src="boot-screen.gif" width="480" alt="The boot screen: the OSD/OS cassette, whose reels turn and whose tape winds from the left reel onto the right one as the progress bar fills, and the list of services coming up">
 
 ## What is different from a manual install
 
@@ -19,7 +19,7 @@ Compared with flashing Raspberry Pi OS Lite and running `scripts/install.sh` ([I
 
 - **The app comes first.** `osdos.service` starts as soon as the display driver is up (after `basic.target`), not after every other service (`multi-user.target`).
 - **The rest waits for it.** Wi-Fi (NetworkManager), Bluetooth, mDNS (`avahi-daemon`) and, if enabled, SSH hold back until the app has drawn its first frame. Then they start one after another, in that order.
-- **The boot screen.** While those services start, the app shows a pixel-art VHS cassette, the owner's drawing (made with ChatGPT) with OSD/OS on its label (`assets/images/cassette.png`, drawn by `views/Components/VhsCassette.qml`) as it is drawn, then a progress bar that fills as they come up and a line per service (`[ OK ] WI-FI`, …). It ends with a check that the network is actually online. The startup module opens once it is done, so modules that need the network find it ready. Keys do nothing while it is up.
+- **The boot screen.** While those services start, the app shows a pixel-art VHS cassette, the owner's drawing (made with ChatGPT) with OSD/OS on its label (`assets/images/cassette.png`, drawn by `views/Components/VhsCassette.qml`): its reels turn, and the tape winds off the left reel onto the right one as the progress bar fills, plus a line per service (`[ OK ] WI-FI`, …). It ends with a check that the network is actually online. The startup module opens once it is done, so modules that need the network find it ready. Keys do nothing while it is up.
 - **A quiet boot.** There is no rainbow splash, no one-second firmware delay (`boot_delay=0`), no kernel text, logo or cursor on `tty1`, and no login prompt on `tty1`.
 - **Less running.** The image has:
   - no apt, man-db, e2scrub or dpkg-backup timers (they wake the SD card at random times, mid-movie included);

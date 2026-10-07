@@ -16,7 +16,7 @@ It's built to work in conjunction with [MPV](https://github.com/anthonycaccese/2
 
 240-MP is an app: it is installed on a system that is already set up, Raspberry Pi OS, Steam OS or macOS, and starts once that system has booted its own way, its splash, boot messages and login prompt or desktop included. The **OSD/OS** image ([os/README.md](os/README.md)) is the system itself:
 
-- **It boots into OSD/OS.** No rainbow splash, no boot messages, no login prompt: from the moment the Pi is switched on the screen is OSD/OS's, starting with its own boot screen: the OSD/OS cassette, and under it the system coming up, a line per service.
+- **It boots into OSD/OS.** No rainbow splash, no boot messages, no login prompt: from the moment the Pi is switched on the screen is OSD/OS's, starting with its own boot screen: the OSD/OS cassette, its reels turning and its tape winding from one onto the other while the system comes up under it, a line per service.
 - **No desktop, no window manager, no file manager.** There is no display server (X11 or Wayland) and no compositor: OSD/OS draws straight to the screen through the kernel's display driver, and mpv plays straight to it too ([Nothing between the app and the screen](#nothing-between-the-app-and-the-screen)).
 - **Every screen is OSD/OS's own.** The boot screen, the menus, the file browser (Local Files' tree), the on-screen keyboard, the info screens, Settings, Bluetooth pairing, updates, and quitting, restarting or switching off: all of it is drawn by OSD/OS, in its own letters, and worked with a remote. It hands the screen over only to what plays: mpv for a video, and Chromium, full screen with nothing around it, for Netflix and Prime Video, whose players only run in a browser (and to sign in to YouTube), or a script of yours that asks for the screen.
 - **No needless background jobs.** The services Raspberry Pi OS keeps, Wi-Fi, Bluetooth, the local network and SSH (when enabled), wait until OSD/OS is on screen and then start one after another. The apt, man-db, e2scrub and dpkg-backup timers that wake the SD card at random times, mid-film included, are gone, as are cron and the Raspberry Pi Connect agent, and cloud-init runs on the first boot only.
@@ -82,7 +82,7 @@ Every screen is the app itself, running at 640×480. The film entries are sample
 <table>
 <tr><th width="50%">Boot screen</th><th width="50%">Main menu</th></tr>
 <tr><td><img src="docs/screenshots/boot.png" width="100%" alt="Boot screen" /></td><td><img src="docs/screenshots/main-menu.png" width="100%" alt="Main menu" /></td></tr>
-<tr><td>On the OSD/OS image, the OSD/OS cassette while the services start, <code>[ OK ]</code> once each is up.</td><td>The modules, like the inputs on a deck.</td></tr>
+<tr><td>On the OSD/OS image, the OSD/OS cassette winds its tape from reel to reel while the services start, <code>[ OK ]</code> once each is up.</td><td>The modules, like the inputs on a deck.</td></tr>
 </table>
 
 <table>
