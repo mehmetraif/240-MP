@@ -6,6 +6,7 @@ import Components
 Window {
     id: root
     flags: Qt.FramelessWindowHint | Qt.Window
+    title: "OSD/OS"
     x:      Qt.platform.os === "osx" ? macScreenX      : Screen.virtualX
     y:      Qt.platform.os === "osx" ? macScreenY      : Screen.virtualY
     width:  Qt.platform.os === "osx" ? macScreenWidth  : Screen.width

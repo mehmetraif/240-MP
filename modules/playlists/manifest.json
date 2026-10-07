@@ -15,7 +15,7 @@
       "label": "Download Folder",
       "type": "directory_browser",
       "default": "",
-      "description": "Where offline playlists' videos are downloaded, each video once whatever lists it is on\n[DEFAULT] A Playlists folder in Local Files' folder: on 240-MP OS, the card's 240-MP partition"
+      "description": "Where offline playlists' videos are downloaded, each video once whatever lists it is on\n[DEFAULT] A Playlists folder in Local Files' folder: on the OSD/OS image, the card's 240-MP partition"
     },
     {
       "key": "subtitles",

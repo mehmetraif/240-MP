@@ -1,14 +1,14 @@
 <img src="https://github.com/user-attachments/assets/73c3e46f-a74a-4d96-9c4f-ae30f28378be" />
 
-# 240-MP
+# OSD/OS
 
-240-MP is a retro VCR style frontend to play content on [Raspberry Pi](https://github.com/anthonycaccese/240-MP/wiki/Hardware-Testing) (preferably hooked up to a CRT TV), Steam OS (and other Linux x86_64 distros) or MacOS (ARM). Every screen is drawn like a VCR's on-screen display, in two colours and large type, with menus laid out like a camcorder's. Everything works with the arrows, select and back, on a remote, a keyboard or a gamepad.
+**Smart TV for CRTs.** OSD/OS, formerly 240-MP, is a retro VCR style frontend to play content on [Raspberry Pi](https://github.com/anthonycaccese/240-MP/wiki/Hardware-Testing) (preferably hooked up to a CRT TV), Steam OS (and other Linux x86_64 distros) or MacOS (ARM). Every screen is drawn like a VCR's on-screen display, in two colours and large type, with menus laid out like a camcorder's. Everything works with the arrows, select and back, on a remote, a keyboard or a gamepad.
 
 Playback experiences are handled via modules to enable new integrations without requiring major changes to the overall frontend. Try to think of each module as a different input on a VHS deck. There are 12 included modules currently: [Local Files](https://github.com/anthonycaccese/240-MP/wiki/Module:-Local-Files), [Plex](https://github.com/anthonycaccese/240-MP/wiki/Module:-Plex), [Jellyfin](https://github.com/anthonycaccese/240-MP/wiki/Module:-Jellyfin), Emby, Netflix, Prime Video, [YouTube](https://github.com/anthonycaccese/240-MP/wiki/Module:-YouTube), Playlists, [NFC Reader](https://github.com/anthonycaccese/240-MP/wiki/Module:-NFC-Reader), [Weather](https://github.com/anthonycaccese/240-MP/wiki/Module:-Weather), [Scripts](https://github.com/anthonycaccese/240-MP/wiki/Module:-Scripts) and a module similar to art/wallpaper modes on modern tvs called [Ambient:Mode](https://github.com/anthonycaccese/240-MP/wiki/Module:-Ambient-Mode).
 
 It's built to work in conjunction with [MPV](https://github.com/anthonycaccese/240-MP/wiki/MPV) which will be installed (or updated) as a dependency during the [install](#install) steps.  Some modules (like YouTube and NFC Reader) have additional dependencies which are covered on their associated wiki pages under the "To Enable" sections.
 
-On a Raspberry Pi, 240-MP can also be the whole system. The **240-MP OS** image ([os/README.md](os/README.md)) boots straight into it, with no desktop, display server or window manager in between.
+On a Raspberry Pi, OSD/OS can also be the whole system. The **OSD/OS** image ([os/README.md](os/README.md)) boots straight into it, with no desktop, display server or window manager in between.
 
 ## Highlights
 
@@ -16,7 +16,7 @@ On a Raspberry Pi, 240-MP can also be the whole system. The **240-MP OS** image 
 - **Search with the remote**, typed on an on-screen keyboard.
 - **Info screens** for films and videos: the story, genre, director, cast and rating. One comes up when the cursor rests on a title (3 seconds by default), or straight away with ►.
 - **Options** on any entry, with ►: add it to **Favorites**, have it **Play at Startup**, straight after the boot screen, where it was stopped or from the beginning (Settings → Startup From), without asking, or **Add to Playlist**.
-- **Playlists** from several modules at once: Local Files, YouTube, Jellyfin and Emby videos on one list, played in order (on from where it stopped) or shuffled. An **online** playlist plays each video from where it lives. An **offline** one downloads every video to the device once, whatever lists it is on (on 240-MP OS, into the card's 240-MP partition), and plays without the network.
+- **Playlists** from several modules at once: Local Files, YouTube, Jellyfin and Emby videos on one list, played in order (on from where it stopped) or shuffled. An **online** playlist plays each video from where it lives. An **offline** one downloads every video to the device once, whatever lists it is on (on the OSD/OS image, into the card's 240-MP partition), and plays without the network.
 - **Transparent Background.** Back from a video returns to the menus while the video keeps playing behind them, like a deck's menu over the tape, and the first row of the main menu takes it back to full screen. A Local Files or YouTube video first opens a menu of its own over the picture: its module's settings for it, Favorites, Browse, and Close Video. A slider from TRANSPARENT to SOLID sets how much of it shows through: at SOLID none, while it plays on, sound and all. Select on the setting turns it off. It needs libmpv (`libmpv2` on Raspberry Pi OS, part of Homebrew's mpv on macOS).
 - **Bluetooth** in Settings: search for a keyboard, gamepad or remote and pair it from the couch. A keyboard's pairing code comes up on screen, to type on it.
 - **A mouse pointer** (a mouse, or a keyboard's touchpad) that shows while the mouse moves and hides again after 5 seconds (Settings → Mouse Pointer).
@@ -24,29 +24,29 @@ On a Raspberry Pi, 240-MP can also be the whole system. The **240-MP OS** image 
 - **A tape loading** while a video starts: VHS noise in the theme's colours and a dubbing deck's display, with where the video is and, once known, how long it is. Settings → Loading Effect turns the noise off.
 - **Scaling** for 16:9 pictures on a 4:3 screen: Letterbox, 14:9, Pan & Scan or Anamorphic. Set it for every module, or for one module in its own settings.
 - **Netflix and Prime Video** catalogues from TMDB in the same tree. A title plays in the service's own player.
-- **240-MP OS**, a Raspberry Pi OS Lite image that boots straight into 240-MP and shows a VHS boot screen while its services come up.
+- **The OSD/OS image**, a Raspberry Pi OS Lite image that boots straight into OSD/OS and shows a VHS boot screen while its services come up.
 
 ## How it works
 
 ### Nothing between the app and the screen
 
-<img src="docs/images/display-path.svg" width="100%" alt="How the picture reaches the TV on a desktop, in a kiosk, on 240-MP OS, and on 240-MP OS with Transparent Background" />
+<img src="docs/images/display-path.svg" width="100%" alt="How the picture reaches the TV on a desktop, in a kiosk, on the OSD/OS image, and on the OSD/OS image with Transparent Background" />
 
-On a desktop, 240-MP and mpv are windows. They hand their frames to a compositor (labwc on Raspberry Pi OS), and the compositor holds the screen. A kiosk setup replaces the desktop with one full-screen window, but Xorg or cage still sits in between.
+On a desktop, OSD/OS and mpv are windows. They hand their frames to a compositor (labwc on Raspberry Pi OS), and the compositor holds the screen. A kiosk setup replaces the desktop with one full-screen window, but Xorg or cage still sits in between.
 
-240-MP OS has no display server at all. 240-MP draws through Qt's EGLFS platform straight to the kernel's KMS/DRM driver, the way Kodi does on LibreELEC. Only one program draws at a time (it holds the *DRM master*), so there are no windows to manage. `DisplayHandoff` gives the screen to whatever takes over and takes it back when that exits:
+The OSD/OS image has no display server at all. OSD/OS draws through Qt's EGLFS platform straight to the kernel's KMS/DRM driver, the way Kodi does on LibreELEC. Only one program draws at a time (it holds the *DRM master*), so there are no windows to manage. `DisplayHandoff` gives the screen to whatever takes over and takes it back when that exits:
 
 - mpv (`--vo=drm`) when a video plays
 - a takeover script from the Scripts module
 - Chromium, in `cage`, for Netflix and Prime Video, and for signing in to YouTube
 
-With **Transparent Background**, mpv runs inside 240-MP instead, as libmpv. 240-MP then keeps the screen the whole time, draws the video as part of its own picture and lays its menus over it.
+With **Transparent Background**, mpv runs inside OSD/OS instead, as libmpv. OSD/OS then keeps the screen the whole time, draws the video as part of its own picture and lays its menus over it.
 
 ### On screen first at boot
 
-<img src="docs/images/boot-order.svg" width="100%" alt="Boot order in a manual install and on 240-MP OS" />
+<img src="docs/images/boot-order.svg" width="100%" alt="Boot order in a manual install and on the OSD/OS image" />
 
-A manual install starts 240-MP last, once every service is up. 240-MP OS turns that around: 240-MP starts as soon as systemd reaches `basic.target`. Wi-Fi, Bluetooth, the local network and SSH (when enabled) wait for its first frame, then start one after another. The boot screen follows them until the network is online. The details are in [os/README.md](os/README.md).
+A manual install starts OSD/OS last, once every service is up. The OSD/OS image turns that around: OSD/OS starts as soon as systemd reaches `basic.target`. Wi-Fi, Bluetooth, the local network and SSH (when enabled) wait for its first frame, then start one after another. The boot screen follows them until the network is online. The details are in [os/README.md](os/README.md).
 
 ### Inside the app
 
@@ -66,7 +66,7 @@ Every screen below is the app itself, running at 640×480. The film and YouTube 
 <table>
 <tr><th width="33%">Boot screen</th><th width="33%">Main menu</th><th width="33%">Quit</th></tr>
 <tr><td><img src="docs/screenshots/boot.png" width="100%" alt="Boot screen" /></td><td><img src="docs/screenshots/main-menu.png" width="100%" alt="Main menu" /></td><td><img src="docs/screenshots/quit.png" width="100%" alt="Quit" /></td></tr>
-<tr><td>On 240-MP OS, a cassette winds its tape from reel to reel while the services start, <code>[ OK ]</code> once each is up. It closes by itself when the last one has settled.</td><td>The modules, like the inputs on a deck. Select opens one; back opens Settings.</td><td>Settings → Quit. When 240-MP starts with the system, it offers Power Off, Restart or Exit to Terminal instead.</td></tr>
+<tr><td>On the OSD/OS image, a cassette winds its tape from reel to reel while the services start, <code>[ OK ]</code> once each is up. It closes by itself when the last one has settled.</td><td>The modules, like the inputs on a deck. Select opens one; back opens Settings.</td><td>Settings → Quit. When OSD/OS starts with the system, it offers Power Off, Restart or Exit to Terminal instead.</td></tr>
 </table>
 
 ### Local Files
@@ -256,7 +256,7 @@ Photos of an earlier version, before the menus above, on a CRT.
 
 ### Local Files ([Wiki](https://github.com/anthonycaccese/240-MP/wiki/Module:-Local-Files))
 - Supported file types: `"mp4", "mkv", "avi", "mov", "m4v", "webm", "wmv", "flv", "f4v", "mpg", "mpeg", "vob"`
-- On 240-MP OS, films go on the SD card itself: its **240-MP** partition opens on Windows and macOS like a USB stick, and Local Files opens it ([os/README.md](os/README.md#films-on-the-card))
+- On the OSD/OS image, films go on the SD card itself: its **240-MP** partition opens on Windows and macOS like a USB stick, and Local Files opens it ([os/README.md](os/README.md#films-on-the-card))
 - Playlist support using `m3u` and `m3u8` files
 - Folder browsing as a horizontal tree: the open folders run along a line across the screen, every folder in the current one branches off to a few of its own entries, and the folder under the cursor branches once more
 - **Recently Watched**, **Favorites** and **Search** lead the tree: what you played last, what you marked (right on a file, then **Add to Favorites**), and file and folder names anywhere in the media folder, typed on an on-screen keyboard
@@ -268,14 +268,14 @@ Photos of an earlier version, before the menus above, on a CRT.
 
 ### Netflix and Prime Video
 - Browse what the service carries in your country in the same tree as Local Files: **Recently Watched** and **Favorites** first, then **Search** (on an on-screen keyboard), **Movies** and **Series** by Popular and by genre, a page of titles at a time with **More…** at the end
-- Select on a title plays it straight away in the service's own web player, full screen. It opens at the title's own page on the service where [Wikidata](https://www.wikidata.org) knows it (by its TMDB or IMDb id), and at the service's search for it otherwise. **Netflix Home** / **Prime Video Home** opens the service as it is. 240-MP comes back when the player closes, with the tree as you left it
+- Select on a title plays it straight away in the service's own web player, full screen. It opens at the title's own page on the service where [Wikidata](https://www.wikidata.org) knows it (by its TMDB or IMDb id), and at the service's search for it otherwise. **Netflix Home** / **Prime Video Home** opens the service as it is. OSD/OS comes back when the player closes, with the tree as you left it
 - The catalogue comes from [TMDB](https://www.themoviedb.org)'s API, which needs a free API key: put it (a v3 key or a v4 read access token) on the first line of `tmdb_api_key.txt` in the data folder. Each module's settings set the country and the language of the titles
-- Neither service has an API for a front end like this one, and their streams are DRM-protected, so playback is the official site in Chromium with Widevine, not a 240-MP view: use it with a keyboard (arrow keys move between titles) or a mouse
+- Neither service has an API for a front end like this one, and their streams are DRM-protected, so playback is the official site in Chromium with Widevine, not an OSD/OS view: use it with a keyboard (arrow keys move between titles) or a mouse
 - A title's info screen (story, genre, director or creator, cast, rating) comes up when the cursor has rested on it for 3 seconds, or at once with right; Settings → **Info Screen** sets the seconds, or **Key** for right only, or **Off**
 - Right on the info screen (or on the title, with the info screen off) offers its options: **Add to Favorites** or **Remove from Favorites**
 - Come back by holding back (`[ESC]` / `[B]`) for two seconds, or by closing the browser (`Ctrl+W`)
 - **Sign in** in its settings opens the service's sign-in page full screen, to sign in with a keyboard before you browse (a title you open asks too, while you aren't). Each keeps its sign-in between visits; **Sign out** forgets it
-- Needs `chromium`, `libwidevinecdm0` and, without a desktop, `cage` and `wtype` (on Raspberry Pi OS: `sudo apt install chromium libwidevinecdm0 cage wtype`); the 240-MP OS image has them. With `wtype`, holding back closes the browser the way `Ctrl+W` does, which keeps a sign-in made moments before: Chromium saves new cookies only every half minute, and stopping it outright loses them
+- Needs `chromium`, `libwidevinecdm0` and, without a desktop, `cage` and `wtype` (on Raspberry Pi OS: `sudo apt install chromium libwidevinecdm0 cage wtype`); the OSD/OS image has them. With `wtype`, holding back closes the browser the way `Ctrl+W` does, which keeps a sign-in made moments before: Chromium saves new cookies only every half minute, and stopping it outright loses them
 - Off by default; enable them in Settings
 - This product uses the TMDB API but is not endorsed or certified by TMDB. Which service carries a title where comes from [JustWatch](https://www.justwatch.com), through TMDB
 
@@ -292,8 +292,8 @@ Photos of an earlier version, before the menus above, on a CRT.
 ### Playlists
 - Lists of videos from Local Files, YouTube, Jellyfin and Emby together, played as one: **In Order**, carrying on from where the list stopped (it asks), or **Shuffle**, in a new order each time. **Play from Here** on a video starts there. mpv's display has ◄ ► for the previous and next video
 - **Online** playlists play each video from where it lives: a file from Local Files, a YouTube video as the YouTube module plays it (its Advanced settings, through yt-dlp), a Jellyfin or Emby item streamed from its server
-- **Offline** playlists play only what is on the device: Local Files' files as they are, and a copy of every other video, downloaded in the background into a **Playlists** folder in Local Files' folder (the **Download Folder** setting can name another). On 240-MP OS that is the card's 240-MP partition. A video is downloaded once, whatever lists it is on, and deleted once no offline list has it
-- YouTube videos download with yt-dlp in the YouTube module's resolution, codec and audio language (ffmpeg puts a video above 360p back together; the 240-MP OS image has it). Jellyfin and Emby items download as their original file, where the server lets the user download (a user without the right shows **Not Allowed**)
+- **Offline** playlists play only what is on the device: Local Files' files as they are, and a copy of every other video, downloaded in the background into a **Playlists** folder in Local Files' folder (the **Download Folder** setting can name another). On OSD/OS image that is the card's 240-MP partition. A video is downloaded once, whatever lists it is on, and deleted once no offline list has it
+- YouTube videos download with yt-dlp in the YouTube module's resolution, codec and audio language (ffmpeg puts a video above 360p back together; the OSD/OS image has it). Jellyfin and Emby items download as their original file, where the server lets the user download (a user without the right shows **Not Allowed**)
 - Add videos from inside the module (**Add Videos**: a tree of Local Files, YouTube, Jellyfin and Emby, with their libraries, shows and seasons), from a video's options in Local Files and YouTube (►, **Add to Playlist**), or with ► on **PLAY** on a Jellyfin or Emby item's page. A list can also be started from there (**New Online Playlist**, **New Offline Playlist**)
 - Back during a video opens its menu: subtitles, looping and Scaling, then Browse Playlists and Close Video. With Transparent Background, the list plays on behind the menus and the main menu's first row takes it back
 - Netflix and Prime Video play in the service's own player, so they can't go on a playlist
@@ -315,13 +315,13 @@ Photos of an earlier version, before the menus above, on a CRT.
 - Video quality selection: Direct Playback (Default) or Transcode options
 
 ### Scripts ([Wiki](https://github.com/anthonycaccese/240-MP/wiki/Module:-Scripts))
-- Run your own `.sh` scripts from a folder, so 240-MP can launch anything else on the machine (FieldStation42, RetroArch, `yt-dlp -U`, updates)
+- Run your own `.sh` scripts from a folder, so OSD/OS can launch anything else on the machine (FieldStation42, RetroArch, `yt-dlp -U`, updates)
 - Two run modes per script, set in its `.txt` file:
-    - `console` — 240-MP stays on screen and shows the script's output
-    - `takeover` — the script gets the whole display, and 240-MP returns when it exits
+    - `console` — OSD/OS stays on screen and shows the script's output
+    - `takeover` — the script gets the whole display, and OSD/OS returns when it exits
 - A `.txt` file beside each script sets its display name and options; one is created for you automatically the first time a script is seen
 - Mark a script as a favorite to put it on the main menu alongside the other modules (press play/pause on it in the list)
-- Optionally auto-run one script when 240-MP starts
+- Optionally auto-run one script when OSD/OS starts
 - Off by default; enable it in Settings and point it at your scripts folder
 
 ### Weather ([Wiki](https://github.com/anthonycaccese/240-MP/wiki/Module:-Weather))
@@ -354,7 +354,7 @@ Photos of an earlier version, before the menus above, on a CRT.
 - **Sign in** in its settings, if you want to, opens Google's sign-in page full screen in Chromium, to sign in with a keyboard. yt-dlp then searches and plays as that account, which YouTube asks for fewer bot checks and lets play age-restricted videos. **Sign out** forgets it
     - YouTube can block an account used through yt-dlp, as [yt-dlp's wiki](https://github.com/yt-dlp/yt-dlp/wiki/Extractors#youtube) warns, so sign in with a spare one
     - Needs Chromium, with `cage` and `wtype` without a desktop (see Netflix and Prime Video), or Google Chrome on a Mac
-- Needs yt-dlp, and Deno for full YouTube support ([BUILDING.md](BUILDING.md)). The [240-MP OS](os/README.md) image comes with both and keeps yt-dlp up to date
+- Needs yt-dlp, and Deno for full YouTube support ([BUILDING.md](BUILDING.md)). The [OSD/OS](os/README.md) image comes with both and keeps yt-dlp up to date
 
 ## Install
 - [On a Raspberry Pi](INSTALL.md#on-a-raspberry-pi)
@@ -372,29 +372,29 @@ Photos of an earlier version, before the menus above, on a CRT.
 
 - Why didn't you use Kodi/LibreELEC/OSMC?
     - I've used all of those distros and they are all excellent but I also like making things and wanted something simpler without as many options.  Something that felt like a VCR from my youth.
-- Should I use 240-MP instead of Kodi/LibreELEC/OSMC?
+- Should I use OSD/OS instead of Kodi/LibreELEC/OSMC?
     - I would recommend thinking about it like this...
     - All of those distros are amazing, feature rich, work across a ton of devices and have awesome supportive teams behind them.
     - I on the other hand am just one person making nostalgic things for my own niche use cases.
-    - If those use cases match with what you're looking for, then 240-MP is a bunch of fun and I'd be happy for you to try it.
+    - If those use cases match with what you're looking for, then OSD/OS is a bunch of fun and I'd be happy for you to try it.
     - Otherwise, the well known distros are spectacular and you should likely open those doors instead.
 - Will this work on other Raspberry Pi models? (like the 5, 2 zero, etc...)
     - I've tested on the 4b, 3b+ and 3b. Other users have confimred the 5 works well too and all the details on what we've confimred can be found here: https://github.com/anthonycaccese/240-MP/wiki/Hardware-Testing
     - If its not on that list then the short answer is "we don't know but please feel free try and let us know if it works"
-- Where does the name "240-MP" come from?
-    - 240 has a double meaning referring to the longest [VHS tape length](https://en.wikipedia.org/wiki/VHS#Tape_lengths) and love for [CRT TVs](https://consolemods.org/wiki/CRT:What_is_240p%3F) as a display type.
-    - MP also has a double meaning of "Media Player" and a play on the "SP/LP/EP/SLP" terminology that was used to refer to the recording quality for VHS recordings.
-- Does the 240 in the name mean that it outputs at 240p resolution?
+- Where does the name "OSD/OS" come from?
+    - OSD is the on-screen display: the menu a VCR or a TV draws over the picture, which is all this app ever shows. OS because on a Raspberry Pi it can be the whole system ([os/README.md](os/README.md)).
+    - It started as 240-MP. 240 had a double meaning referring to the longest [VHS tape length](https://en.wikipedia.org/wiki/VHS#Tape_lengths) and love for [CRT TVs](https://consolemods.org/wiki/CRT:What_is_240p%3F) as a display type, and MP a double meaning of "Media Player" and a play on the "SP/LP/EP/SLP" terminology that was used to refer to the recording quality for VHS recordings. The old name lives on in the data folder, the service and the card's film partition, so nothing already set up changes.
+- Does it output at 240p resolution?
     - The UI scales based on the OS config and output cables you are using.
     - For example: the output resolution for the menu and video playback when using it on a CRT with the configs I use is 480i/576i
-- Does 240-MP support RGB out instead of composite?
-    - 240-MP is just an app that runs on top of an already configured Operating System. If you are able to configure your OS on the Raspberry Pi to output over RGB then 240-MP will simply scale and display to that output when it boots up as well.
+- Does OSD/OS support RGB out instead of composite?
+    - Installed on your own Raspberry Pi OS, OSD/OS is just an app on top of an already configured Operating System. If you are able to configure that OS to output over RGB then OSD/OS will simply scale and display to that output when it boots up as well.
     - If you have a combination of RGB out + OS configuration that works well then please add a comment here with your set up details: https://github.com/anthonycaccese/240-MP/discussions/44
-- Does 240-MP work over HDMI on a modern television too?
+- Does OSD/OS work over HDMI on a modern television too?
     - Yes! The UI was built to scale on modern televisions over HDMI as well.
     - Please make sure you use the config.txt I provide for HDMI and it will output at the proper resolution for a modern tv.
-- Does 240-MP support bluetooth keyboards/remotes/controllers?
-    - Yes. On Linux (a Raspberry Pi included) pair them in Settings → Bluetooth: SEARCH, then select the device. A keyboard shows a code on screen to type on it. Once paired, a device comes back by itself after a restart, and 240-MP sees it as it would a USB one.
+- Does OSD/OS support bluetooth keyboards/remotes/controllers?
+    - Yes. On Linux (a Raspberry Pi included) pair them in Settings → Bluetooth: SEARCH, then select the device. A keyboard shows a code on screen to type on it. Once paired, a device comes back by itself after a restart, and OSD/OS sees it as it would a USB one.
     - On a Mac, pair them in the Mac's own Bluetooth settings.
 
 ## Credits & Acknowledgments

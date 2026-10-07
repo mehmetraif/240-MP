@@ -1,8 +1,8 @@
-# 240-MP Development Guidelines
+# OSD/OS Development Guidelines
 
-240-MP is a retro VHS-style media app built with C++ Qt6 + QML, targeting Raspberry Pi 4 and macOS. Modules are self-contained media integrations (Plex, Local Files, Ambient Mode, etc.) that the app shell discovers and loads at startup.
+OSD/OS (formerly 240-MP) is a retro VHS-style media app built with C++ Qt6 + QML, targeting Raspberry Pi 4 and macOS. Modules are self-contained media integrations (Plex, Local Files, Ambient Mode, etc.) that the app shell discovers and loads at startup.
 
-**Playback engine**: 240-MP launches **mpv** as a subprocess for video playback. mpv must be installed separately (`apt install mpv` on RPi/Debian, `brew install mpv` on macOS). The app handles all browsing, auth, and settings; when a video is selected it hands off to mpv fullscreen via `MpvController`, then resumes when mpv exits. The one exception is Settings → **Transparent Background**: mpv then plays inside the app's own window through libmpv (opened at run time, `EmbeddedMpv`), so back from a video returns to the menus with the picture still playing behind them.
+**Playback engine**: OSD/OS launches **mpv** as a subprocess for video playback. mpv must be installed separately (`apt install mpv` on RPi/Debian, `brew install mpv` on macOS). The app handles all browsing, auth, and settings; when a video is selected it hands off to mpv fullscreen via `MpvController`, then resumes when mpv exits. The one exception is Settings → **Transparent Background**: mpv then plays inside the app's own window through libmpv (opened at run time, `EmbeddedMpv`), so back from a video returns to the menus with the picture still playing behind them.
 
 ---
 
@@ -33,7 +33,7 @@ This file stays intentionally lean. The detailed documentation is single-sourced
 | How to contribute, project principles, best-practices checklist, adding/changing a module, testing, coding style | **[CONTRIBUTING.md](CONTRIBUTING.md)** |
 | Building & running on macOS / Raspberry Pi, CI/release workflow, per-OS config/data directory paths | **[BUILDING.md](BUILDING.md)** |
 | End-user install (Raspberry Pi imaging, `config.txt`, macOS DMG) | **[INSTALL.md](INSTALL.md)** |
-| The 240-MP OS image (pi-gen stage, app-first boot order, boot screen) | **[os/README.md](os/README.md)** |
+| The OSD/OS image (pi-gen stage, app-first boot order, boot screen) | **[os/README.md](os/README.md)** |
 
 ---
 

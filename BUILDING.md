@@ -1,6 +1,6 @@
-# Building 240-MP
+# Building OSD/OS
 
-If you are interested in building your own version of 240-MP and adding things to it then this page should hopefully cover what you would need to get an environment set up.  I've included details for macOS on ARM (where I primarily build) and Raspberry Pi OS.  And if you create a feature you would like to contribute back to this repo please open a PR, I'd be glad to talk through it.
+If you are interested in building your own version of OSD/OS and adding things to it then this page should hopefully cover what you would need to get an environment set up.  I've included details for macOS on ARM (where I primarily build) and Raspberry Pi OS.  And if you create a feature you would like to contribute back to this repo please open a PR, I'd be glad to talk through it.
 
 ## macOS (ARM)
 
@@ -23,7 +23,7 @@ brew install cmake
 brew install mpv
 ```
 
-Note: 240-MP uses mpv as an external subprocess for video playback. It does not link against libmpv at build time, so mpv only needs to be on your `PATH` when running the app. The Transparent Background setting (video played inside the app's window) opens Homebrew's libmpv at run time; it is built in when `pkg-config` finds mpv's headers, which `brew install mpv pkgconf` provides.
+Note: OSD/OS uses mpv as an external subprocess for video playback. It does not link against libmpv at build time, so mpv only needs to be on your `PATH` when running the app. The Transparent Background setting (video played inside the app's window) opens Homebrew's libmpv at run time; it is built in when `pkg-config` finds mpv's headers, which `brew install mpv pkgconf` provides.
 
 **Install yt-dlp and Deno (optional, required only for the YouTube module):**
 
@@ -109,7 +109,7 @@ sudo apt-get install -y \
   mpv
 ```
 
-`mpv` is the playback engine — 240-MP launches it as a subprocess. No libmpv build dependency is required. `libmpv-dev` is optional: with its headers the Transparent Background setting is built in, which plays video inside the app's window through libmpv (`libmpv2`, opened at run time; `install.sh` and the OS image install it).
+`mpv` is the playback engine — OSD/OS launches it as a subprocess. No libmpv build dependency is required. `libmpv-dev` is optional: with its headers the Transparent Background setting is built in, which plays video inside the app's window through libmpv (`libmpv2`, opened at run time; `install.sh` and the OS image install it).
 
 For the NFC Reader module, `libpcsclite-dev` is optional and only needed for PC/SC readers such as the ACR122U — it is detected automatically at configure time. A PN532 USB reader needs no build dependency at all.
 
@@ -131,9 +131,9 @@ For the YouTube module, additionally install `yt-dlp` — mpv's ytdl hook uses i
 sudo wget https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -O /usr/local/bin/yt-dlp && sudo chmod a+rx /usr/local/bin/yt-dlp
 ```
 
-For full YouTube support, yt-dlp also uses an external JavaScript runtime; install the recommended Deno runtime by following yt-dlp's [EJS setup guide](https://github.com/yt-dlp/yt-dlp/wiki/EJS), and make sure `deno` is on the `PATH` of the user or systemd service that runs 240-MP.
+For full YouTube support, yt-dlp also uses an external JavaScript runtime; install the recommended Deno runtime by following yt-dlp's [EJS setup guide](https://github.com/yt-dlp/yt-dlp/wiki/EJS), and make sure `deno` is on the `PATH` of the user or systemd service that runs OSD/OS.
 
-The [240-MP OS](os/README.md) image comes with both: yt-dlp's nightly build in the data directory (`~/.local/share/240-MP/bin/yt-dlp`), which a timer updates after each boot and once a day, and Deno in `/usr/local/bin`.
+The [OSD/OS](os/README.md) image comes with both: yt-dlp's nightly build in the data directory (`~/.local/share/240-MP/bin/yt-dlp`), which a timer updates after each boot and once a day, and Deno in `/usr/local/bin`.
 
 If yt-dlp is current and Deno is detected but YouTube still returns `Sign in to confirm you're not a bot`, the response can be route-specific. On a system that already has working IPv6, compare:
 
@@ -144,9 +144,9 @@ yt-dlp --verbose --simulate --force-ipv6 \
   'https://www.youtube.com/watch?v=VIDEO_ID'
 ```
 
-If IPv4 returns the bot-check error while IPv6 succeeds, the failure is tied to the IPv4 route rather than the yt-dlp installation. A working IPv6 route may allow playback to proceed, but enabling it is a device and network configuration choice outside 240-MP.
+If IPv4 returns the bot-check error while IPv6 succeeds, the failure is tied to the IPv4 route rather than the yt-dlp installation. A working IPv6 route may allow playback to proceed, but enabling it is a device and network configuration choice outside OSD/OS.
 
-IPv6 is not a 240-MP requirement, and 240-MP should not enable or force it automatically; these commands are only a diagnostic.
+IPv6 is not an OSD/OS requirement, and OSD/OS should not enable or force it automatically; these commands are only a diagnostic.
 
 ### Get the source
 
@@ -203,7 +203,7 @@ This directory is created automatically on first run. It is separate from the ap
 
 ## Linux x86_64 (AppImage)
 
-For Intel/AMD desktops and the **Steam Deck**, 240-MP ships as a self-contained **AppImage** — a single executable that bundles Qt, SDL2 and mpv, so it runs on immutable distros like SteamOS with no package-install step. (This differs from the Raspberry Pi arm64 build, which is a `.tar.gz` that relies on `apt` via `install.sh`.)
+For Intel/AMD desktops and the **Steam Deck**, OSD/OS ships as a self-contained **AppImage** — a single executable that bundles Qt, SDL2 and mpv, so it runs on immutable distros like SteamOS with no package-install step. (This differs from the Raspberry Pi arm64 build, which is a `.tar.gz` that relies on `apt` via `install.sh`.)
 
 The app itself is architecture-agnostic — the same C++/QML builds on x86_64 unchanged. On a desktop compositor (SteamOS gamescope / KDE, X11/Wayland) it passes `--hwdec=vaapi,nvdec,vaapi-copy,nvdec-copy,no`, letting mpv pick VA-API on Intel/AMD GPUs and NVDEC on NVIDIA, and degrading to software otherwise (overridable via `mpv_video_args`). This is an explicit list rather than `auto-safe` because `auto-safe` also considers Vulkan video decode: on a host where neither NVDEC nor VA-API initialises, mpv reaches it, shows one frame and then deadlocks. Vulkan *output* is unaffected and still used.
 
@@ -267,7 +267,7 @@ Configuration lives at `~/.local/share/240-MP/` (same as the Pi). See [INSTALL.m
 
 ## Gamepad input (input.cfg)
 
-USB game controllers should work out of the box as SDL's built-in controller database normalizes most pads (Xbox, PlayStation, 8BitDo, NES-style clones etc...) to a standard layout. 240-MP maps that stanard layout to its navigation actions:
+USB game controllers should work out of the box as SDL's built-in controller database normalizes most pads (Xbox, PlayStation, 8BitDo, NES-style clones etc...) to a standard layout. OSD/OS maps that stanard layout to its navigation actions:
 
 | Controller input | Action |
 |---|---|
@@ -311,11 +311,11 @@ Any bad lines are skipped with a warning in the log (line number included)
 
 ## Video decode tuning (mpv_video_args)
 
-240-MP detects your device at startup and attempts to launch with the most efficient video-output and hardware-decode flags for it. Currently the Pi 3 uses a low-CPU overlay path, the Pi 4 a hardware-decode + copy path, the Pi 5 the V3D Vulkan path, and macOS VideoToolbox. The exact flags and the reasoning per board are in [ARCHITECTURE.md → Per-device video decode profiles](ARCHITECTURE.md#per-device-video-decode-profiles).
+OSD/OS detects your device at startup and attempts to launch with the most efficient video-output and hardware-decode flags for it. Currently the Pi 3 uses a low-CPU overlay path, the Pi 4 a hardware-decode + copy path, the Pi 5 the V3D Vulkan path, and macOS VideoToolbox. The exact flags and the reasoning per board are in [ARCHITECTURE.md → Per-device video decode profiles](ARCHITECTURE.md#per-device-video-decode-profiles).
 
 **Overriding the decode flags**
 
-If you find the need to tune for your hardware, you can add an `mpv_video_args` string under `"app"` in `config.json`.  It accepts a a space-separated list of mpv flags to replace the auto-detected `--vo` / `--hwdec` params that 240-MP sets.
+If you find the need to tune for your hardware, you can add an `mpv_video_args` string under `"app"` in `config.json`.  It accepts a a space-separated list of mpv flags to replace the auto-detected `--vo` / `--hwdec` params that OSD/OS sets.
 
 ```json
 {
@@ -368,7 +368,7 @@ Notes:
 
 ## Debugging & logs
 
-240-MP logs to **stdout/stderr** via Qt's `qDebug` / `qWarning` (used throughout `AppCore`, `MpvController`, and the module backends). The trick is knowing where that output goes depending on how you launched the app.
+OSD/OS logs to **stdout/stderr** via Qt's `qDebug` / `qWarning` (used throughout `AppCore`, `MpvController`, and the module backends). The trick is knowing where that output goes depending on how you launched the app.
 
 ### Option 1: Running from source
 

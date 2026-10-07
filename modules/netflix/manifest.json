@@ -9,7 +9,7 @@
       "label": "Enabled",
       "type": "toggle",
       "default": "OFF",
-      "description": "Browses what Netflix carries, and plays it in Netflix's own player full screen\nNeeds Chromium with Widevine (on the 240-MP OS image already)"
+      "description": "Browses what Netflix carries, and plays it in Netflix's own player full screen\nNeeds Chromium with Widevine (on the OSD/OS image already)"
     },
     {
       "key": "region",

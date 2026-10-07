@@ -114,8 +114,8 @@ void UpdateManager::evaluateApplyCapability() {
         m_canApply = true;
     } else {
         m_canApply = false;
-        m_applyHint = QStringLiteral("This copy of 240-MP is not in /Applications — "
-                                     "240-MP will quit and open the disk image for manual install.");
+        m_applyHint = QStringLiteral("This copy of OSD/OS is not in /Applications — "
+                                     "OSD/OS will quit and open the disk image for manual install.");
     }
 #else
     // AppImage (x86_64 / SteamDeck): the AppImage runtime exports APPIMAGE with the

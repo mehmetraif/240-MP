@@ -264,7 +264,7 @@ FocusScope {
                 Repeater {
                     model: (launchRoot.signIn ? ["Sign in with a keyboard, then"] : []).concat([
                         "Hold " + root.hints.back + " for 2 seconds",
-                        "to come back to 240-MP",
+                        "to come back to OSD/OS",
                         "or close " + launchRoot.serviceName + " with Ctrl+W"
                     ])
                     Text {

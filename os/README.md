@@ -1,6 +1,6 @@
-# 240-MP OS
+# The OSD/OS image
 
-A Raspberry Pi OS Lite (64-bit, Trixie) image that boots straight into 240-MP: flash it, plug the Pi into the TV, and the first thing on screen is the app. It is built with Raspberry Pi's own image builder, [pi-gen](https://github.com/RPi-Distro/pi-gen), so the kernel, firmware, Wi-Fi/Bluetooth drivers and the patched FFmpeg that mpv's Pi 4 HEVC decoding relies on are exactly Raspberry Pi OS's. This directory only adds one stage on top of Raspberry Pi OS Lite.
+A Raspberry Pi OS Lite (64-bit, Trixie) image that boots straight into OSD/OS: flash it, plug the Pi into the TV, and the first thing on screen is the app. It is built with Raspberry Pi's own image builder, [pi-gen](https://github.com/RPi-Distro/pi-gen), so the kernel, firmware, Wi-Fi/Bluetooth drivers and the patched FFmpeg that mpv's Pi 4 HEVC decoding relies on are exactly Raspberry Pi OS's. This directory only adds one stage on top of Raspberry Pi OS Lite.
 
 <img src="boot-screen.gif" width="480" alt="The boot screen: a pixel-art VHS cassette whose tape winds from the left reel onto the right one as the progress bar fills, and the list of services coming up">
 
@@ -44,7 +44,7 @@ Everything else (the launcher, in-app updates, Exit to Terminal, the data direct
 
 The first boot splits the card: the system keeps 8 GiB (`MP240_ROOT_SIZE`), and the rest becomes a partition of its own in exFAT, labelled **240-MP**. Windows and macOS open exFAT, so:
 
-1. Quit 240-MP (it powers the Pi off) and take the card out.
+1. Quit OSD/OS (it powers the Pi off) and take the card out.
 2. In the computer's card reader the card shows up as two drives, **bootfs** and **240-MP**. Copy films onto **240-MP**, in folders if you like.
 3. Windows also offers to format the system's partition, which it can't read. Always say no (**Cancel**): formatting it erases the system.
 4. Put the card back in the Pi. Local Files opens **240-MP** (`/media/240-MP`) until its Media Directory setting names another folder.
@@ -67,7 +67,7 @@ The rest of `config.txt` matches the settings [INSTALL.md](../INSTALL.md) docume
 
 ## Building
 
-The image needs a 240-MP arm64 tarball (`240-MP-<version>-linux-arm64.tar.gz`, as the release workflow builds it).
+The image needs the app's arm64 tarball (`240-MP-<version>-linux-arm64.tar.gz`, as the release workflow builds it).
 
 **On GitHub:**
 

@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 340" width="960" height="340" role="img" aria-label="Boot order. In a manual install 240-MP starts last, after multi-user.target, once every service has started. On 240-MP OS it starts right after basic.target and its boot screen is up while Wi-Fi, Bluetooth, the local network, optional SSH and the online check start one after another, after its first frame.">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 340" width="960" height="340" role="img" aria-label="Boot order. In a manual install OSD/OS starts last, after multi-user.target, once every service has started. On the OSD/OS image it starts right after basic.target and its boot screen is up while Wi-Fi, Bluetooth, the local network, optional SSH and the online check start one after another, after its first frame.">
 <defs><marker id="ah" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#fff"/></marker></defs>
 <rect x="0" y="0" width="960" height="340" rx="14" fill="#0110C5"/>
 <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', 'DejaVu Sans Mono', monospace" fill="#fff">
@@ -14,7 +14,7 @@
 <rect x="160" y="78" width="540" height="24" rx="3" fill="#000" stroke="#fff" stroke-opacity="0.5"/>
 <text x="430.0" y="94" font-size="11" text-anchor="middle" font-weight="normal" fill="#fff" fill-opacity="0.8">black screen · boot messages · login</text>
 <rect x="700" y="78" width="240" height="24" rx="3" fill="#fff"/>
-<text x="820.0" y="94" font-size="12" text-anchor="middle" font-weight="bold" fill="#0110C5">240-MP · menu</text>
+<text x="820.0" y="94" font-size="12" text-anchor="middle" font-weight="bold" fill="#0110C5">OSD/OS · menu</text>
 <path d="M694,64 L706,64 L700,73 Z" fill="#fff"/>
 <text x="710" y="72" font-size="11" text-anchor="start" font-weight="bold" fill="#fff">first frame</text>
 <rect x="334" y="118" width="72" height="24" rx="3" fill="#0110C5" stroke="#fff" stroke-width="1.2"/>
@@ -23,7 +23,7 @@
 <text x="552.0" y="134" font-size="11" text-anchor="middle" font-weight="normal" fill="#fff">NetworkManager · avahi · cron · …</text>
 <line x1="700" y1="130" x2="700" y2="106" stroke="#fff" stroke-width="1.5" marker-end="url(#ah)"/>
 <text x="710" y="134" font-size="11" text-anchor="start" font-weight="normal" fill="#fff">After=multi-user.target</text>
-<text x="16" y="178" font-size="13" text-anchor="start" font-weight="bold" fill="#fff">240-MP OS · the image</text>
+<text x="16" y="178" font-size="13" text-anchor="start" font-weight="bold" fill="#fff">OSD/OS · the image</text>
 <text x="150" y="214" font-size="11" text-anchor="end" font-weight="normal" fill="#fff" fill-opacity="0.75">screen</text>
 <text x="150" y="254" font-size="11" text-anchor="end" font-weight="normal" fill="#fff" fill-opacity="0.75">services</text>
 <rect x="160" y="198" width="270" height="24" rx="3" fill="#000" stroke="#fff" stroke-opacity="0.5"/>
