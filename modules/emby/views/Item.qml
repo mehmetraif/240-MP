@@ -117,6 +117,7 @@ FocusScope {
                 mediaSourceId: d.mediaSourceId || d.itemId,
                 title: d.title,
                 viewOffset: d.viewOffset || 0,
+                duration: d.duration || 0,
                 audioStreams: d.audioStreams || [],
                 subtitleStreams: d.subtitleStreams || [],
                 selectedAudioId: detailRoot.selectedAudioId(),
@@ -706,6 +707,9 @@ FocusScope {
         LoadingScreen {
             anchors.fill: parent
             source: moduleRoot.moduleName
+            // Where it is and how long it is, as the server says.
+            startMs: detailRoot.detail ? (detailRoot.detail.viewOffset || 0) : 0
+            durationMs: detailRoot.detail ? (detailRoot.detail.duration || 0) : 0
         }
 
         HintBar {

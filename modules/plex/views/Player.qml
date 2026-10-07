@@ -19,6 +19,10 @@ FocusScope {
     property string partId:       navParams.partId       || ""
     property string sessionId:    navParams.sessionId    || ""
     property int    viewOffset:   navParams.viewOffset   || 0
+    // How long it is, from the server, and where the last start began: the
+    // loading screen's counters.
+    property int    itemDurationMs: navParams.duration   || 0
+    property int    lastStartMs:  0
     property string itemTitle:    navParams.title        || ""
     property var    audioStreams:     navParams.audioStreams     || []
     property var    subtitleStreams:  navParams.subtitleStreams  || []
@@ -214,11 +218,13 @@ FocusScope {
     }
 
     function beginPlayback(offsetMs) {
+        lastStartMs = offsetMs
         startTimer.pendingOffset = offsetMs
         startTimer.restart()
     }
 
     function doStartPlayback(offsetMs) {
+        lastStartMs = offsetMs
         if (isTranscoding) {
             // Transcode covers the full timeline (requested at offset 0), so seek mpv
             // to the resume point. This keeps everything before offsetMs seekable, so
@@ -304,6 +310,7 @@ FocusScope {
         partKey     = detail.partKey      || ""
         partId      = detail.partId       || ""
         itemTitle   = detail.title        || ""
+        itemDurationMs  = detail.duration        || 0
         audioStreams    = detail.audioStreams    || []
         subtitleStreams = detail.subtitleStreams || []
         isTranscoding   = detail.forceTranscode  || false
@@ -466,7 +473,8 @@ FocusScope {
         LoadingScreen {
             anchors.fill: parent
             source: moduleRoot.moduleName
-            startMs: playerRoot.viewOffset
+            startMs: playerRoot.lastStartMs
+            durationMs: playerRoot.itemDurationMs || playerRoot.lastKnownDurationMs
             visible: streamUrl !== "" && !overlayVisible && !playbackStarted
         }
     }

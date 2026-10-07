@@ -255,6 +255,9 @@ FocusScope {
         LoadingScreen {
             anchors.fill: parent
             source: moduleRoot.moduleName
+            // Where it is and how long it is, as the server says.
+            startMs: launchingExtra ? (launchingExtra.viewOffset || 0) : 0
+            durationMs: launchingExtra ? (launchingExtra.duration || 0) : 0
         }
 
         HintBar {

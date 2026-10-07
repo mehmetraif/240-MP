@@ -709,23 +709,27 @@ A video's own menu, over the picture while it plays on (Transparent Background, 
 
 What a player shows while its video starts, in place of a black screen: a VCR's screen as a tape loads, after a dubbing deck's on-screen display. The theme's background, in a tape's noise. Its corners:
 
-- top left: TAPE A, PLAY, and the point the video starts from;
+- top left: TAPE A, PLAY, and where the video is (while it loads, the point it starts from);
 - top middle: the tracking mark, its bars searching;
-- top right: TAPE B, LOADING blinking, and the seconds it has been up;
+- top right: TAPE B, LOADING blinking, and how long the video is once that is known, the seconds it has been up until then;
 - bottom left: SLP ▶ and the source;
 - bottom right: SLP ◀ and DEST.
 
-The tracking band jitters across the top and, every few seconds, rolls down the picture, breaking up the letters it passes. The display jumps sideways now and then.
+The tracking band jitters across the top and, every few seconds, rolls down the picture, breaking up the letters it passes. The display jumps sideways now and then, and its letters bleed a little to the right. Settings → **Loading Effect** (`app.loading_effect`, `"On"` when unset, or `"Off"`; Main.qml's `root.loadingEffect`) turns all of that off: the display then stands alone on the plain background, its counters and blinking LOADING as before.
 
 | Property | Type | Description |
 |---|---|---|
 | `source` | `string` | Under SLP ▶: what plays (the players give their module's name) |
-| `startMs` | `int` | TAPE A's counter: where the video starts |
+| `startMs` | `int` | TAPE A's counter: where the video is; while it loads, where it starts from |
+| `durationMs` | `int` | TAPE B's counter once known: how long the video is (0, the default, while it isn't) |
 | `title` | `string` | Optional, across the middle: what loads, when the player knows before it plays (a card's title) |
+| `effect` | `bool` | The noise, bands, jumps and bleed. Defaults to `root.loadingEffect` |
+
+Players give `durationMs` what they know: the server's length for Plex, Jellyfin and Emby (from the detail screen, `navParams.duration`), else mpv's, which comes as it opens the file (`lastKnownDurationMs`). The detail screens' launch overlays show the item's own position and length.
 
 The noise is **`VhsNoise`** (`src/player/VhsNoise.h/.cpp`, `import MP240.Video`), a C++ item that draws a new frame about twenty times a second: short horizontal streaks of its `color` at random strengths, at the art pixel (`pixel`, `root.px`), scaled up without smoothing. `streaks` sets how many cover the picture. `bands` adds the tracking band and the head-switching strip along the bottom, and with a `shade` (the background colour), dropouts in them cut into whatever lies under the noise. LoadingScreen lays one under its text and one with only the bands over it. Both, and the screen's timers, run only while it is visible and the screen is the app's: while another process has it (`root.screenHandedOff`, see [the hand-off](#raspberry-pi-headless-hand-off-eglfs)), nothing drawn would reach it, so they rest (`running: false` on VhsNoise keeps its last frame) and leave the CPU to mpv.
 
-Every video player shows one until the first position arrives, and the launch overlays of Plex, Jellyfin and Emby's detail screens (while the stream is prepared) are one too. A still image never moves mpv's position, so Local Files ends it as image content is launched. On the Pi, with Transparent Background off, mpv takes the screen as soon as it starts, and what stays on it until the picture comes is the frame drawn last: the players start mpv a moment late (`startTimer`), so that it is the loading screen, still. With Transparent Background on, it goes on moving until the picture comes.
+Every video player shows one until the first position arrives, and the launch overlays of Plex, Jellyfin and Emby's detail screens (while the stream is prepared) are one too. A still image never moves mpv's position, so Local Files ends it as image content is launched. On the Pi, with Transparent Background off, mpv takes the screen as soon as it starts, and what stays on it until the picture comes is the frame drawn last: the players start mpv a moment late (`startTimer`), so that it is the loading screen, still. mpv's own length comes only after that, so the still frame shows one only when the player knew it before (a server's, or the video's when it starts again after its menu). With Transparent Background on, it goes on moving until the picture comes, and mpv's length shows as soon as mpv has opened the file.
 
 ### NfcCardWriter (`views/Components/NfcCardWriter.qml`)
 

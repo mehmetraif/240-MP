@@ -390,6 +390,7 @@ FocusScope {
             anchors.fill: parent
             source: moduleRoot.moduleName
             startMs: playerRoot.lastStartMs
+            durationMs: playerRoot.lastKnownDurationMs
             visible: !overlayVisible && !playbackStarted
         }
     }

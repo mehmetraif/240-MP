@@ -69,6 +69,7 @@ FocusScope {
     }
 
     function play(startMs, plPos) {
+        lastStartMs = startMs
         startTimer.pendingStartMs = startMs
         startTimer.pendingPlPos   = plPos
         startTimer.restart()
@@ -240,6 +241,8 @@ FocusScope {
             anchors.fill: parent
             source: moduleRoot.moduleName
             title: videoTitle
+            startMs: playerRoot.lastStartMs
+            durationMs: playerRoot.lastKnownDurationMs
             visible: !overlayVisible && !playbackStarted && errorMessage === ""
         }
 

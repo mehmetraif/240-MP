@@ -18,6 +18,10 @@ FocusScope {
     property string mediaSourceId:  navParams.mediaSourceId  || itemId
     property string itemTitle:      navParams.title          || ""
     property int    viewOffset:     navParams.viewOffset     || 0
+    // How long it is, from the server, and where the last start began: the
+    // loading screen's counters.
+    property int    itemDurationMs: navParams.duration       || 0
+    property int    lastStartMs:    0
     property int    parentIndex:    navParams.parentIndex    || 0
     property int    index:          navParams.index          || 0
     property var    audioStreams:       navParams.audioStreams     || []
@@ -256,6 +260,7 @@ FocusScope {
         itemId         = detail.itemId         || ""
         mediaSourceId  = detail.mediaSourceId  || detail.itemId || ""
         itemTitle      = detail.title          || ""
+        itemDurationMs = detail.duration       || 0
         audioStreams   = detail.audioStreams   || []
         subtitleStreams= detail.subtitleStreams|| []
         seriesId       = detail.seriesId       || ""
@@ -338,6 +343,7 @@ FocusScope {
     }
 
     function beginPlayback(offsetMs) {
+        lastStartMs = offsetMs
         startTimer.pendingOffset = offsetMs
         startTimer.restart()
     }
@@ -387,6 +393,7 @@ FocusScope {
     }
 
     function doStartPlayback(offsetMs) {
+        lastStartMs = offsetMs
         var embyToken = embyBackend.get_access_token()
         if (isTranscoding) {
             // HLS manifest bakes in the selected audio. Subtitles do NOT ride in
@@ -643,6 +650,8 @@ FocusScope {
         LoadingScreen {
             anchors.fill: parent
             source: moduleRoot.moduleName
+            startMs: playerRoot.lastStartMs
+            durationMs: playerRoot.itemDurationMs || playerRoot.lastKnownDurationMs
             visible: streamUrl !== "" && !overlayVisible && !playbackStarted
         }
     }

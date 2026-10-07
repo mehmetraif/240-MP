@@ -196,6 +196,19 @@ FocusScope {
             moduleId: ""
         })
 
+        // Loading Effect — the screen a video loads behind is a tape loading
+        // (Components/LoadingScreen): its noise and tracking bands, or, off,
+        // the deck's display alone on the plain background. Read in Main.qml.
+        items.push({
+            type: "list_single",
+            key: "loading_effect",
+            label: "Loading Effect",
+            options: ["On", "Off"],
+            value: appSettings["loading_effect"] === "Off" ? "Off" : "On",
+            description: "While a video loads, a tape's noise and tracking bands roll over its counters\n[OFF] The counters alone, on the plain background",
+            moduleId: ""
+        })
+
         // SCREEN SAVER section — single control: OFF disables, a number sets the
         // timeout for both menu idle and playback pause (handled inside mpv).
         items.push({

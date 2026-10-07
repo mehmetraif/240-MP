@@ -108,6 +108,8 @@ Window {
                 root.currentTheme = value
             } else if (key === "transparent_background") {
                 root.backdropSolidity = root.solidityOf(value)
+            } else if (key === "loading_effect") {
+                root.loadingEffect = value !== "Off"
             } else if (key === "mouse_pointer") {
                 root.pointerSetting = String(value)
                 if (root.pointerShown)
@@ -154,6 +156,7 @@ Window {
         root.currentTheme = savedTheme
         root.backdropSolidity = root.solidityOf(cfg.app && cfg.app.transparent_background)
         root.pointerSetting = String((cfg.app && cfg.app.mouse_pointer) || "5")
+        root.loadingEffect = !(cfg.app && cfg.app.loading_effect === "Off")
 
         // Screensaver: the tracker starts disabled; this is the single place the
         // saved setting is applied (live changes land in onAppSettingChanged above,
@@ -316,6 +319,9 @@ Window {
     // (see DisplayHandoff). Nothing drawn here reaches it until it is back,
     // so what animates rests meanwhile (LoadingScreen).
     readonly property bool screenHandedOff: displayHandoff ? displayHandoff.held : false
+    // "loading_effect": the tape's noise and bands on the screen a video
+    // loads behind (LoadingScreen), "On" (the default, when unset) or "Off".
+    property bool loadingEffect: true
 
     // "transparent_background": how solid the menus' ground is over a video
     // behind them, 0 (TRANSPARENT) to 100 (SOLID: none of it shows, but it
