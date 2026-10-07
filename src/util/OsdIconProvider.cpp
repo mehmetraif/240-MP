@@ -52,14 +52,17 @@ QImage OsdIconProvider::requestImage(const QString &id, QSize *size, const QSize
         return {};
 
     // Drawn again from the original at the scale that makes the drawing itself
-    // the height asked for, then cut to it.
+    // the height asked for, then cut to it. A width asked for as well
+    // stretches it to that width: a screen whose pixels are not square
+    // (720×480 on a 4:3 tube) keeps the drawing's shape on the glass.
     const double scale = double(height) / (bottom - top);
-    const QImage full = render(path, QSize(qMax(1, qRound(probe.width() * scale)),
+    const double scaleX = requestedSize.width() > 0 ? double(requestedSize.width()) / (right - left) : scale;
+    const QImage full = render(path, QSize(qMax(1, qRound(probe.width() * scaleX)),
                                            qMax(1, qRound(probe.height() * scale))));
-    const int x0 = int(std::floor(left * scale));
+    const int x0 = int(std::floor(left * scaleX));
     const int y0 = int(std::floor(top * scale));
     QImage out = full.copy(x0, y0,
-                           qMax(1, int(std::ceil(right * scale)) - x0),
+                           qMax(1, int(std::ceil(right * scaleX)) - x0),
                            qMax(1, int(std::ceil(bottom * scale)) - y0));
 
     // In the colour, with the drawing's own edges.

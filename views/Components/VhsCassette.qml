@@ -1,223 +1,114 @@
 import QtQuick
 
-// Pixel-art VHS cassette, the owner's drawing (the boot screen's), in two
-// colours: the shell is solid `ink`, and its cut-outs are left clear so the
-// background shows through. The cut-outs are the line under the top edge with
-// its mark, the label with OSD/OS between two rules (the slash in its three
-// colours), the window either side of it with the tape wound on a reel around
-// an ink hub, and the two feet. As `progress` goes from 0 to 1 the tape winds
-// off the left (supply) reel onto the right (take-up) one, so the left pack
-// shrinks while the right one grows.
+// The VHS cassette on the boot screen, the owner's drawing itself
+// (assets/images/cassette.png: white where the drawing is ink, with its own
+// edges) in the theme's text colour, the slash on its label in its three
+// colours. As `progress` goes from 0 to 1 the tape winds off the left
+// (supply) reel onto the right (take-up) one: each window shows its reel's
+// tape as a disc of the radius the progress gives, around the drawing's own
+// hub, the shell showing where the tape has gone.
 //
-// The art is a grid of cells (`art`, a character a cell: '#' ink, '.' clear,
-// 'r', 'b' and 'g' the slash's colours), each drawn as a pixelSize × pixelSize
-// block, so the picture stays crisp at any integer scale (and a single-pixel
-// line never lands on one interlaced CRT field). The shell is painted once;
-// the two reel windows are repainted as the tape moves.
+// The host sizes it (width and height), and the drawing is stretched to that,
+// so on a screen whose pixels are not square (720×480 on a 4:3 tube) it
+// keeps its shape on the glass.
 Item {
     id: cassette
 
-    // Screen pixels per art pixel. The host derives it from root.sh.
-    property int pixelSize: 3
     // 0 = all of the tape on the left reel, 1 = all of it on the right.
     property real progress: 0
+    // The one colour drawn; the host sets it to the theme's text colour.
+    property color ink: "#ffffff"
 
-    // The one colour drawn; everything else is the background. The host sets
-    // it to the theme's text colour.
-    property string ink: "#ffffff"
-    readonly property var slashColours: ({ "r": "#ff3d3d", "b": "#2f6bff", "g": "#2fe063" })
+    // The drawing's frame, and what the view needs of it, in its pixels.
+    readonly property real artWidth: 612
+    readonly property real artHeight: 284
+    readonly property real reelY: 168
+    readonly property real leftReelX: 149
+    readonly property real rightReelX: 463.5
+    // The tape's radius: full as drawn, and never down to the hub (51.5).
+    readonly property real fullRadius: 121
+    readonly property real emptyRadius: 57
+    // Each window's tape, a little beyond it where the drawing is shell:
+    // [x0, y0, x1, y1]. With a disc a little larger than the full reel,
+    // it bounds what a reel's lost tape is covered in, short of the frame.
+    readonly property var leftPack: [28, 94, 149, 236]
+    readonly property var rightPack: [463, 94, 584, 236]
+    readonly property real packRadius: fullRadius + 2.5
+    // The slash on the label: three stripes `stripe` wide, from `slashX` on
+    // its top row, a pixel to the left for every two rows down.
+    readonly property real slashTop: 148
+    readonly property real slashBottom: 188
+    readonly property real slashX: 327
+    readonly property real stripe: 5
+    readonly property var slashColours: ["#ff3d3d", "#2f6bff", "#2fe063"]
 
-    // The drawing, 102 × 47 cells (the owner's osdos-vhs-acilis.png, sampled
-    // a cell per 6 of its pixels), the reels full as drawn: the windows show
-    // their tape wound off as the progress says.
-    readonly property var art: [
-        "..##################################################################################################..",
-        ".####################################################################################################.",
-        "######################################################################################################",
-        "######################################################################################################",
-        "##################################################..##################################################",
-        "#....................................................................................................#",
-        "#..#############################################.......############################################..#",
-        "#.##############################################...#...#############################################.#",
-        "#.##############################################..###..#############################################.#",
-        "#.##############################################.#####.#############################################.#",
-        "######################################################################################################",
-        "######################################################################################################",
-        "######################################################################################################",
-        "####..............................................................................................####",
-        "###................................................................................................###",
-        "###..#####################...############################################...#####################...##",
-        "###.######..............##...#############################################..##..............######.###",
-        "###.#####...............##...#############################################..##...............#####.###",
-        "###.####................##...#############################################..##................####.###",
-        "###.###...............####...#############################################..####...............###.###",
-        "###.###.............######...####.....................................####..######.............###.###",
-        "###.##.............###..##...#############################################..##..###.............##.###",
-        "###.##............########...#############################################..########............##.###",
-        "###.#............##..#####...#############################################..######.##............#.###",
-        "###.#............#########...#############################################..#########............#.###",
-        "###.#...........#######.##...#####....##....##...#####rbg#b...##....######..##..######...........#.###",
-        "###.#...........######..##...####..##.##.##.##.##.b##rbg#b.##.##.#########..##..######...........#.###",
-        "###.#...........#..###..##...####..##.##...###.##.b##rbg#b.##.##....######..##..####.#...........#.###",
-        "###.#...........##.###..##...####..##.#####.##.##.b#rbg##b.##.#####..#####..##..####.#...........#.###",
-        "###.#...........######..##...####..##.##.##.##.##.##rbg##b.##.##.##..#####..##..######...........#.###",
-        "###.#...........#######.##...#####...####..###...##rbg####b..####...######..##.#######...........#.###",
-        "###.#............#########...#############################################..#########............#.###",
-        "###.##...........##..#####...#############################################..#####..##...........##.###",
-        "###.##............####.###...#############################################..########............##.###",
-        "###.###............###..##...#############################################..###.###............###.###",
-        "###.###.............######...####.....................................####..######.............###.###",
-        "###.####................##...#############################################..##................####.###",
-        "###.#####...............##...#############################################..##...............#####.###",
-        "###.######..............##...#############################################..##..............######.###",
-        "###..#####################...############################################...#####################..###",
-        "####.............................................................................................#####",
-        "######################################################################################################",
-        "######################################################################################################",
-        "###...##########################################################################################...###",
-        "###...##########################################################################################...###",
-        ".####################################################################################################.",
-        "..##################################################################################################.."
-    ]
-    readonly property int gridWidth: 102
-    readonly property int gridHeight: 47
+    implicitWidth: artWidth
+    implicitHeight: artHeight
 
-    width: gridWidth * pixelSize
-    height: gridHeight * pixelSize
-
-    // --- Geometry (grid cells, inclusive bounds) ---
-    // The windows' interiors, where the tape shows.
-    readonly property int windowY0: 16
-    readonly property int windowY1: 38
-    readonly property int leftWindowX0: 5
-    readonly property int rightWindowX0: 77
-    readonly property int windowWidth: 20
-    readonly property int windowHeight: windowY1 - windowY0 + 1
-    // Reel centres sit on the frame between each window and the label, so
-    // the frame and the label hide the inner half of each reel, as in the
-    // drawing, whose hubs (with their holes) the art keeps.
-    readonly property real leftReelX: leftWindowX0 + windowWidth + 0.5
-    readonly property real rightReelX: rightWindowX0 - 0.5
-    readonly property real reelY: (windowY0 + windowY1 + 1) / 2
-    // The tape's radius: full as the drawing has it, and never bare hub.
-    // Kept off half-integers, which leave a one-cell nub on the circle's edge.
-    readonly property real emptyRadius: 11.3
-    readonly property real fullRadius: 20.4
-
-    // Tape radius on each reel for the current progress. The tape's area is
-    // conserved, so the radii follow the square root, not a straight line.
+    // Tape radius on a reel holding `share` of the tape. The tape's area is
+    // conserved, so the radius follows the square root, not a straight line.
     function reelRadius(share) {
         var e = emptyRadius * emptyRadius
         var f = fullRadius * fullRadius
         return Math.sqrt(e + Math.max(0, Math.min(1, share)) * (f - e))
     }
-    readonly property real leftRadius:  reelRadius(1 - progress)
+    readonly property real leftRadius: reelRadius(1 - progress)
     readonly property real rightRadius: reelRadius(progress)
 
-    // Paints `w` × `h` cells through colorAt(x, y), merging horizontal runs of
-    // one colour into a single fillRect; "" leaves a cell transparent.
-    function paintCells(ctx, w, h, colorAt) {
-        var s = pixelSize
-        for (var y = 0; y < h; ++y) {
-            var start = 0
-            var current = colorAt(0, y)
-            for (var x = 1; x <= w; ++x) {
-                var c = x < w ? colorAt(x, y) : null
-                if (c === current)
-                    continue
-                if (current) {
-                    ctx.fillStyle = current
-                    ctx.fillRect(start * s, y * s, (x - start) * s, s)
-                }
-                start = x
-                current = c
+    // The shell over the tape a reel no longer holds: within its window, the
+    // ring between the full reel and the disc its tape still fills.
+    function coverTape(ctx, pack, cx, r) {
+        if (r >= fullRadius)
+            return
+        ctx.save()
+        ctx.beginPath()
+        ctx.rect(pack[0], pack[1], pack[2] - pack[0], pack[3] - pack[1])
+        ctx.clip()
+        ctx.beginPath()
+        ctx.arc(cx, reelY, packRadius, 0, 2 * Math.PI, false)
+        ctx.moveTo(cx + r, reelY)
+        ctx.arc(cx, reelY, r, 0, 2 * Math.PI, true)
+        ctx.fill()
+        ctx.restore()
+    }
+
+    Image {
+        anchors.fill: parent
+        sourceSize.width: width
+        sourceSize.height: height
+        source: width > 0 && height > 0
+                ? "image://osdicon/" + cassette.ink.toString().replace("#", "")
+                  + "/" + Qt.resolvedUrl("../../assets/images/cassette.png")
+                : ""
+    }
+
+    // The tape and the slash, over the drawing, in its own pixels.
+    Canvas {
+        id: overlay
+        anchors.fill: parent
+        onPaint: {
+            var ctx = getContext("2d")
+            ctx.reset()
+            ctx.scale(width / cassette.artWidth, height / cassette.artHeight)
+            ctx.fillRule = Qt.OddEvenFill
+            ctx.fillStyle = cassette.ink
+            cassette.coverTape(ctx, cassette.leftPack, cassette.leftReelX, cassette.leftRadius)
+            cassette.coverTape(ctx, cassette.rightPack, cassette.rightReelX, cassette.rightRadius)
+            var drop = (cassette.slashBottom - cassette.slashTop) / 2
+            for (var i = 0; i < 3; ++i) {
+                var x = cassette.slashX + i * cassette.stripe
+                ctx.fillStyle = cassette.slashColours[i]
+                ctx.beginPath()
+                ctx.moveTo(x, cassette.slashTop)
+                ctx.lineTo(x + cassette.stripe, cassette.slashTop)
+                ctx.lineTo(x + cassette.stripe - drop, cassette.slashBottom)
+                ctx.lineTo(x - drop, cassette.slashBottom)
+                ctx.closePath()
+                ctx.fill()
             }
         }
     }
-
-    function inWindow(x, y) {
-        return y >= windowY0 && y <= windowY1
-            && ((x >= leftWindowX0 && x < leftWindowX0 + windowWidth)
-                || (x >= rightWindowX0 && x < rightWindowX0 + windowWidth))
-    }
-
-    function shellColor(x, y) {
-        // The reel windows, left to their own layer.
-        if (inWindow(x, y))
-            return ""
-        var c = art[y].charAt(x)
-        if (c === "#")
-            return ink
-        return slashColours[c] || ""
-    }
-
-    // Colours the reel window that starts at column x0, for a reel centred on
-    // column cx: the drawing's own cells (the hub and its holes, the shell at
-    // the corners), but the tape only out to the reel's radius; beyond it the
-    // shell shows, as it does behind an empty reel.
-    function reelPainter(x0, cx, tapeRadius) {
-        return function(lx, ly) {
-            var x = x0 + lx, y = windowY0 + ly
-            if (art[y].charAt(x) === "#")
-                return ink
-            var dx = x + 0.5 - cx, dy = y + 0.5 - reelY
-            return dx * dx + dy * dy > tapeRadius * tapeRadius ? ink : ""
-        }
-    }
-
-    Canvas {
-        id: shellCanvas
-        anchors.fill: parent
-        antialiasing: false
-        smooth: false
-        onPaint: {
-            var ctx = getContext("2d")
-            ctx.reset()
-            cassette.paintCells(ctx, cassette.gridWidth, cassette.gridHeight, cassette.shellColor)
-        }
-    }
-
-    Canvas {
-        id: leftWindow
-        x: cassette.leftWindowX0 * cassette.pixelSize
-        y: cassette.windowY0 * cassette.pixelSize
-        width: cassette.windowWidth * cassette.pixelSize
-        height: cassette.windowHeight * cassette.pixelSize
-        antialiasing: false
-        smooth: false
-        onPaint: {
-            var ctx = getContext("2d")
-            ctx.reset()
-            cassette.paintCells(ctx, cassette.windowWidth, cassette.windowHeight,
-                                cassette.reelPainter(cassette.leftWindowX0, cassette.leftReelX,
-                                                     cassette.leftRadius))
-        }
-    }
-
-    Canvas {
-        id: rightWindow
-        x: cassette.rightWindowX0 * cassette.pixelSize
-        y: cassette.windowY0 * cassette.pixelSize
-        width: cassette.windowWidth * cassette.pixelSize
-        height: cassette.windowHeight * cassette.pixelSize
-        antialiasing: false
-        smooth: false
-        onPaint: {
-            var ctx = getContext("2d")
-            ctx.reset()
-            cassette.paintCells(ctx, cassette.windowWidth, cassette.windowHeight,
-                                cassette.reelPainter(cassette.rightWindowX0, cassette.rightReelX,
-                                                     cassette.rightRadius))
-        }
-    }
-
-    function repaintAll() {
-        shellCanvas.requestPaint()
-        leftWindow.requestPaint()
-        rightWindow.requestPaint()
-    }
-    onPixelSizeChanged: repaintAll()
-    onInkChanged: repaintAll()
-    onLeftRadiusChanged: leftWindow.requestPaint()
-    onRightRadiusChanged: rightWindow.requestPaint()
+    onLeftRadiusChanged: overlay.requestPaint()
+    onRightRadiusChanged: overlay.requestPaint()
+    onInkChanged: overlay.requestPaint()
 }
