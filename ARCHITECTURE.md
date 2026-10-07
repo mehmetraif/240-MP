@@ -725,7 +725,7 @@ A video's own menu, over the picture while it plays on (Transparent Background, 
 What a player shows while its video starts, in place of a black screen: a VCR's screen as a tape loads, after a dubbing deck's on-screen display. The theme's background, in a tape's noise. Its corners:
 
 - top left: TAPE A, PLAY, and where the video is (while it loads, the point it starts from);
-- top middle: the tracking mark, its bars searching;
+- top middle: TV, the deck's output;
 - top right: TAPE B, LOADING blinking, and how long the video is once that is known, the seconds it has been up until then;
 - bottom left: SLP ▶ and the source;
 - bottom right: SLP ◀ and DEST.
