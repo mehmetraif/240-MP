@@ -109,9 +109,9 @@ FocusScope {
 
     VhsCassette {
         id: cassette
-        // On the same 240-line pixel grid as the rest of the on-screen display:
-        // 160×92 at 640×480.
-        pixelSize: root.px
+        // Half as large again as the on-screen display's pixel grid, the size
+        // the owner's drawing has it: 306×141 at 640×480.
+        pixelSize: root.px + Math.floor(root.px / 2)
         ink: root.primaryColor
         x: Math.round((root.sw - width) / 2)
         y: bootRoot.blockY
