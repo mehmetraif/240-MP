@@ -444,14 +444,17 @@ These build jobs run in parallel:
 | `build-macos-arm64` | `macos-15` (Apple Silicon) | `OSD-OS-<tag>-macOS-arm64.dmg` |
 | `build-linux-arm64` | `ubuntu-24.04-arm` (native arm64) | `OSD-OS-<tag>-linux-arm64.tar.gz` |
 | `build-linux-x86_64` | `ubuntu-24.04` | `OSD-OS-linux-x86_64.AppImage` (version-less — self-updates in place) |
+| `build-os-image` | `ubuntu-24.04-arm` (after `build-linux-arm64`) | `OSD-OS-<tag>-raspberry-pi.img.xz` and its `.info` |
 
-macOS job: installs Qt via the Qt CDN, builds, runs `macdeployqt` to embed Qt frameworks (including `libSDL2.dylib`), ad-hoc codesign, package as `.dmg`. mpv is not bundled — users install it via `brew install mpv`.
+macOS job: installs Qt via the Qt CDN, builds, runs `macdeployqt` to embed Qt frameworks (including `libSDL2.dylib`), signs, packages as `.dmg`. With the repository secrets `APPLE_CERT_P12_BASE64`, `APPLE_CERT_PASSWORD`, `APPLE_ID`, `APPLE_APP_PASSWORD` and `APPLE_TEAM_ID` it signs with the Developer ID and notarizes the `.dmg`; without them (a fork) it signs ad hoc, and the release notes say how to open it the first time. mpv is not bundled — users install it via `brew install mpv`.
 
 Linux arm64 job: installs Qt from apt, builds, package as `.tar.gz`. mpv and SDL2 are not bundled — end users install them via `apt install mpv libsdl2-2.0-0` or by running the `install.sh` that is bundled with each release where they are installed as part of the dependency list.
 
 Linux x86_64 job: installs Qt via the Qt CDN, builds the app, builds **mpv 0.40 from source** (`scripts/build-mpv.sh`, against 24.04's stock FFmpeg 6.1 — apt's mpv 0.37 is one release too old for the app's forced-subtitle option, and the savoury1 PPA for a newer one is now gated), then runs `scripts/build-appimage.sh` to bundle Qt, SDL2 **and** that mpv into a self-contained `.AppImage`. Built on `ubuntu-24.04`, which sets a glibc 2.39 floor (a current Steam Deck and modern distros — not Ubuntu 22.04 / Debian 12 / older SteamOS). Nothing to install on the target — it runs on immutable distros like SteamOS.
 
-A final `release` job waits for all three build jobs, then creates a GitHub Release with all artifacts attached (including `install.sh`).
+OS image job: once the arm64 tarball is built, builds the OSD/OS image from it with pi-gen ([os/README.md](os/README.md#building)), as the OS image workflow does, the first user's password from the secret `OS_FIRST_USER_PASS` if there is one (else the account is locked).
+
+A final `release` job waits for all four, then creates a GitHub Release with all artifacts attached (including `install.sh`), and notes written for the tag, their links absolute.
 
 ### Output
 
@@ -461,4 +464,4 @@ Go to **Actions** → select the workflow run → each build job has an **Artifa
 
 **After the workflow completes:**
 
-Go to the repository on GitHub → **Releases** → select the release for the tag you set. All build artifacts (the `.dmg`, both Linux packages, `SHA256SUMS` and `install.sh`) are listed under Assets.
+Go to the repository on GitHub → **Releases** → select the release for the tag you set. All build artifacts (the OSD/OS image and its `.info`, the `.dmg`, both Linux packages, `SHA256SUMS` and `install.sh`) are listed under Assets.

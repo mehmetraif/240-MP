@@ -2,7 +2,9 @@
 
 ## On a Raspberry Pi
 
-The following steps will set up an SD card for your Raspberry Pi with the latest version of OSD/OS (and optionally set it up to autostart after boot).  
+The simplest way is the **OSD/OS image**: download `OSD-OS-<version>-raspberry-pi.img.xz` from the [latest release](https://github.com/mehmetraif/OSD-OS/releases/latest), flash it ([os/README.md](os/README.md#flashing)) and the Pi boots straight into OSD/OS.
+
+The following steps will instead set up an SD card for your Raspberry Pi with the latest version of OSD/OS (and optionally set it up to autostart after boot).  
 
 Steps 1-4 are focused on setting up a new card with Raspberry Pi OS Lite (64-Bit) and include options for writing a config.txt that will output to a CRT or modern TV.  
 
