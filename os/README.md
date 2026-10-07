@@ -2,6 +2,15 @@
 
 A Raspberry Pi OS Lite (64-bit, Trixie) image that boots straight into OSD/OS: flash it, plug the Pi into the TV, and the first thing on screen is the app. It is built with Raspberry Pi's own image builder, [pi-gen](https://github.com/RPi-Distro/pi-gen), so the kernel, firmware, Wi-Fi/Bluetooth drivers and the patched FFmpeg that mpv's Pi 4 HEVC decoding relies on are exactly Raspberry Pi OS's. This directory only adds one stage on top of Raspberry Pi OS Lite.
 
+It is a folder of its own because the image is a build of its own: pi-gen's, not the app's CMake, run by its own workflow (`.github/workflows/os-image.yml`) from the app's release tarball, which it puts on the image as `scripts/install.sh` would.
+
+## What it is built on
+
+- **Raspberry Pi OS Lite (64-bit)**, the system without a desktop that Raspberry Pi makes for its boards. It is based on **Debian 13 "trixie"**: its packages are Debian's, with Raspberry Pi's own from Raspberry Pi's archive on top (the kernel, the firmware, a patched FFmpeg, Widevine and more).
+- **pi-gen**, the tool Raspberry Pi builds Raspberry Pi OS with, at a pinned commit of its `arm64` branch (`PI_GEN_REF` in `build.sh`). Its stages 0 to 2 make Raspberry Pi OS Lite, and `stage-osdos` adds OSD/OS and everything below.
+- The image's release name is **OSD/OS** (`PI_GEN_RELEASE`, written to `/boot/firmware/issue.txt`), not pi-gen's default, which pi-gen keeps for Raspberry Pi's own builds.
+- What it is made of, and under which licences, is in [NOTICE](NOTICE); see [Licences](#licences).
+
 <img src="boot-screen.gif" width="480" alt="The boot screen: a pixel-art VHS cassette whose tape winds from the left reel onto the right one as the progress bar fills, and the list of services coming up">
 
 ## What is different from a manual install
@@ -127,6 +136,15 @@ journalctl -b -u osdos | grep '\[boot\]'
 systemd-analyze critical-chain osdos.service
 systemd-analyze blame
 ```
+
+## Licences
+
+[NOTICE](NOTICE), which the image carries as `/usr/share/doc/osdos/NOTICE`, lists what the image is made of and under which licences:
+
+- OSD/OS itself, under GPL-3.0, with its licence at `/opt/osdos/share/osdos/LICENSE` (and in Settings → About).
+- Raspberry Pi OS's and Debian's packages, each with its own licence in `/usr/share/doc/<package>/copyright`. The list of them, with their versions, is the image's `.info` file, which the workflow publishes with the image. Their source is in the Debian and Raspberry Pi archives, and OSD/OS offers the source of the GPL and LGPL software on an image for three years after it is published.
+- What the stage adds: yt-dlp (public domain), Deno (MIT, its licence in `/usr/local/share/doc/deno/LICENSE.md`, from `stage-osdos/06-youtube/files/deno-LICENSE.md`, which is bumped with `DENO_VERSION`) and Widevine, Google's proprietary module, from Raspberry Pi's archive as Raspberry Pi OS installs it.
+- The notices for the data the modules show (TMDB, Open-Meteo, Wikidata), pi-gen's licence, the Raspberry Pi firmware's licence, which asks to be reproduced with it, and the trademarks: Raspberry Pi is a trademark of Raspberry Pi Ltd, Debian a registered trademark of Software in the Public Interest, Inc., and OSD/OS is endorsed by neither.
 
 ## Notes
 

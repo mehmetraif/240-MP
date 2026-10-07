@@ -126,6 +126,8 @@ head -n1 "${STAGE}/02-system/files/osdos-terminal.service" | grep -q '^\[Unit\]'
     || { echo "error: could not extract osdos-terminal.service from scripts/install.sh" >&2; exit 1; }
 
 cp "${TARBALL}" "${STAGE}/01-app/files/osdos.tar.gz"
+# What the image is made of and under which licences, os/NOTICE.
+cp "${HERE}/NOTICE" "${STAGE}/01-app/files/NOTICE"
 
 # ── pi-gen config ─────────────────────────────────────────────────────────────
 # %q-quoted: pi-gen sources this file, and a password may hold any character.

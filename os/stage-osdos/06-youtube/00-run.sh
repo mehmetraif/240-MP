@@ -13,7 +13,8 @@
 # first (src/util/YtDlpLocator.h), the data directory of the user the app runs
 # as, where that user can replace it.
 YTDLP_URL=https://github.com/yt-dlp/yt-dlp-nightly-builds/releases/latest/download
-# Deno, pinned like pi-gen: bump deliberately.
+# Deno, pinned like pi-gen: bump deliberately, with files/deno-LICENSE.md from
+# the same tag.
 DENO_VERSION=v2.9.7
 DENO_SHA256=c832298b1ad4422481334855f6003e0f54145762c5a134f20a489511d2f65bbf
 
@@ -32,8 +33,11 @@ bsdtar -xf "${DOWNLOADS}/deno.zip" -C "${DOWNLOADS}" deno
 DATA_BIN="/home/${FIRST_USER_NAME}/.local/share/OSD-OS/bin"
 install -d "${ROOTFS_DIR}${DATA_BIN}"
 install -m 755 "${DOWNLOADS}/yt-dlp" "${ROOTFS_DIR}${DATA_BIN}/yt-dlp"
-# On the PATH of the app's service, where yt-dlp looks for it.
+# On the PATH of the app's service, where yt-dlp looks for it, with its
+# licence (MIT, which asks for it to go with every copy): Deno's LICENSE.md at
+# the pinned version, kept in files/.
 install -m 755 "${DOWNLOADS}/deno" "${ROOTFS_DIR}/usr/local/bin/deno"
+install -D -m 644 files/deno-LICENSE.md "${ROOTFS_DIR}/usr/local/share/doc/deno/LICENSE.md"
 
 UNITS="${ROOTFS_DIR}/etc/systemd/system"
 install -m 644 files/osdos-yt-dlp-update.service files/osdos-yt-dlp-update.timer "${UNITS}/"

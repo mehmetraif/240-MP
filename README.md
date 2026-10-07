@@ -435,6 +435,10 @@ OSD/OS is a modified version of [240-MP](https://github.com/anthonycaccese/240-M
 
 You are free to use, study, and modify this code. If you distribute a modified version, you must also distribute it under GPL-3.0 and make the source available.
 
+The OSD/OS image carries Raspberry Pi OS Lite and the software OSD/OS needs alongside it, each under its own licence: [os/NOTICE](os/NOTICE) lists them, and the image has it as `/usr/share/doc/osdos/NOTICE`.
+
+Raspberry Pi is a trademark of Raspberry Pi Ltd, and Debian a registered trademark of Software in the Public Interest, Inc. Netflix, Prime Video, YouTube, Plex, Jellyfin and Emby are their owners' trademarks, named for the services the modules reach. OSD/OS is not affiliated with or endorsed by any of them.
+
 ## 240-MP
 
 OSD/OS grew out of [240-MP](https://github.com/anthonycaccese/240-MP), Anthony Caccese's VCR-style frontend for CRTs. Its own pictures show where it started, before the menus above:
