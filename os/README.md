@@ -22,8 +22,9 @@ Compared with flashing Raspberry Pi OS Lite and running `scripts/install.sh` ([I
 - **YouTube works out of the box.** The image has yt-dlp and Deno, the JavaScript runtime yt-dlp needs to play YouTube's videos ([its EJS notes](https://github.com/yt-dlp/yt-dlp/wiki/EJS)).
   - yt-dlp is its latest nightly build, the channel its own README recommends: YouTube changes often, and a yt-dlp a few weeks old soon stops finding videos.
   - It lives in the app's data directory (`~/.local/share/240-MP/bin/yt-dlp`), where the app looks first, and replaces itself with the newest build two minutes after each boot and once a day (`240mp-yt-dlp-update.timer`). A check is one small request to GitHub. Without a connection within five minutes, it waits for the next run.
+  - ffmpeg comes with them, for the Playlists module's offline playlists: above 360p YouTube sends a video's picture and sound apart, and ffmpeg puts a download back together.
   - They add about 90 MB; build with `MP240_YOUTUBE=0` to leave them out.
-- **Films go on the card.** On the first boot the system keeps 8 GiB of the card, and the rest becomes a partition of its own in exFAT, labelled **240-MP**, which Windows and macOS open too. Local Files opens it. See [Films on the card](#films-on-the-card).
+- **Films go on the card.** On the first boot the system keeps 8 GiB of the card, and the rest becomes a partition of its own in exFAT, labelled **240-MP**, which Windows and macOS open too. Local Files opens it, and offline playlists download into it. See [Films on the card](#films-on-the-card).
 - **Stopping isn't powering off.** `systemctl stop` and `systemctl restart` leave the Pi on. Quit in the app still powers it off, Restart reboots it, and Exit to Terminal still drops to a login shell, as with `install.sh`.
 - **Bluetooth from the app.** The user the app runs as is in the `bluetooth` group, so Settings → Bluetooth can search for and pair a keyboard, gamepad or remote through BlueZ.
   - Bluetooth is unblocked (`rfkill unblock bluetooth`) as bluetoothd starts, so the app's switch is the only one.
@@ -46,7 +47,9 @@ The first boot splits the card: the system keeps 8 GiB (`MP240_ROOT_SIZE`), and 
 1. Quit 240-MP (it powers the Pi off) and take the card out.
 2. In the computer's card reader the card shows up as two drives, **bootfs** and **240-MP**. Copy films onto **240-MP**, in folders if you like.
 3. Windows also offers to format the system's partition, which it can't read. Always say no (**Cancel**): formatting it erases the system.
-4. Put the card back in the Pi. Local Files opens **240-MP** (`/media/240-MP`, read-only on the Pi) until its Media Directory setting names another folder.
+4. Put the card back in the Pi. Local Files opens **240-MP** (`/media/240-MP`) until its Media Directory setting names another folder.
+
+The Pi writes to it too: the Playlists module downloads its offline playlists' videos into a **Playlists** folder there (its Download Folder setting can name another), each video once, flushed to the card as it completes. Switching the Pi off at the wall in the middle of a download can still leave the partition untidy, so it is checked (`fsck.exfat`) at every boot before it is mounted. A card flashed with an earlier image mounts it read-only (`ro` in `/etc/fstab`), where offline playlists' downloads fail with the folder named as the reason: flash the new image, or change `ro` to `rw` (and the last `0` to `2`) on the `/media/240-MP` line.
 
 A card with less than 2 GiB to spare past the system gets no film partition, and the system takes all of it, as Raspberry Pi OS does. The split replaces Raspberry Pi OS's first-boot resize (`raspberrypi-sys-mods`' `resize_early`, overridden in `/etc/initramfs-tools/scripts`), so it happens once, on a freshly flashed card.
 
@@ -89,7 +92,7 @@ The image lands in `os/work/pi-gen/deploy/`. `os/build.sh` fetches pi-gen at a p
 | `FIRST_USER_NAME` | `pi` | The first user; the app runs as this user. |
 | `MP240_DISPLAY` | `hdmi` | Initial display preset: `hdmi`, `crt-ntsc` or `crt-pal`. |
 | `MP240_STREAMING` | `1` | `0` leaves out the Netflix and Prime Video modules' browser (Chromium, Widevine, cage, wtype), which YouTube's sign-in uses too. |
-| `MP240_YOUTUBE` | `1` | `0` leaves out the YouTube module's yt-dlp and Deno; the module then says yt-dlp is missing. |
+| `MP240_YOUTUBE` | `1` | `0` leaves out the YouTube module's yt-dlp, Deno and ffmpeg; the module then says yt-dlp is missing. |
 | `MP240_ROOT_SIZE` | `8` | GiB the system keeps of the card; the rest becomes the film partition on the first boot. `0`: no film partition, the system takes the whole card. |
 | `ENABLE_SSH` | `0` | `1` enables SSH (it then also waits for the app, after mDNS). |
 | `TARGET_HOSTNAME` | `240mp` | |

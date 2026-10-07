@@ -2,6 +2,8 @@
 # Python, with what the packaged yt-dlp depends on for speed: pycryptodome
 # decrypts the cookies of YouTube's sign-in in a fraction of the time yt-dlp's
 # own AES takes on a Pi, requests keeps its connections to YouTube open from
-# one request to the next, and brotli shrinks what YouTube sends. os/build.sh
-# skips all of it with MP240_YOUTUBE=0.
-python3 python3-pycryptodome python3-requests python3-brotli
+# one request to the next, and brotli shrinks what YouTube sends. ffmpeg puts
+# a video's picture and sound back together when the Playlists module
+# downloads one for an offline playlist: above 360p YouTube sends them apart.
+# os/build.sh skips all of it with MP240_YOUTUBE=0.
+python3 python3-pycryptodome python3-requests python3-brotli ffmpeg
