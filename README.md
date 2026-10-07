@@ -24,6 +24,7 @@ On a Raspberry Pi, OSD/OS can also be the whole system. The **OSD/OS** image ([o
 - **A tape loading** while a video starts: VHS noise in the theme's colours and a dubbing deck's display, with where the video is and, once known, how long it is. Settings → Loading Effect turns the noise off.
 - **Hint Bar** and **Help Line** in Settings: the key hints at the foot of every screen and the line about the selected row under a menu, each on or off once the keys are second nature.
 - **About** in Settings: what OSD/OS is, who makes it, what it is made of and under which license, with the license's text to read on the device.
+- **The logo** in a corner of the picture while a video plays, like a channel's: Settings → Channel Logo picks the corner, or none. It is on the About page and on the boot screen's cassette too.
 - **Scaling** for 16:9 pictures on a 4:3 screen: Letterbox, 14:9, Pan & Scan or Anamorphic. Set it for every module, or for one module in its own settings.
 - **Netflix and Prime Video** catalogues from TMDB in the same tree. A title plays in the service's own player.
 - **The OSD/OS image**, a Raspberry Pi OS Lite image that boots straight into OSD/OS and shows a VHS boot screen while its services come up.
@@ -180,7 +181,7 @@ Once signed in, each opens on the server's Continue Watching and its libraries. 
 <table>
 <tr><th width="50%">Settings</th><th width="50%">Modules</th></tr>
 <tr><td><img src="docs/screenshots/settings.png" width="100%" alt="Settings" /></td><td><img src="docs/screenshots/settings-modules.png" width="100%" alt="Modules" /></td></tr>
-<tr><td>Laid out like a camcorder's menu. Transparent Background is a slider, the deck's tape bar, from TRANSPARENT to SOLID. Hint Bar takes the key hints off the foot of every screen, Help Line the box under the menu.</td><td>Each module is turned on and set up from here.</td></tr>
+<tr><td>Laid out like a camcorder's menu. Transparent Background is a slider, the deck's tape bar, from TRANSPARENT to SOLID. Hint Bar takes the key hints off the foot of every screen, Help Line the box under the menu. Channel Logo puts OSD/OS's logo in a corner of the picture while a video plays.</td><td>Each module is turned on and set up from here.</td></tr>
 </table>
 
 <table>
@@ -211,6 +212,12 @@ Once signed in, each opens on the server's Continue Watching and its libraries. 
 <tr><th width="50%">About</th><th width="50%">The license</th></tr>
 <tr><td><img src="docs/screenshots/about.png" width="100%" alt="About" /></td><td><img src="docs/screenshots/license.png" width="100%" alt="The license" /></td></tr>
 <tr><td>What OSD/OS is, who makes it, what it is made of and under which license, each line's detail in the help line.</td><td>Behind the LICENSE line: the notice, then the GNU GPL's text, a page at a time.</td></tr>
+</table>
+
+<table>
+<tr><th width="50%">Channel Logo</th><th width="50%">Under the menus</th></tr>
+<tr><td><img src="docs/screenshots/channel-logo.png" width="100%" alt="Channel Logo" /></td><td><img src="docs/screenshots/channel-logo-menu.png" width="100%" alt="The logo under the menus" /></td></tr>
+<tr><td>OSD/OS's logo in a corner of the picture while a video plays, the way a channel's sits in a broadcast. Settings → Channel Logo picks the corner, or none.</td><td>It is in the picture itself, so with Transparent Background the menus lie over it.</td></tr>
 </table>
 
 ## Video Overview

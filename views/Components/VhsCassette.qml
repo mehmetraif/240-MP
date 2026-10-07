@@ -32,6 +32,11 @@ Item {
     // The one colour drawn; everything else is the background. The host sets
     // it to the theme's text colour.
     property string ink: "#ffffff"
+    // The label reads OSD/OS, as the logo does (OSD, the slash in its three
+    // colours, OS, in the deck's letters and on the grid), in place of its
+    // lines.
+    property bool wordmark: false
+    readonly property var slashColours: ["#ff3d3d", "#2f6bff", "#2fe063"]
 
     // --- Geometry (grid cells, inclusive bounds) ---
     // The clear line that splits the top edge off the rest of the shell.
@@ -116,7 +121,7 @@ Item {
             if (x >= labelX0 && x <= labelX1) {
                 if (cornerCut(x, y, labelX0, labelY0, labelX1, labelY1, 1))
                     return ink
-                if (labelLines.indexOf(y) >= 0 && x >= labelLineX0 && x <= labelLineX1)
+                if (!wordmark && labelLines.indexOf(y) >= 0 && x >= labelLineX0 && x <= labelLineX1)
                     return ink
                 return ""
             }
@@ -195,10 +200,59 @@ Item {
         }
     }
 
+    // The wordmark on the label.
+    Item {
+        visible: cassette.wordmark
+        x: cassette.labelX0 * cassette.pixelSize
+        y: cassette.labelY0 * cassette.pixelSize
+        width: (cassette.labelX1 - cassette.labelX0 + 1) * cassette.pixelSize
+        height: (cassette.labelY1 - cassette.labelY0 + 1) * cassette.pixelSize
+
+        Row {
+            anchors.centerIn: parent
+            spacing: cassette.pixelSize
+
+            Text {
+                id: osd
+                text: "OSD"
+                color: cassette.ink
+                font.family: root.globalFont
+                font.pixelSize: cassette.pixelSize * 7
+            }
+            // The slash: three stripes a cell wide, one cell over for every
+            // two rows, as tall as the capitals and level with them.
+            Canvas {
+                id: slash
+                readonly property int rows: 5
+                readonly property int cols: 3 + Math.floor((rows - 1) / 2)
+                width: cols * cassette.pixelSize
+                height: rows * cassette.pixelSize
+                y: Math.round(osd.y + osd.baselineOffset - osd.font.pixelSize * 800 / 2048 - height / 2)
+                antialiasing: false
+                smooth: false
+                onPaint: {
+                    var ctx = getContext("2d")
+                    ctx.reset()
+                    cassette.paintCells(ctx, cols, rows, function(x, y) {
+                        var i = x - Math.floor((slash.rows - 1 - y) / 2)
+                        return i >= 0 && i < 3 ? cassette.slashColours[i] : ""
+                    })
+                }
+            }
+            Text {
+                text: "OS"
+                color: cassette.ink
+                font.family: root.globalFont
+                font.pixelSize: cassette.pixelSize * 7
+            }
+        }
+    }
+
     function repaintAll() {
         shellCanvas.requestPaint()
         leftWindow.requestPaint()
         rightWindow.requestPaint()
+        slash.requestPaint()
     }
     onPixelSizeChanged: repaintAll()
     onInkChanged: repaintAll()

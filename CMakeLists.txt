@@ -12,6 +12,20 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DQT_NO_DEBUG_OUTPUT")
 # builds report "dev", which disables the in-app self-update download path.
 set(APP_VERSION "dev" CACHE STRING "Release version (CI passes the git tag)")
 
+# The build, for Settings → About: the commit the tree was configured from and
+# the day. CI configures each build afresh; a local build keeps its configure's
+# commit until the next one. A tree without git (a source archive) has the
+# day alone.
+execute_process(COMMAND git -C "${CMAKE_SOURCE_DIR}" rev-parse --short=7 HEAD
+    OUTPUT_VARIABLE APP_COMMIT OUTPUT_STRIP_TRAILING_WHITESPACE
+    RESULT_VARIABLE APP_COMMIT_RESULT ERROR_QUIET)
+string(TIMESTAMP APP_BUILD_DATE "%Y-%m-%d" UTC)
+if(APP_COMMIT_RESULT EQUAL 0 AND NOT APP_COMMIT STREQUAL "")
+    set(APP_BUILD "${APP_COMMIT} ${APP_BUILD_DATE}")
+else()
+    set(APP_BUILD "${APP_BUILD_DATE}")
+endif()
+
 include(GNUInstallDirs)
 
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Quick Qml Network Svg)
@@ -84,7 +98,7 @@ add_executable(240mp
     $<$<BOOL:${APPLE}>:src/util/MacosUtils.mm>
 )
 
-target_compile_definitions(240mp PRIVATE APP_VERSION="${APP_VERSION}")
+target_compile_definitions(240mp PRIVATE APP_VERSION="${APP_VERSION}" APP_BUILD="${APP_BUILD}")
 
 target_link_libraries(240mp PRIVATE
     Qt6::Core

@@ -1,10 +1,10 @@
 import QtQuick
 import Components
 
-// ABOUT, from Settings: what OSD/OS is, who makes it, what it is made of and
-// under which licence, as menu lines whose help line carries each one's
-// detail (it stays whatever Settings' HELP LINE says: these lines are the
-// page). Behind the LICENSE line is the licence itself: the notice the GNU
+// ABOUT, from Settings: the wordmark with its tagline, then what OSD/OS is
+// made of, who makes it and under which licence, as menu lines whose help
+// line carries each one's detail (it stays whatever Settings' HELP LINE says:
+// these lines are the page). Behind the LICENSE line is the licence itself: the notice the GNU
 // GPL asks an interactive program to show (whose copyright, no warranty, the
 // freedom to pass it on, where the licence is), then the licence's text, the
 // LICENSE file every build carries next to the app (appCore.licenseText()),
@@ -27,8 +27,8 @@ FocusScope {
     readonly property string year: "2026"
 
     readonly property var rows: [
-        { key: "app", label: "OSD/OS", value: "Smart TV for CRTs",
-          description: "Version " + root.appVersion
+        { key: "build", label: "Build", value: root.appBuild,
+          description: "Version " + root.appVersion + " • The commit this build was made from, and the day"
                        + " • A retro VHS-style media player for CRT televisions, on a Raspberry Pi or a Mac" },
         { key: "developer", label: "Developer", value: aboutRoot.developer,
           description: "OSD/OS is developed by " + aboutRoot.developer + " • " + aboutRoot.developerUrl },
@@ -71,11 +71,62 @@ FocusScope {
         anchors.leftMargin: root.sw * 0.125 //80
     }
 
+    // The wordmark, as on the logo: the letters in the scheme's colour, the
+    // slash in its own three, and SMART TV FOR CRTS under a rule, in the
+    // deck's own letters so a CRT reads it.
+    Item {
+        id: mark
+        visible: !licensePage.visible
+        x: root.sw * 0.125 //80
+        y: root.sh * 0.2083333 //100
+        width: root.sw * 0.75 //480
+        height: tagline.y + tagline.height
+
+        Image {
+            id: letters
+            anchors.horizontalCenter: parent.horizontalCenter
+            height: root.sh * 0.075 //36
+            width: implicitWidth
+            sourceSize.height: height
+            source: "image://osdicon/" + root.primaryColor.toString().replace("#", "")
+                    + "/" + Qt.resolvedUrl("../assets/images/logo-wordmark.svg")
+        }
+        // The slash over the letters' own, in its colours: the same frame.
+        Image {
+            anchors.fill: letters
+            sourceSize.width: letters.width
+            sourceSize.height: letters.height
+            source: "../assets/images/logo-slash.svg"
+        }
+        Rectangle {
+            id: rule
+            anchors.horizontalCenter: parent.horizontalCenter
+            y: letters.height + root.px * 4
+            width: Math.round(letters.width * 1.15)
+            height: root.px
+            color: root.primaryColor
+            antialiasing: false
+        }
+        Text {
+            id: tagline
+            anchors.horizontalCenter: parent.horizontalCenter
+            y: rule.y + rule.height + root.px * 3
+            text: "SMART TV FOR CRTS"
+            color: root.primaryColor
+            font.family: root.globalFont
+            font.pixelSize: root.sh * 0.0291667 //14
+            font.letterSpacing: root.px * 2
+        }
+    }
+
     MenuList {
         id: list
         model: aboutRoot.rows
         visible: !licensePage.visible
         focus: !licensePage.visible
+        // Under the wordmark: six lines, the rest on ▼.
+        anchors.topMargin: root.sh * 0.3583333 //172
+        height: root.sh * 0.35 //168
 
         delegate: MenuRow {
             width: list.width

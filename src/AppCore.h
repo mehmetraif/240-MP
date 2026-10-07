@@ -1,4 +1,7 @@
 #pragma once
+#ifndef APP_BUILD
+#define APP_BUILD ""
+#endif
 #include <QObject>
 #include <QVariant>
 #include <QVariantList>
@@ -20,10 +23,13 @@ struct ModuleEntry {
 class AppCore : public QObject {
     Q_OBJECT
     Q_PROPERTY(QString appVersion READ appVersion CONSTANT)
+    // The build: the commit it was made from and the day (CMake's APP_BUILD).
+    Q_PROPERTY(QString appBuild READ appBuild CONSTANT)
 public:
     explicit AppCore(const QString &appRoot, const QString &dataRoot, QObject *parent = nullptr);
 
     QString appVersion() const { return QCoreApplication::applicationVersion(); }
+    QString appBuild() const { return QStringLiteral(APP_BUILD); }
 
     // True when launched by the autostart systemd service (which injects MP240_AUTOSTART=1).
     // Gates the quit overlay's "Exit to Terminal" option, which only makes sense on a

@@ -287,6 +287,10 @@ app constants →
 
 The on-screen controls mpv shows during playback are custom Lua scripts in `scripts/` (`mpv-osc.lua` for normal playback, `mpv-osc-ambient.lua` for Ambient Mode), loaded via mpv's `--script=` flag. Options are passed in with `--script-opts=` (e.g. `transcode-offset=<sec>`). The remote's key events reach these scripts through the `keypress` IPC bridge described above.
 
+### The channel logo (`scripts/mpv-logo.lua`)
+
+Settings → **Channel Logo** (`app.video_logo`: `"tl"`, `"tr"` (the default, when unset), `"bl"`, `"br"` or `"off"`) puts OSD/OS's logo in a corner of the picture while a video plays, the way a channel's sits in a broadcast. mpv draws it itself: `sessionArgs()` loads `scripts/mpv-logo.lua` with `logo-corner=<corner>` among the script options, so it is there in both modes (the embedded session takes the same `--script`), and it is in the picture, under whatever the app draws over it (the menus over a video behind them, with Transparent Background). The script redraws `assets/images/logo-bug.svg` as ASS vector shapes (`mp.assdraw`, one event per colour) on `mp.set_osd_ass` at the output's size: 7% of the output's height tall, 10% of the picture's width and height in from the picture's corner (`osd-dimensions`, its margins taken off, so a letterboxed picture's bars stay clear of it), and again whenever the output's size changes. Like every setting mpv is launched with, it applies from the next video.
+
 ### Transparent Background: video inside the app
 
 With Settings → **Transparent Background** (`app.transparent_background`: how solid the menus' ground is over the picture, `0` to `100`, or `Off`, the default), `loadAndPlay()` plays the video inside the app's own window instead of starting an mpv process over it, so the menus can be drawn over the picture. Back from a video then returns to the menus and leaves it playing behind them, the way a deck's menu lies over the tape.
@@ -436,7 +440,7 @@ Settings → **Bluetooth** (`views/Bluetooth.qml`) pairs a Bluetooth keyboard, g
 
 ## About (views/About.qml)
 
-Settings → **About** says what OSD/OS is, who makes it, what it is made of and under which licence, as menu lines (`MenuList`) whose `HelpLine` carries each one's detail: the version, the developer, 240-MP that it is a modified version of, the licence, the source, the fonts and the libraries with their licences. Its help line is set `always`, so it stays when Settings' Help Line is off: these lines are the page.
+Settings → **About** opens on the wordmark, as the logo has it: `assets/images/logo-wordmark.svg` drawn through `OsdIconProvider` in the scheme's colour, with `logo-slash.svg` (the slash alone, in the same frame) over it in its own three colours, and SMART TV FOR CRTS under a rule in the deck's own letters, so a CRT reads it. Under it, what OSD/OS is made of, who makes it and under which licence, as menu lines (`MenuList`) whose `HelpLine` carries each one's detail: the build (`appCore.appBuild`, CMake's `APP_BUILD`: the commit the tree was configured from and the day; the version is in the title bar), the developer, 240-MP that it is a modified version of, the licence, the source, the fonts and the libraries with their licences. Its help line is set `always`, so it stays when Settings' Help Line is off: these lines are the page.
 
 Behind the LICENSE line is the licence itself, below the title bar in place of the lines: the notice the GNU GPL asks an interactive program to show (whose copyright it is, that it comes with no warranty, that it may be passed on under the licence, and where the licence is), then the licence's text, a page at a time with ▲ ▼. The text is `LICENSE` next to the app, which CMake installs with `Main.qml` into every build (the GPL asks that every copy carry it), read through `appCore.licenseText()`, which puts each paragraph on one line for the view to wrap. The developer's name and the year are properties at the top of the view.
 
