@@ -8,12 +8,13 @@
 # card as it completes). A Pi switched off at the wall mid-download can still
 # leave it untidy, so it is checked at boot (fsck.exfat, pass 2) before it is
 # mounted. nofail and the short device timeout keep a boot without it from
-# waiting.
+# waiting. It only ever holds media, and anyone can write it from a computer,
+# so nothing on it can run (noexec, nosuid, nodev).
 
 USER_ID=$(id -u "${FIRST_USER_NAME}")
 GROUP_ID=$(id -g "${FIRST_USER_NAME}")
 chown "${USER_ID}:${GROUP_ID}" /media/240-MP
 
 if ! grep -q '/media/240-MP' /etc/fstab; then
-	echo "LABEL=240-MP  /media/240-MP  exfat  rw,nofail,noatime,uid=${USER_ID},gid=${GROUP_ID},umask=0022,x-systemd.device-timeout=10s  0  2" >> /etc/fstab
+	echo "LABEL=240-MP  /media/240-MP  exfat  rw,noexec,nosuid,nodev,nofail,noatime,uid=${USER_ID},gid=${GROUP_ID},umask=0022,x-systemd.device-timeout=10s  0  2" >> /etc/fstab
 fi
