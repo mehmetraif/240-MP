@@ -4,7 +4,7 @@
 
 240-MP is a retro VCR style frontend to play content on [Raspberry Pi](https://github.com/anthonycaccese/240-MP/wiki/Hardware-Testing) (preferably hooked up to a CRT TV), Steam OS (and other Linux x86_64 distros) or MacOS (ARM). Every screen is drawn like a VCR's on-screen display, in two colours and large type, with menus laid out like a camcorder's. Everything works with the arrows, select and back, on a remote, a keyboard or a gamepad.
 
-Playback experiences are handled via modules to enable new integrations without requiring major changes to the overall frontend. Try to think of each module as a different input on a VHS deck. There are 11 included modules currently: [Local Files](https://github.com/anthonycaccese/240-MP/wiki/Module:-Local-Files), [Plex](https://github.com/anthonycaccese/240-MP/wiki/Module:-Plex), [Jellyfin](https://github.com/anthonycaccese/240-MP/wiki/Module:-Jellyfin), Emby, Netflix, Prime Video, [YouTube](https://github.com/anthonycaccese/240-MP/wiki/Module:-YouTube), [NFC Reader](https://github.com/anthonycaccese/240-MP/wiki/Module:-NFC-Reader), [Weather](https://github.com/anthonycaccese/240-MP/wiki/Module:-Weather), [Scripts](https://github.com/anthonycaccese/240-MP/wiki/Module:-Scripts) and a module similar to art/wallpaper modes on modern tvs called [Ambient:Mode](https://github.com/anthonycaccese/240-MP/wiki/Module:-Ambient-Mode).
+Playback experiences are handled via modules to enable new integrations without requiring major changes to the overall frontend. Try to think of each module as a different input on a VHS deck. There are 12 included modules currently: [Local Files](https://github.com/anthonycaccese/240-MP/wiki/Module:-Local-Files), [Plex](https://github.com/anthonycaccese/240-MP/wiki/Module:-Plex), [Jellyfin](https://github.com/anthonycaccese/240-MP/wiki/Module:-Jellyfin), Emby, Netflix, Prime Video, [YouTube](https://github.com/anthonycaccese/240-MP/wiki/Module:-YouTube), Playlists, [NFC Reader](https://github.com/anthonycaccese/240-MP/wiki/Module:-NFC-Reader), [Weather](https://github.com/anthonycaccese/240-MP/wiki/Module:-Weather), [Scripts](https://github.com/anthonycaccese/240-MP/wiki/Module:-Scripts) and a module similar to art/wallpaper modes on modern tvs called [Ambient:Mode](https://github.com/anthonycaccese/240-MP/wiki/Module:-Ambient-Mode).
 
 It's built to work in conjunction with [MPV](https://github.com/anthonycaccese/240-MP/wiki/MPV) which will be installed (or updated) as a dependency during the [install](#install) steps.  Some modules (like YouTube and NFC Reader) have additional dependencies which are covered on their associated wiki pages under the "To Enable" sections.
 
@@ -15,7 +15,8 @@ On a Raspberry Pi, 240-MP can also be the whole system. The **240-MP OS** image 
 - **One way to browse.** Local Files, Netflix, Prime Video and YouTube open as a horizontal tree. The folders you open run along a line across the screen, and every folder branches out to a few of its entries. Each starts with **Recently Watched**, **Favorites** and **Search**.
 - **Search with the remote**, typed on an on-screen keyboard.
 - **Info screens** for films and videos: the story, genre, director, cast and rating. One comes up when the cursor rests on a title (3 seconds by default), or straight away with ►.
-- **Options** on any entry, with ►: add it to **Favorites**, or have it **Play at Startup**, straight after the boot screen, where it was stopped or from the beginning (Settings → Startup From), without asking.
+- **Options** on any entry, with ►: add it to **Favorites**, have it **Play at Startup**, straight after the boot screen, where it was stopped or from the beginning (Settings → Startup From), without asking, or **Add to Playlist**.
+- **Playlists** from several modules at once: Local Files, YouTube, Jellyfin and Emby videos on one list, played in order (on from where it stopped) or shuffled. An **online** playlist plays each video from where it lives. An **offline** one downloads every video to the device once, whatever lists it is on (on 240-MP OS, into the card's 240-MP partition), and plays without the network.
 - **Transparent Background.** Back from a video returns to the menus while the video keeps playing behind them, like a deck's menu over the tape, and the first row of the main menu takes it back to full screen. A Local Files or YouTube video first opens a menu of its own over the picture: its module's settings for it, Favorites, Browse, and Close Video. A slider from TRANSPARENT to SOLID sets how much of it shows through: at SOLID none, while it plays on, sound and all. Select on the setting turns it off. It needs libmpv (`libmpv2` on Raspberry Pi OS, part of Homebrew's mpv on macOS).
 - **Bluetooth** in Settings: search for a keyboard, gamepad or remote and pair it from the couch. A keyboard's pairing code comes up on screen, to type on it.
 - **A mouse pointer** (a mouse, or a keyboard's touchpad) that shows while the mouse moves and hides again after 5 seconds (Settings → Mouse Pointer).
@@ -84,7 +85,7 @@ Every screen below is the app itself, running at 640×480. The film and YouTube 
 <table>
 <tr><th width="50%">Search results</th><th width="50%">Options</th></tr>
 <tr><td><img src="docs/screenshots/search-results.png" width="100%" alt="Search results" /></td><td><img src="docs/screenshots/options.png" width="100%" alt="Options" /></td></tr>
-<tr><td>Names that match anywhere under the media folder.</td><td>► on any entry: Add to Favorites (or Remove), and Play at Startup.</td></tr>
+<tr><td>Names that match anywhere under the media folder.</td><td>► on any entry: Add to Favorites (or Remove), Play at Startup, and Add to Playlist.</td></tr>
 </table>
 
 ### Playing
@@ -136,6 +137,20 @@ Every screen below is the app itself, running at 640×480. The film and YouTube 
 </table>
 
 Once signed in, each opens on the server's Continue Watching and its libraries. See [Modules](#modules) for everything they do.
+
+### Playlists
+
+<table>
+<tr><th width="50%">Playlists</th><th width="50%">An offline playlist</th></tr>
+<tr><td><img src="docs/screenshots/playlists.png" width="100%" alt="Playlists" /></td><td><img src="docs/screenshots/playlist.png" width="100%" alt="An offline playlist" /></td></tr>
+<tr><td>Online playlists play each video from where it lives; offline ones, from the device, with how many of their videos are on it.</td><td>Each video downloads once, in the background: ready, under way, or why not (a server that doesn't let you download it).</td></tr>
+</table>
+
+<table>
+<tr><th width="50%">Adding videos</th><th width="50%">Add to Playlist</th></tr>
+<tr><td><img src="docs/screenshots/playlist-add.png" width="100%" alt="Adding videos" /></td><td><img src="docs/screenshots/add-to-playlist.png" width="100%" alt="Add to Playlist" /></td></tr>
+<tr><td>Local Files, YouTube, Jellyfin and Emby in one tree, down to a show's episodes. Select adds a video and stays, for the next.</td><td>From a module itself: a video's options (►), or ► on PLAY in Jellyfin and Emby.</td></tr>
+</table>
 
 ### Weather, Ambient:Mode, NFC Reader and Scripts
 
@@ -266,6 +281,15 @@ Photos of an earlier version, before the menus above, on a CRT.
 - Readers are detected automatically; no configuration needed
 - Maps cards to videos via per-card text files in a `nfc_tags` data directory
 - Tapping an unknown card auto-creates a stub tag file for it
+
+### Playlists
+- Lists of videos from Local Files, YouTube, Jellyfin and Emby together, played as one: **In Order**, carrying on from where the list stopped (it asks), or **Shuffle**, in a new order each time. **Play from Here** on a video starts there. mpv's display has ◄ ► for the previous and next video
+- **Online** playlists play each video from where it lives: a file from Local Files, a YouTube video as the YouTube module plays it (its Advanced settings, through yt-dlp), a Jellyfin or Emby item streamed from its server
+- **Offline** playlists play only what is on the device: Local Files' files as they are, and a copy of every other video, downloaded in the background into a **Playlists** folder in Local Files' folder (the **Download Folder** setting can name another). On 240-MP OS that is the card's 240-MP partition. A video is downloaded once, whatever lists it is on, and deleted once no offline list has it
+- YouTube videos download with yt-dlp in the YouTube module's resolution, codec and audio language (ffmpeg puts a video above 360p back together; the 240-MP OS image has it). Jellyfin and Emby items download as their original file, where the server lets the user download (a user without the right shows **Not Allowed**)
+- Add videos from inside the module (**Add Videos**: a tree of Local Files, YouTube, Jellyfin and Emby, with their libraries, shows and seasons), from a video's options in Local Files and YouTube (►, **Add to Playlist**), or with ► on **PLAY** on a Jellyfin or Emby item's page. A list can also be started from there (**New Online Playlist**, **New Offline Playlist**)
+- Back during a video opens its menu: subtitles, looping and Scaling, then Browse Playlists and Close Video. With Transparent Background, the list plays on behind the menus and the main menu's first row takes it back
+- Netflix and Prime Video play in the service's own player, so they can't go on a playlist
 
 ### Plex ([Wiki](https://github.com/anthonycaccese/240-MP/wiki/Module:-Plex))
 - Supported library types: `Movies, TV Shows, Other Videos`

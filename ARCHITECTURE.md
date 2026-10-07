@@ -28,6 +28,8 @@ The guiding idea: **browse structured content, then hand off to the right tool f
         LocalFilesBackend.h/.cpp
       plex/
         PlexBackend.h/.cpp          # good reference backend implementation
+      playlists/
+        PlaylistsBackend.h/.cpp     # lists across modules, their m3u, offline downloads (see Playlists)
       ...
     player/
       MpvController.h/.cpp          # mpv subprocess controller: QProcess launch + IPC socket
@@ -52,7 +54,7 @@ The guiding idea: **browse structured content, then hand off to the right tool f
     ModuleList.qml
     Settings.qml
     ...
-    Components/                     # shared QML components (AppBar, HintBar, MenuRow, HelpLine, ScrollMarks, TreeBrowser, InfoPanel, EntryOptions, PlayerMenu, LoadingScreen, PromptScreen, MousePointer, OnScreenKeyboard, WebPlayerBrowse, WebPlayerLaunch, the Osd* elements, ChoiceOverlay, qmldir)
+    Components/                     # shared QML components (AppBar, HintBar, MenuRow, HelpLine, ScrollMarks, TreeBrowser, InfoPanel, EntryOptions, PlaylistAdder, PlayerMenu, LoadingScreen, PromptScreen, MousePointer, OnScreenKeyboard, WebPlayerBrowse, WebPlayerLaunch, the Osd* elements, ChoiceOverlay, qmldir)
     BootScreen.qml                  # boot screen of the 240-MP OS image (see os/README.md)
   Main.qml                          # app root
   CMakeLists.txt
@@ -363,6 +365,22 @@ An NFC card's tag file can point at content another module owns, rather than at 
 - **Collections and playlists are the exception to the guid rule.** They are server-local, user-created objects with no metadata-agent guid to be portable with, so their cards carry the ratingKey (`plex://collection/<ratingKey>`) and `resolve_card_queue` fetches `/library/collections/<key>/items` or `/playlists/<key>/items` in one request. Such a card breaks only if the set is deleted and recreated. The rows go through `formatItem` + `flattenSeasons` exactly as the in-app loaders do, so `expand_queue` fans shows out identically either way.
 - Shuffle keeps rolling via a **shuffle bag** in `PlexBackend` (`m_shuffleBag`): a shuffled permutation played to exhaustion then reshuffled, rather than independent random draws, which clump badly over the hours a jukebox card runs. `resolve_card` reports the show/season as `cardScope`; the Player's EOF branch calls `load_random_episode(scope)` instead of `load_next_episode(ratingKey)`. Both emit `nextEpisodeReady`, so the advance itself is shared. Continuation respects the module's `autoplay_next_episode` setting.
 
+## Playlists (videos from several modules)
+
+The Playlists module (`modules/playlists`, `PlaylistsBackend`) keeps lists of videos that other modules own, and plays a list as one. It is the one module that reaches into others: `main.cpp` hands its backend Local Files', YouTube's, Jellyfin's and Emby's.
+
+**Two kinds.** An **online** playlist plays each video from where it lives: a Local Files path, a YouTube watch URL that mpv's ytdl hook opens with the YouTube module's ways (`YouTubeBackend::playbackArgs`, its ADVANCED settings, yt-dlp's path), a Jellyfin or Emby stream (`/Videos/{id}/stream?static=true`, the token in the query, so in a list mixing sources it goes to that server and nowhere else). An **offline** playlist plays only what is on the device: Local Files' files as they are, and for everything else a copy, downloaded once.
+
+**Storage.** `<data>/playlists.json`: the playlists (`id`, `name`, `kind`, `order`, `items`, and `resume`, where it stopped) and `downloads`, by key. An item's **key** names the video whatever list it is on: `local:<path>`, `youtube:<videoId>`, `jellyfin:<itemId>`, `emby:<itemId>`. `addEntry(playlistId, moduleId, entry)` turns an entry as its module has it (a tree's entry, a server's item) into an item (`itemFor`), and refuses a second of the same key on a list.
+
+**Downloads.** Every offline list's videos share one copy per key, in the download folder (the module's `download_folder` setting, else a `Playlists` folder in Local Files' media folder: on 240-MP OS, the card's 240-MP partition, mounted writable for it), under `YouTube/`, `Jellyfin/`, `Emby/`. One runs at a time: queued as a video goes on an offline list, and 15 s after start for any still missing. `enqueue()` never queues a key already downloaded, so a video on several lists is fetched once; `dropUnreferenced()` deletes a copy as soon as no offline list has it (an item removed, a list deleted). YouTube's run yt-dlp (`YouTubeBackend::downloadArgs`: the module's format and the account's cookies; `--merge-output-format mp4` with ffmpeg, the best progressive file without; `--windows-filenames` for exFAT; `--print after_move:filepath` names the file). Jellyfin's and Emby's fetch `/Items/{id}/Download`, the original file, which a server allows a user or not: 401/403 is `not allowed`, kept until **Retry Downloads**. A finished file is `fsync`ed, with its folder, before it counts as done. A download that fails says why (the page's help line), and an unwritable folder fails it at once, naming the folder (a card from before the partition was writable).
+
+**Playing.** `prepare(playlistId, fromItemId)` writes what plays into an m3u in `<data>/playlists/`, a new file each time (owner-only: it may hold a token) and the last one only, in the order it plays: a shuffled list is shuffled there rather than by mpv, so a place in the m3u always names a video (`savePosition` keeps the item, not the place), and **Play from Here** puts that video first. What can't play (a file gone, a server signed out of, a download not done) is left out. The player hands the m3u to `loadAndPlay` with its own SUBTITLES and LOOP PLAYBACK; an in-order list asks to resume where it stopped, and forgets that once it has played out (`eof`). It notes its session (`noteSession`, `menu: true`) with everything it was started with, so chosen again from the main menu while it plays behind the menus it starts the same way and MpvController carries it on; a list played afresh has a new m3u, so it never passes for the one behind.
+
+**Adding videos.** From inside the module, ADD VIDEOS is a `TreeBrowser` over the sources: Local Files (its lists and folders), YouTube (its lists, home and SEARCH, from `youtubeBackend.listing()`), Jellyfin and Emby (`serverListing(moduleId, parentId)`: the backend's own requests through each backend's `browseRequest()`, so it never shares their views' signals). From the modules, a `PlaylistAdder`: EntryOptions' ADD TO PLAYLIST, and Right on PLAY on Jellyfin's and Emby's item pages.
+
+**Another module** joins with a key prefix (`keyPrefix`), its entry's id and title (`itemFor`), what plays (`playableUrl`) and, to go on offline lists, a download (`startNext`). Netflix and Prime Video can't: they play in the service's own player.
+
 ## Input (InputManager)
 
 All input arrives in QML as **ordinary key events** — views bind `Keys.onPressed` / `Keys.onUpPressed` / etc. and never know which physical device produced the event. Keyboards and keyboard-emulating USB remotes deliver real key events natively; **USB game controllers** are translated by `InputManager` (`src/input/InputManager.h/.cpp`, exposed to QML as the context property **`inputManager`**).
@@ -629,6 +647,7 @@ A question or a notice, full screen, in the window every view has: the question 
 | `message` | `string` | Under the bar: what it is about (the video, the device), or a notice's details. Wraps |
 | `choices` | `var` | The answers: labels, or maps with a `label` (`{ label, action }`) |
 | `currentIndex` | `int` | The answer under the cursor |
+| `maxChoices` | `int` | More answers than this (5) show a window of them that follows the cursor, with ▲ / ▼ while some are hidden above or below it (`PlaylistAdder`'s playlists) |
 | `hint` | `string` | The hint line |
 
 It only draws: the host keeps its keys, its cursor and its visibility, so a dialog becomes one by swapping its drawing for it. Items declared inside it go between the message and the answers, centring themselves across its width (the pairing code in `BluetoothPrompt`). Every question and notice in the app is one: the players' resume prompts and error screens, Settings' quit, the update's install, the script's run, a new button for Controls, Bluetooth pairing, and `ChoiceOverlay` (so `EntryOptions` and the Plex PLAY chooser) too.
@@ -646,7 +665,7 @@ Pixel-drawn pieces of a deck's on-screen menu, built on `root.px` (one pixel of 
 | Component | What it draws |
 |---|---|
 | `HintBar` | The footer hint line on a solid bar. It is a `Text`, so a view sets `text` and anchors exactly as on one. It owns its font size, steps it down only as far as a long hint needs to fit the safe width. Every view's footer and every dialog's hint line uses it, always in the same place: anchored to the bottom, `bottomMargin: root.sh * 0.1041667`, `leftMargin: root.sw * 0.125`, never under a dialog's last line (a `PromptScreen` does this for a dialog). |
-| `MenuRow` | A settings line the way a camcorder's menu lays one out, `DISPLAY······ON`: `label`, a dot per character cell, then `value` against the line's right end (none for a submenu), with `selected` as a solid bar. With `heading` it heads a group instead: the label and a rule to the line's end (`MODULES ─────`). Settings, every module's settings and Controls use it. |
+| `MenuRow` | A settings line the way a camcorder's menu lays one out, `DISPLAY······ON`: `label`, a dot per character cell, then `value` against the line's right end (none for a submenu), with `selected` as a solid bar. With `heading` it heads a group instead: the label and a rule to the line's end (`MODULES ─────`). A value too long for the line is cut short; with `keepValue` the label is instead, two dots before a value that always shows whole (a playlist's videos, `TEEN TITANS GO!… ··READY`). Settings, every module's settings, Controls and the Playlists module use it. |
 | `ScrollMarks` | The ▲ above a list while lines are hidden above it and the ▼ below while lines are hidden below. Laid over a list (`anchors.fill` and `list`); the main menu and the settings menus use it. |
 | `HelpLine` | The help line under a settings menu: the focused line's description in an outlined box, on one line. A description too long for the box scrolls through it like a ticker; one written as several lines reads as one, joined with `•`. |
 | `Dither` | A checkerboard of background-colour art pixels laid over an area: the two-colour way to dim it. |
@@ -706,7 +725,11 @@ Call `open()` to show it. It emits `activated(action)` when the user picks one a
 
 ### EntryOptions (`views/Components/EntryOptions.qml`)
 
-An entry's options, as a `ChoiceOverlay`: **Add to Favorites** or **Remove from Favorites** (the module's `favorites` list, `moduleId`), **Play at Startup** or **Don't Play at Startup** (see above), then whatever the host adds in `moreChoices` and acts on in its own `onActivated` (YouTube's **Save to Watch Later**). A tree view opens it with `offer(entry)` on Right on an entry (`optionsRequested`, from the tree or its `InfoPanel`), and refreshes its FAVORITES folder on `favoritesEdited()`.
+An entry's options, as a `ChoiceOverlay`: **Add to Favorites** or **Remove from Favorites** (the module's `favorites` list, `moduleId`), **Play at Startup** or **Don't Play at Startup** (see above), **Add to Playlist** where the Playlists module takes the module's videos (a `PlaylistAdder` of its own, over the host's view: the options are closed by the time it opens, and it emits their `closed()` again as it closes, so the host's focus restore runs then too), then whatever the host adds in `moreChoices` and acts on in its own `onActivated` (YouTube's **Save to Watch Later**). A tree view opens it with `offer(entry)` on Right on an entry (`optionsRequested`, from the tree or its `InfoPanel`), and refreshes its FAVORITES folder on `favoritesEdited()`.
+
+### PlaylistAdder (`views/Components/PlaylistAdder.qml`)
+
+Putting a video on one of the app's playlists, as a `PromptScreen`: **Add to playlist?**, the video under it, then every playlist that takes the module's videos (an offline one marked so), **New Online Playlist** and **New Offline Playlist** (named on its own `OnScreenKeyboard`). What became of the video (added, already on it, can't go on one) shows in the same window as a notice, until Back or Select closes it (`closed()`). `available(moduleId)` says whether to offer it at all (the Playlists module on, and taking the module's videos); `offer(moduleId, entry)` opens it, the entry being the video as its module has it (see [Playlists](#playlists-videos-from-several-modules)). A window over its host, its keys stop there (Ctrl+Q aside). `EntryOptions` carries one; Jellyfin's and Emby's item pages open theirs with Right on PLAY.
 
 ### PlayerMenu (`views/Components/PlayerMenu.qml`)
 
