@@ -113,15 +113,28 @@ Window {
     // pixel-drawn OSD elements (Components/Osd*, PixelIcon) are built on.
     readonly property int px: Math.max(1, Math.floor(sh / 240))
 
-    // OSD BACKGROUND's window: the area the views lay their content out in
-    // (74 to 566 across and 57 to 430 down, of 640×480: the title bar's logo
-    // to the hint bar), with 12 more on every side, on art pixels.
+    // The area the views lay their content out in: the title bar's logo to
+    // the hint bar (74 to 566 across and 57 to 430 down, of 640×480).
+    readonly property rect contentBox: Qt.rect(sw * 0.115625, sh * 0.11875, sw * 0.76875, sh * 0.7770833)
+    // OSD BACKGROUND's window: the content box with a margin on every side,
+    // on art pixels.
+    readonly property real osdMargin: sh * 0.025 //12
     readonly property rect osdWindow: {
-        var left = snapPx(sw * 0.096875), right = snapPx(sw * 0.903125)
-        var top = snapPx(sh * 0.09375), bottom = snapPx(sh * 0.9208333)
+        var left = snapPx(contentBox.x - osdMargin), right = snapPx(contentBox.x + contentBox.width + osdMargin)
+        var top = snapPx(contentBox.y - osdMargin), bottom = snapPx(contentBox.y + contentBox.height + osdMargin)
         return Qt.rect(left, top, right - left, bottom - top)
     }
     function snapPx(v) { return Math.round(v / px) * px }
+
+    // A time as the players show it: h:mm:ss, or m:ss under an hour.
+    function formatTime(ms) {
+        var s = Math.floor(ms / 1000)
+        var h = Math.floor(s / 3600)
+        var m = Math.floor((s % 3600) / 60)
+        var sec = s % 60
+        return (h > 0 ? h + ":" + pad(m) : m) + ":" + pad(sec)
+    }
+    function pad(n) { return n < 10 ? "0" + n : "" + n }
 
     // The lighter of two colours, by how bright the eye finds them.
     function lighterOf(a, b) {
@@ -321,12 +334,6 @@ Window {
             root.dismissScreenSaver()
         }
         function onVideoActiveChanged() {
-            idleTracker.mpvActive = mpvController.videoActive
-            idleTracker.resetActivity()
-        }
-        // A player's menu where its mpv process ended for it: nothing plays
-        // under it (over a video inside the window, it still does).
-        function onPlayerMenuRequested() {
             idleTracker.mpvActive = mpvController.videoActive
             idleTracker.resetActivity()
         }

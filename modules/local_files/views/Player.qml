@@ -130,14 +130,21 @@ FocusScope {
             }
         } else if (action === "browse") {
             // As back always did: saved where it is, then the module's tree,
-            // the video playing on behind it.
+            // the video playing on behind it. Ended for the menu (an mpv
+            // process has the screen), it is saved already.
             playerMenu.close()
-            mpvController.leavePlayerMenu()
+            if (mpvController.videoActive)
+                mpvController.leavePlayerMenu()
+            else
+                goBack()
             return
         } else if (action === "close") {
             closeToMainMenu = true
             playerMenu.close()
-            mpvController.stop()
+            if (mpvController.videoActive)
+                mpvController.stop()
+            else
+                moduleRoot.goBack()
             return
         }
         playerMenu.actions = menuActions()
@@ -255,6 +262,13 @@ FocusScope {
                 else if (pos > 5000)
                     localFilesBackend.savePosition(filePath, pos, -1)
             }
+            // Back during an mpv process, which has the screen while it
+            // plays: the video ended for this menu, and starts again where
+            // it was as the menu closes (backToVideo).
+            if (reason === "menu") {
+                openMenu()
+                return
+            }
             playerMenu.close()
             // CLOSE VIDEO leaves the module for the main menu.
             if (closeToMainMenu)
@@ -326,8 +340,8 @@ FocusScope {
         var opts = []
         if (savedPos > 0) {
             opts.push({ label: savedPl >= 0
-                            ? "Resume video " + (savedPl + 1) + " at " + formatTime(savedPos)
-                            : "Resume from " + formatTime(savedPos),
+                            ? "Resume video " + (savedPl + 1) + " at " + root.formatTime(savedPos)
+                            : "Resume from " + root.formatTime(savedPos),
                         startMs: savedPos, plPos: savedPl, shuffle: false })
             if (resumeSetting === "ask")
                 opts.push({ label: "Start from the beginning", startMs: 0, plPos: -1, shuffle: false })
@@ -346,24 +360,9 @@ FocusScope {
         }
     }
 
-    // Starting mpv runs synchronously and, on the Pi, switches VT at once
-    // (suspending Qt's render thread) before the loading screen can paint:
-    // the launch waits a tick so that it is drawn first, as YouTube's does.
-    Timer {
-        id: startTimer
-        interval: 50
-        property var pending: ({})
-        onTriggered: playerRoot.launch(pending.startMs, pending.plPos, pending.shuffle)
-    }
-
     function play(startMs, plPos, shuffle) {
         playbackStarted = false
         lastStartMs = startMs
-        startTimer.pending = { startMs: startMs, plPos: plPos, shuffle: shuffle }
-        startTimer.restart()
-    }
-
-    function launch(startMs, plPos, shuffle) {
         mpvController.loadAndPlay(filePath, startMs > 0 ? startMs / 1000.0 : 0.0, 0, subFlag, [], subtitleLangs, loopOn, plPos, 0.0, "", false, "", shuffle, [], imageDurationSec, imageContent)
         // How the main menu takes it back once it plays behind the menus, and
         // how it was started, which taking it back repeats.
@@ -414,7 +413,6 @@ FocusScope {
         message: itemTitle.replace(/\.[^.\/]+$/, "")
         choices: playerRoot.choices
         currentIndex: choiceIndex
-        hint: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE " + root.hints.select + ":SELECT"
     }
 
     function isPlaylist(path) {
@@ -425,15 +423,4 @@ FocusScope {
         return localFilesBackend.isImage(path)
     }
 
-    function formatTime(ms) {
-        var s   = Math.floor(ms / 1000)
-        var h   = Math.floor(s / 3600)
-        var m   = Math.floor((s % 3600) / 60)
-        var sec = s % 60
-        if (h > 0)
-            return h + ":" + pad(m) + ":" + pad(sec)
-        return m + ":" + pad(sec)
-    }
-
-    function pad(n) { return n < 10 ? "0" + n : "" + n }
 }

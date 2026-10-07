@@ -204,23 +204,9 @@ FocusScope {
         return { urls: allSubUrls, track: subTrack }
     }
 
-    // Starting mpv runs synchronously and, on the Pi, immediately switches VT
-    // (suspending Qt's render thread) before the LOADING frame can paint. Defer
-    // the launch one tick so the loading indicator is rendered first — mirroring
-    // the async transcode path, which already yields to the event loop. Without
-    // this, RESUME/direct-play show no loading screen on the Pi.
-    Timer {
-        id: startTimer
-        interval: 50
-        repeat: false
-        property int pendingOffset: 0
-        onTriggered: doStartPlayback(pendingOffset)
-    }
-
     function beginPlayback(offsetMs) {
         lastStartMs = offsetMs
-        startTimer.pendingOffset = offsetMs
-        startTimer.restart()
+        doStartPlayback(offsetMs)
     }
 
     function doStartPlayback(offsetMs) {
@@ -241,16 +227,6 @@ FocusScope {
         // Transcode already starts at 0, so both paths simply play from the start.
         // Use beginPlayback so the loading indicator shows while mpv spins up.
         beginPlayback(0)
-    }
-
-    function formatTime(ms) {
-        var s = Math.floor(ms / 1000)
-        var h = Math.floor(s / 3600)
-        var m = Math.floor((s % 3600) / 60)
-        var sec = s % 60
-        if (h > 0)
-            return h + ":" + (m < 10 ? "0" : "") + m + ":" + (sec < 10 ? "0" : "") + sec
-        return m + ":" + (sec < 10 ? "0" : "") + sec
     }
 
     Connections {
@@ -484,10 +460,9 @@ FocusScope {
         title: "Resume playback?"
         message: itemTitle
         choices: [
-            "Resume from " + formatTime(viewOffset),
+            "Resume from " + root.formatTime(viewOffset),
             "Start from the beginning"
         ]
         currentIndex: choiceIndex
-        hint: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE " + root.hints.select + ":SELECT"
     }
 }

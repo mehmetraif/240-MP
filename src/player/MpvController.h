@@ -92,26 +92,34 @@ public:
     // back to full screen once it plays behind the menus, as
     // { module, title, params }, params being the player view's navParams.
     // Choosing the main menu's row for it opens the module's player with
-    // them, which then calls loadAndPlay() as before and so reattaches. Every
-    // loadAndPlay() clears it, so a player that notes nothing leaves no row.
+    // them, which takes the session back (takeBack), or calls loadAndPlay()
+    // with its very command line, which does the same. Every loadAndPlay()
+    // clears it, so a player that notes nothing leaves no row.
     Q_INVOKABLE void noteSession(const QVariantMap &note);
     QVariantMap backgroundNote() const { return m_background ? m_sessionNote : QVariantMap(); }
+    // The session behind the menus, full screen again where it is, for the
+    // player it belongs to (backgroundNote says whose it is): false when
+    // there is none, and the player starts its video as it would any.
+    // startSeconds is the player's resume point, which reattach() weighs.
+    Q_INVOKABLE bool takeBack(float startSeconds);
     // A player with a playback menu of its own says so in its note (menu:
-    // true): back then has it open the menu (playerMenuRequested), the
-    // session staying its player's, where any other player takes back as
-    // stopped and goes back to its menus. Played inside the window
-    // (Transparent Background), the video goes on under the menu. Played by
-    // an mpv process, which has the screen while it plays, it ends for the
-    // menu (backFromProcess), nothing playing under it: videoActive is false,
-    // and the player starts it again where it was as the menu closes. Its end
-    // still comes as playbackEnded, while the menu is open too.
-    // closePlayerMenu() takes the picture back to full screen;
+    // true): back then has it open the menu, the session staying its
+    // player's, where any other player takes back as stopped and goes back
+    // to its menus. Played inside the window (Transparent Background), the
+    // video goes on under the menu: playerMenuRequested() opens it,
+    // closePlayerMenu() takes the picture back to full screen, and
     // leavePlayerMenu() does what back always did, for the menu's way to its
     // module's browser: playbackEnded "stopped", the video playing on behind.
+    // Played by an mpv process, which has the screen while it plays, the
+    // video ends for the menu (backFromProcess): playbackEnded with reason
+    // "menu", nothing playing under it, and the player starts it again where
+    // it was as the menu closes.
     Q_INVOKABLE void closePlayerMenu();
     Q_INVOKABLE void leavePlayerMenu();
     // Sets a property of the session that plays, for a setting changed while
-    // it plays: speed, panscan, loop-playlist and the like.
+    // it plays: speed, panscan, loop-playlist and the like. Without a session
+    // (a player's menu where its process ended) it does nothing: the next
+    // one starts with the setting.
     Q_INVOKABLE void setVideoProperty(const QString &name, const QVariant &value);
     // The embedded session's newest picture, and the size to draw it at
     // (VideoSurface).
@@ -136,6 +144,9 @@ signals:
     //               crash/kill with no end-file event).
     //   "failed"  — mpv exited with an error (code 2 — file could not be played;
     //               Up to the module as to when/how to use; for example Plex retries when transcoding).
+    //   "menu"    — the process ended for its player's menu (back, for a player
+    //               whose note says menu: true, see closePlayerMenu): the player
+    //               opens it, and starts the video again where it was as it closes.
     // A single signal (rather than one per reason) is deliberate: a Player view
     // connects one handler and branches on `reason`, so it can never silently drop
     // a case the way an unhandled per-reason signal would.
@@ -165,14 +176,16 @@ private:
     enum class VideoProfile { Pi3, Pi4, PiFullKms, Generic };
 
     void sendCommand(const QJsonArray &args);
-    // The mpv command line for a session, up to how its picture is shown.
+    // The mpv options for a session, up to how its picture is shown; what
+    // plays comes after them, behind a "--".
     QStringList sessionArgs(const QString &url, float startSeconds, int audioTrack, int subTrack,
                             const QStringList &subFiles, const QStringList &subLangs, bool loop,
                             int playlistStart, float transcodeOffsetSec, const QString &plexToken,
                             bool muteAudio, const QString &oscMode, bool shuffle,
                             const QStringList &subTitles, float imageDurationSec, bool imageContent,
-                            const QStringList &extraArgs, const QString &jellyfinToken,
-                            const QStringList &extraUrls, bool embedded);
+                            const QStringList &extraArgs, const QString &jellyfinToken, bool embedded);
+    // An mpv process for a session: args its options, media what plays.
+    void startProcess(QStringList args, const QStringList &media);
     // Transparent Background is on, and libmpv is there to play inside the app.
     bool transparentBackground() const;
     // The decode flags for a session played inside the app: the hardware
@@ -223,14 +236,15 @@ private:
     // The embedded session's command line, to know it when it is asked for again.
     QStringList     m_sessionArgs;
     QVariantMap     m_sessionNote;
-    // Back has its player's menu open over the picture (see closePlayerMenu),
-    // or where its process ended for it (m_playerMenu without videoActive()).
+    // Back has its player's menu open over the picture (see closePlayerMenu).
     bool            m_playerMenu   = false;
-    // The process is quitting for its player's menu (backFromProcess)...
+    // The process is quitting for its player's menu (backFromProcess).
     bool            m_menuOnExit   = false;
-    // ...and where it had got to then, for the menu's way out.
-    int             m_menuPositionMs = 0;
-    int             m_menuDurationMs = 0;
+    // loadAndPlay() starts its session a tick later (see there): the
+    // session asked for last, and whether one is on its way, starting where.
+    int             m_launchSerial = 0;
+    bool            m_launchPending = false;
+    int             m_pendingStartMs = 0;
     QSize           m_videoTargetSize { 640, 480 };
     QString         m_embeddedInputConfPath;
     DisplayHandoff *m_handoff      = nullptr;

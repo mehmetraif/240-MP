@@ -23,11 +23,10 @@ FocusScope {
     readonly property string fromItemId: navParams.fromItemId || ""
     property var playlist: ({})
 
-    // How the list is started, every time the same within a session, so that
-    // chosen again while it plays behind the menus it carries on there
-    // (MpvController only does when it is started just as it was): { file,
-    // loop, extraArgs, subTrack, subLangs, imageSec, images }.
-    property var launchSpec: ({})
+    // What the backend wrote for the list to play from (prepare()): { file,
+    // count, youtube, images, startIndex, resumeIndex, resumeMs }. The same
+    // m3u for every start within a session, so the same order.
+    property var prepared: ({})
 
     property bool   overlayVisible:  false
     property int    choiceIndex:     0
@@ -58,9 +57,9 @@ FocusScope {
         return (value === undefined || value === null || value === "") ? fallback : value
     }
 
-    // The launch for what prepare() wrote: the module's SUBTITLES and LOOP
-    // PLAYBACK, the YouTube module's ways for its videos, Local Files' IMAGE
-    // DURATION for a still image.
+    // The launch for what prepare() wrote, with the settings as they are
+    // now: the module's SUBTITLES and LOOP PLAYBACK, the YouTube module's
+    // ways for its videos, Local Files' IMAGE DURATION for a still image.
     function specFor(prepared) {
         var loop = setting(moduleRoot.moduleId, "loop_playback", false)
         var subtitles = setting(moduleRoot.moduleId, "subtitles", "Forced Only")
@@ -69,18 +68,13 @@ FocusScope {
                      extraArgs: [], subTrack: subtitles === "On" ? 0 : subtitles === "Off" ? -2 : -1,
                      subLangs: [], imageSec: 0.0, images: !!prepared.images }
         if (prepared.youtube && typeof youtubeBackend !== "undefined" && youtubeBackend) {
-            var yt = "com.240mp.youtube"
-            spec.extraArgs = youtubeBackend.playbackArgs({
-                resolution: setting(yt, "playback_resolution", "480p"),
-                codec: setting(yt, "video_codec", "H.264"),
-                maxFrameRate: setting(yt, "max_frame_rate", "Any"),
-                audioLanguage: setting(yt, "audio_language", "original"),
-                // Fetched only to be shown.
-                subtitles: subtitles === "On" ? "On" : "Off",
-                subtitleLanguage: setting(yt, "subtitle_language", "en"),
-                // A speed for YouTube's videos alone; the list's others play as they are.
-                speed: "1x"
-            })
+            // The YouTube module's ADVANCED settings, but for its speed: the
+            // list's other videos play as they are, so its do too. Its
+            // subtitles are fetched only to be shown.
+            var yt = youtubeBackend.playbackSettings()
+            yt.subtitles = subtitles === "On" ? "On" : "Off"
+            yt.speed = "1x"
+            spec.extraArgs = youtubeBackend.playbackArgs(yt)
         }
         if (spec.images) {
             var seconds = parseFloat(setting("com.240mp.local_files", "image_duration", "5"))
@@ -102,17 +96,22 @@ FocusScope {
         }
         playlist = playlistsBackend.playlist(playlistId)
 
-        // This list, still playing behind the menus: on full screen where it
-        // is, without asking, started as it was so that it is the same session.
+        // This list, still playing behind the menus: full screen where it
+        // is, without asking, the same session going on.
         var note = root.behindNote
         if (fromItemId === "" && note.module === moduleRoot.moduleId && note.params
-                && note.params.playlistId === playlistId && note.params.launch) {
-            launchSpec = note.params.launch
-            play(playlistsBackend.savedPositionMs(playlistId), note.params.launch.plPos)
-            return
+                && note.params.playlistId === playlistId && note.params.prepared) {
+            var resumeMs = playlistsBackend.savedPositionMs(playlistId)
+            if (mpvController.takeBack(resumeMs / 1000.0)) {
+                prepared = note.params.prepared
+                startedAt = note.params.plPos
+                lastStartMs = resumeMs
+                playbackStarted = true
+                return
+            }
         }
 
-        var prepared = playlistsBackend.prepare(playlistId, fromItemId)
+        prepared = playlistsBackend.prepare(playlistId, fromItemId)
         if (!prepared.file || prepared.count === 0) {
             var items = playlist.items || []
             showError("Nothing to play",
@@ -121,12 +120,11 @@ FocusScope {
                       : "None of its videos can be reached", false)
             return
         }
-        launchSpec = specFor(prepared)
 
         if (prepared.startIndex >= 0) {
             play(0, prepared.startIndex)
         } else if (prepared.resumeIndex > 0 || prepared.resumeMs > 0) {
-            choices = [{ label: "Resume video " + (prepared.resumeIndex + 1) + " at " + formatTime(prepared.resumeMs),
+            choices = [{ label: "Resume video " + (prepared.resumeIndex + 1) + " at " + root.formatTime(prepared.resumeMs),
                          startMs: prepared.resumeMs, plPos: prepared.resumeIndex },
                        { label: "Start from the beginning", startMs: 0, plPos: -1 }]
             choiceIndex = 0
@@ -136,33 +134,17 @@ FocusScope {
         }
     }
 
-    // Starting mpv runs synchronously and, on the Pi, switches VT at once
-    // (suspending Qt's render thread) before the loading screen can paint:
-    // the launch waits a tick so that it is drawn first.
-    Timer {
-        id: startTimer
-        interval: 50
-        property var pending: ({})
-        onTriggered: playerRoot.launch(pending.startMs, pending.plPos)
-    }
-
     function play(startMs, plPos) {
         playbackStarted = false
         lastStartMs = startMs
-        startTimer.pending = { startMs: startMs, plPos: plPos }
-        startTimer.restart()
-    }
-
-    function launch(startMs, plPos) {
-        var spec = launchSpec
         startedAt = plPos
+        var spec = specFor(prepared)
         mpvController.loadAndPlay(spec.file, startMs > 0 ? startMs / 1000.0 : 0.0, 0, spec.subTrack, [],
                                   spec.subLangs, spec.loop, plPos, 0.0, "", false, "", false, [],
                                   spec.imageSec, spec.images, spec.extraArgs)
         // How the main menu takes it back once it plays behind the menus.
         mpvController.noteSession({ module: moduleRoot.moduleId, title: playlist.name || "",
-                                    params: { playlistId: playlistId,
-                                              launch: Object.assign({}, spec, { plPos: plPos }) },
+                                    params: { playlistId: playlistId, prepared: prepared, plPos: plPos },
                                     menu: true })
         // A still image never moves mpv's clock, so no first position would
         // end the loading screen.
@@ -186,13 +168,20 @@ FocusScope {
     function menuAction(action) {
         if (action === "browse") {
             // As back always did: where it is saved, then the list's page,
-            // the video playing on behind it.
+            // the video playing on behind it. Ended for the menu (an mpv
+            // process has the screen), it is saved already.
             playerMenu.close()
-            mpvController.leavePlayerMenu()
+            if (mpvController.videoActive)
+                mpvController.leavePlayerMenu()
+            else
+                goBack()
         } else if (action === "close") {
             closeToMainMenu = true
             playerMenu.close()
-            mpvController.stop()
+            if (mpvController.videoActive)
+                mpvController.stop()
+            else
+                moduleRoot.goBack()
         }
     }
     // Back in the menu: the video full screen again, or started again where
@@ -206,9 +195,6 @@ FocusScope {
         mpvController.closePlayerMenu()
         if (ended || reloadOnClose) {
             reloadOnClose = false
-            var spec = specFor({ file: launchSpec.file, youtube: launchSpec.extraArgs.length > 0,
-                                 images: launchSpec.images })
-            launchSpec = spec
             play(lastKnownPositionMs, lastKnownPlaylistPos >= 0 ? lastKnownPlaylistPos : startedAt)
         }
     }
@@ -279,7 +265,7 @@ FocusScope {
             if (reason === "failed" && !playerRoot.playbackStarted) {
                 playerMenu.close()
                 playerRoot.showError("Playback failed",
-                                     launchSpec.extraArgs && launchSpec.extraArgs.length > 0
+                                     prepared.youtube
                                      ? "Its YouTube videos need yt-dlp, up to date, and the network"
                                      : "None of its videos would play", true)
                 return
@@ -290,6 +276,13 @@ FocusScope {
                 var plPos = playerRoot.lastKnownPlaylistPos >= 0 ? playerRoot.lastKnownPlaylistPos
                                                                  : Math.max(0, playerRoot.startedAt)
                 playlistsBackend.savePosition(playlistId, plPos, playerRoot.lastKnownPositionMs || finalPositionMs)
+            }
+            // Back during an mpv process, which has the screen while it
+            // plays: the video ended for this menu, and starts again where
+            // it was as the menu closes (backToVideo).
+            if (reason === "menu") {
+                playerRoot.openMenu()
+                return
             }
             playerMenu.close()
             // CLOSE VIDEO leaves the module for the main menu.
@@ -341,18 +334,5 @@ FocusScope {
         message: playerRoot.playlist.name || ""
         choices: playerRoot.choices
         currentIndex: choiceIndex
-        hint: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE " + root.hints.select + ":SELECT"
     }
-
-    function formatTime(ms) {
-        var s   = Math.floor(ms / 1000)
-        var h   = Math.floor(s / 3600)
-        var m   = Math.floor((s % 3600) / 60)
-        var sec = s % 60
-        if (h > 0)
-            return h + ":" + pad(m) + ":" + pad(sec)
-        return m + ":" + pad(sec)
-    }
-
-    function pad(n) { return n < 10 ? "0" + n : "" + n }
 }

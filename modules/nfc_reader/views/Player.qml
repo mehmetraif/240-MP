@@ -47,32 +47,13 @@ FocusScope {
                && lower.indexOf("list=") !== -1
     }
 
-    function doPlay(startMs, plPos) {
+    function play(startMs, plPos) {
         lastStartMs = startMs
         lastPlPos   = plPos
         // extraArgs opts into yt-dlp so YouTube-page URLs in the mapping
         // resolve; safe for local files and direct media URLs, which the
         // native demuxer handles before the ytdl hook ever runs.
         mpvController.loadAndPlay(videoPath, startMs / 1000.0, -1, subFlag, [], subtitleLangs, false, plPos, 0.0, "", false, "", false, [], 0.0, false, ytdlArgs)
-    }
-
-    // Starting mpv runs synchronously and, on the Pi, immediately switches VT
-    // (suspending Qt's render thread) before the LOADING frame can paint. Defer
-    // the launch one tick so the loading indicator is rendered first.
-    Timer {
-        id: startTimer
-        interval: 50
-        repeat: false
-        property int pendingStartMs: 0
-        property int pendingPlPos:   -1
-        onTriggered: doPlay(pendingStartMs, pendingPlPos)
-    }
-
-    function play(startMs, plPos) {
-        lastStartMs = startMs
-        startTimer.pendingStartMs = startMs
-        startTimer.pendingPlPos   = plPos
-        startTimer.restart()
     }
 
     Keys.onPressed: function(event) {
@@ -261,23 +242,11 @@ FocusScope {
         message: videoTitle
         choices: [
             savedPlaylistPos >= 0
-                ? "Resume video " + (savedPlaylistPos + 1) + " at " + formatTime(savedPositionMs)
-                : "Resume from " + formatTime(savedPositionMs),
+                ? "Resume video " + (savedPlaylistPos + 1) + " at " + root.formatTime(savedPositionMs)
+                : "Resume from " + root.formatTime(savedPositionMs),
             "Start from the beginning"
         ]
         currentIndex: choiceIndex
-        hint: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE " + root.hints.select + ":SELECT"
     }
 
-    function formatTime(ms) {
-        var s   = Math.floor(ms / 1000)
-        var h   = Math.floor(s / 3600)
-        var m   = Math.floor((s % 3600) / 60)
-        var sec = s % 60
-        if (h > 0)
-            return h + ":" + pad(m) + ":" + pad(sec)
-        return m + ":" + pad(sec)
-    }
-
-    function pad(n) { return n < 10 ? "0" + n : "" + n }
 }

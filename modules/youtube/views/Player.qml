@@ -38,7 +38,7 @@ FocusScope {
 
     focus: true
 
-    function doPlay(startMs) {
+    function play(startMs) {
         overlayVisible = false
         lastStartMs = startMs
         mpvController.loadAndPlay(videoUrl, startMs / 1000.0, 0, subTrack, [], subLangs, false, -1, 0.0, "", false, "", false, [], 0.0, false, ytdlArgs)
@@ -132,14 +132,21 @@ FocusScope {
                 youtubeBackend.addToWatchLater(videoId, item.title || "", item.channelName || "")
         } else if (action === "browse") {
             // As back always did: saved where it is, then the module's tree,
-            // the video playing on behind it.
+            // the video playing on behind it. Ended for the menu (an mpv
+            // process has the screen), it is saved already.
             playerMenu.close()
-            mpvController.leavePlayerMenu()
+            if (mpvController.videoActive)
+                mpvController.leavePlayerMenu()
+            else
+                goBack()
             return
         } else if (action === "close") {
             closeToMainMenu = true
             playerMenu.close()
-            mpvController.stop()
+            if (mpvController.videoActive)
+                mpvController.stop()
+            else
+                moduleRoot.goBack()
             return
         }
         playerMenu.actions = menuActions()
@@ -158,23 +165,6 @@ FocusScope {
             playbackStarted = false
             play(lastKnownPositionMs)
         }
-    }
-
-    // Starting mpv runs synchronously and, on the Pi, immediately switches VT
-    // (suspending Qt's render thread) before the LOADING frame can paint. Defer
-    // the launch one tick so the loading indicator is rendered first.
-    Timer {
-        id: startTimer
-        interval: 50
-        repeat: false
-        property int pendingStartMs: 0
-        onTriggered: doPlay(pendingStartMs)
-    }
-
-    function play(startMs) {
-        lastStartMs = startMs
-        startTimer.pendingStartMs = startMs
-        startTimer.restart()
     }
 
     Keys.onPressed: function(event) {
@@ -263,6 +253,13 @@ FocusScope {
                 youtubeBackend.savePosition(videoId, 0, item.title || "", item.channelName || "")
             else if (pos > 5000)
                 youtubeBackend.savePosition(videoId, pos, item.title || "", item.channelName || "")
+            // Back during an mpv process, which has the screen while it
+            // plays: the video ended for this menu, and starts again where
+            // it was as the menu closes (backToVideo).
+            if (reason === "menu") {
+                openMenu()
+                return
+            }
             playerMenu.close()
             // CLOSE VIDEO leaves the module for the main menu.
             if (closeToMainMenu)
@@ -335,11 +332,10 @@ FocusScope {
         title: "Resume playback?"
         message: item.title || ""
         choices: [
-            "Resume from " + formatTime(savedPositionMs),
+            "Resume from " + root.formatTime(savedPositionMs),
             "Start from the beginning"
         ]
         currentIndex: choiceIndex
-        hint: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE " + root.hints.select + ":SELECT"
     }
 
     PlayerMenu {
@@ -355,15 +351,4 @@ FocusScope {
         onClosed: playerRoot.backToVideo()
     }
 
-    function formatTime(ms) {
-        var s   = Math.floor(ms / 1000)
-        var h   = Math.floor(s / 3600)
-        var m   = Math.floor((s % 3600) / 60)
-        var sec = s % 60
-        if (h > 0)
-            return h + ":" + pad(m) + ":" + pad(sec)
-        return m + ":" + pad(sec)
-    }
-
-    function pad(n) { return n < 10 ? "0" + n : "" + n }
 }
