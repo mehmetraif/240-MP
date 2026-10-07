@@ -4,9 +4,9 @@
 
 # OSD/OS
 
-**Smart TV for CRT.** OSD/OS is an operating system for the [Raspberry Pi](https://github.com/anthonycaccese/240-MP/wiki/Hardware-Testing) that makes a TV, preferably a CRT, a smart TV with the look of a VCR: flash it to an SD card, plug the Pi into the TV, and it starts straight into OSD/OS, with nothing to log in to and no desktop to start it from. Every screen is drawn like a VCR's on-screen display, in two colours and large type, with menus laid out like a camcorder's. Everything works with the arrows, select and back, on a remote, a keyboard or a gamepad.
+**Smart TV for CRT.** OSD/OS is an operating system for the [Raspberry Pi](#hardware-testing) that makes a TV, preferably a CRT, a smart TV with the look of a VCR: flash it to an SD card, plug the Pi into the TV, and it starts straight into OSD/OS, with nothing to log in to and no desktop to start it from. Every screen is drawn like a VCR's on-screen display, in two colours and large type, with menus laid out like a camcorder's. Everything works with the arrows, select and back, on a remote, a keyboard or a gamepad.
 
-It grew out of [240-MP](https://github.com/anthonycaccese/240-MP), a retro VCR style frontend that runs as an app, and OSD/OS runs as one too, on Raspberry Pi OS, Steam OS (and other Linux x86_64 distros) or MacOS (ARM).
+It grew out of [240-MP](https://github.com/anthonycaccese/240-MP), a retro VCR style frontend that runs as an app, and OSD/OS can be installed as one too, on Raspberry Pi OS, Steam OS (and other Linux x86_64 distros) or MacOS (ARM). So far it has been tested on the Raspberry Pi 4 only.
 
 Playback experiences are handled via modules to enable new integrations without requiring major changes to the overall frontend. Try to think of each module as a different input on a VHS deck. There are 12 included modules currently: [Local Files](https://github.com/anthonycaccese/240-MP/wiki/Module:-Local-Files), [Plex](https://github.com/anthonycaccese/240-MP/wiki/Module:-Plex), [Jellyfin](https://github.com/anthonycaccese/240-MP/wiki/Module:-Jellyfin), Emby, Netflix, Prime Video, [YouTube](https://github.com/anthonycaccese/240-MP/wiki/Module:-YouTube), Playlists, [NFC Reader](https://github.com/anthonycaccese/240-MP/wiki/Module:-NFC-Reader), [Weather](https://github.com/anthonycaccese/240-MP/wiki/Module:-Weather), [Scripts](https://github.com/anthonycaccese/240-MP/wiki/Module:-Scripts) and a module similar to art/wallpaper modes on modern tvs called [Ambient:Mode](https://github.com/anthonycaccese/240-MP/wiki/Module:-Ambient-Mode).
 
@@ -273,12 +273,9 @@ YouTube without the YouTube app: your subscriptions, channels and playlists, sea
 - [On SteamOS / Linux x86_64](INSTALL.md#on-steamos--linux-x86_64)
 
 ## Hardware Testing
-OSD/OS runs where 240-MP, which it grew out of, does. 240-MP's notes on each board:
-- [Raspberry Pi 3B](https://github.com/anthonycaccese/240-MP/wiki/Hardware-Testing#raspberry-pi-3b)
-- [Raspberry Pi 3B+](https://github.com/anthonycaccese/240-MP/wiki/Hardware-Testing#raspberry-pi-3b-1)
-- [Raspberry Pi 4B](https://github.com/anthonycaccese/240-MP/wiki/Hardware-Testing#raspberry-pi-4b)
-- [Raspberry Pi 5](https://github.com/anthonycaccese/240-MP/wiki/Hardware-Testing#raspberry-pi-5)
-- [Steam Deck](https://github.com/anthonycaccese/240-MP/wiki/Hardware-Testing#steam-deck)
+- Raspberry Pi 4 (Model B): tested.
+
+Other boards may work, but OSD/OS hasn't been tested on them. If you try one, please tell us in an [issue](https://github.com/mehmetraif/OSD-OS/issues) how it went.
 
 ## FAQs
 
@@ -289,7 +286,7 @@ OSD/OS runs where 240-MP, which it grew out of, does. 240-MP's notes on each boa
     - Those are feature rich, run on a great many devices and have big, supportive teams behind them. OSD/OS is a small project for a niche: old TVs, a remote and a VCR's look.
     - If that is what you are after, OSD/OS is a lot of fun and you are welcome to try it. Otherwise, the well known distros are the better door.
 - Will this work on other Raspberry Pi models? (like the 5, 2 zero, etc...)
-    - OSD/OS targets the Raspberry Pi 4. 240-MP was tested on the 4B, 3B+ and 3B, and its users have confirmed the 5 works well too: see [its hardware notes](https://github.com/anthonycaccese/240-MP/wiki/Hardware-Testing).
+    - OSD/OS has been tested on the Raspberry Pi 4 only.
     - On any other model the short answer is "we don't know": please try it and tell us in an [issue](https://github.com/mehmetraif/OSD-OS/issues) whether it works.
 - Where does the name "OSD/OS" come from?
     - OSD is the on-screen display: the menu a VCR or a TV draws over the picture, which is all this app ever shows. OS because on a Raspberry Pi it can be the whole system ([os/README.md](os/README.md)).
