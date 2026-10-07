@@ -1,0 +1,183 @@
+OSD/OS image: what it is made of, and under which licences
+==========================================================
+
+The OSD/OS image is OSD/OS (https://github.com/mehmetraif/OSD-OS) on
+Raspberry Pi OS Lite (64-bit), which is based on Debian 13 "trixie". It is
+built with Raspberry Pi's image builder, pi-gen
+(https://github.com/RPi-Distro/pi-gen), at the commit os/build.sh pins:
+pi-gen's stages 0 to 2, which make Raspberry Pi OS Lite, and OSD/OS's own
+stage (os/stage-osdos in OSD/OS's source) on top.
+
+On the image this file is /usr/share/doc/osdos/NOTICE.
+
+
+1. OSD/OS
+---------
+
+Copyright (C) 2026 mehmet raif tasdemir (darkBLACK)
+
+A modified version of 240-MP, Copyright (C) 2026 Anthony Caccese and the
+240-MP contributors (https://github.com/anthonycaccese/240-MP).
+
+OSD/OS is free software: you can redistribute it and/or modify it under the
+terms of the GNU General Public License as published by the Free Software
+Foundation, version 3. It comes with NO WARRANTY. The licence is
+/opt/osdos/share/osdos/LICENSE on the image, and Settings -> About ->
+License shows it. The source is https://github.com/mehmetraif/OSD-OS, at
+the commit Settings -> About -> Build names.
+
+Its fonts are VCR OSD Mono, by Riciery Santos Leal (mrmanet), free from
+dafont.com, and GNU Unifont, by Roman Czyborra, Paul Hardy and others,
+under the SIL Open Font License 1.1. Their terms are in
+/opt/osdos/share/osdos/assets/fonts/.
+
+OSD/OS's changes to 240-MP were written with Claude Code (Anthropic). The
+OSD/OS logo, the channel logo and the boot screen's cassette were made with
+ChatGPT (OpenAI).
+
+
+2. Raspberry Pi OS and Debian packages
+--------------------------------------
+
+The rest of the system comes from Debian's and Raspberry Pi's packages,
+installed unmodified from the Debian archive (https://deb.debian.org/debian)
+and the Raspberry Pi archive (https://archive.raspberrypi.com/debian): the
+Linux kernel, the firmware, Qt, SDL2, mpv and libmpv, FFmpeg, Chromium,
+Python and everything else. Each package keeps its own copyright and
+licence, in /usr/share/doc/<package>/copyright on the image, and the GNU
+licences many of them use are in /usr/share/common-licenses. Which
+packages, at which versions, is the image's .info file, published with the
+image.
+
+Source code. Each package's source, at the version on the image, is in the
+same archives: `apt-get source <package>` once deb-src lines are added to
+the image's apt sources, and https://snapshot.debian.org for Debian's
+earlier versions. The Raspberry Pi kernel's is also at
+https://github.com/raspberrypi/linux.
+
+In addition, for three years after an image is published, OSD/OS will give
+anyone who asks a complete machine-readable copy of the source code of the
+GPL and LGPL licensed software on that image, for no more than the cost of
+providing it. Ask at https://github.com/mehmetraif/OSD-OS/issues, naming
+the image.
+
+
+3. What OSD/OS's stage adds
+---------------------------
+
+- yt-dlp (https://github.com/yt-dlp/yt-dlp), from its nightly builds, in
+  the app's data directory (~/.local/share/OSD-OS/bin/yt-dlp), from where
+  it replaces itself with newer builds. It is released into the public
+  domain (The Unlicense).
+
+- Deno (https://deno.com), /usr/local/bin/deno, under the MIT License,
+  Copyright 2018-2026 the Deno authors. The licence's text is in
+  /usr/local/share/doc/deno/LICENSE.md.
+
+- Widevine (the libwidevinecdm0 package), Google's content decryption
+  module, which the Netflix and Prime Video players need. It is installed
+  from the Raspberry Pi archive, as Raspberry Pi OS installs it. It is
+  Google's proprietary software: none of the licences in this file cover
+  it, and its package carries no licence of its own.
+
+An image built with OSDOS_YOUTUBE=0 has neither yt-dlp nor Deno, and one
+built with OSDOS_STREAMING=0 has no Chromium or Widevine.
+
+
+4. Data the modules show
+------------------------
+
+- This product uses the TMDB API but is not endorsed or certified by TMDB
+  (https://www.themoviedb.org). The Netflix and Prime Video modules'
+  catalogues come from it, with JustWatch's listings of where a title
+  streams through it.
+- Weather data by Open-Meteo.com (https://open-meteo.com), under the
+  Creative Commons Attribution 4.0 International licence (CC BY 4.0).
+- A title's page on a service comes from Wikidata (https://www.wikidata.org),
+  whose data is in the public domain (CC0).
+
+
+5. pi-gen
+---------
+
+The image is built with pi-gen, and the configuration its stages write
+stays on it:
+
+  Copyright (c) 2015 Raspberry Pi (Trading) Ltd.
+
+  All rights reserved.
+
+  Redistribution and use in source and binary forms, with or without
+  modification, are permitted provided that the following conditions are
+  met:
+
+  1. Redistributions of source code must retain the above copyright notice,
+     this list of conditions and the following disclaimer.
+
+  2. Redistributions in binary form must reproduce the above copyright
+     notice, this list of conditions and the following disclaimer in the
+     documentation and/or other materials provided with the distribution.
+
+  3. Neither the name of the copyright holder nor the names of its
+     contributors may be used to endorse or promote products derived from
+     this software without specific prior written permission.
+
+  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+  IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+  THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+  PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+  CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+  EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+  PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+6. The Raspberry Pi firmware
+----------------------------
+
+The Raspberry Pi's boot firmware on the image (in /boot/firmware) comes
+with this licence, which asks to be reproduced with it:
+
+  Copyright (c) 2006, Broadcom Corporation.
+  Copyright (c) 2015, Raspberry Pi (Trading) Ltd
+  All rights reserved.
+
+  Redistribution.  Redistribution and use in binary form, without
+  modification, are permitted provided that the following conditions are
+  met:
+
+  * This software may only be used for the purposes of developing for,
+    running or using a Raspberry Pi device, or authorised derivative
+    device manufactured via the element14 Raspberry Pi Customization Service
+  * Redistributions must reproduce the above copyright notice and the
+    following disclaimer in the documentation and/or other materials
+    provided with the distribution.
+  * Neither the name of Broadcom Corporation nor the names of its suppliers
+    may be used to endorse or promote products derived from this software
+    without specific prior written permission.
+
+  DISCLAIMER.  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND
+  CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING,
+  BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+  FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+  COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+  INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+  BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
+  OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+  ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR
+  TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+  USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
+  DAMAGE.
+
+
+7. Trademarks
+-------------
+
+Raspberry Pi is a trademark of Raspberry Pi Ltd. Debian is a registered
+trademark owned by Software in the Public Interest, Inc. Netflix, Prime
+Video, YouTube, Plex, Jellyfin, Emby and the other services' names are
+their owners' trademarks, used to name the services the modules reach.
+OSD/OS is not affiliated with or endorsed by any of them.

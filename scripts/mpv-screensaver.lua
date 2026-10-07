@@ -1,4 +1,4 @@
--- Screen saver for 240-MP: bounces the 240-MP logo across a solid black
+-- Screen saver for OSD/OS: bounces the OSD/OS logo across a solid black
 -- background when the video has been paused longer than the configured timeout.
 --
 -- Loaded by --script= only when screensaver_timeout != "OFF".

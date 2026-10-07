@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 # ──────────────────────────────────────────────────────────────────────────────
-# Run a locally-built 240-MP binary with the same display environment the
+# Run a locally-built OSD/OS binary with the same display environment the
 # installed launcher sets up. Use this to test a dev build on real hardware —
 # notably the Pi 5, whose EGLFS display-card selection lives in that launcher and
-# is otherwise missing when you run ./build/240mp directly.
+# is otherwise missing when you run ./build/osdos directly.
 #
 # Usage (from anywhere):
-#   scripts/rpi-run-local.sh                       # runs ./build/240mp from the repo
-#   MP240_BIN=/path/to/240mp scripts/rpi-run-local.sh
+#   scripts/rpi-run-local.sh                       # runs ./build/osdos from the repo
+#   OSDOS_BIN=/path/to/osdos scripts/rpi-run-local.sh
 #
 # Headless (RPi Lite / EGLFS): run from the Pi's console VT, not over SSH, and
 # stop the autostart service first so it isn't holding the display:
-#   sudo systemctl stop 240mp
+#   sudo systemctl stop osdos
 #
 # NOTE: the display-platform + KMS-card detection below is kept in sync with the
 # launcher heredoc in scripts/install.sh — change both together.
@@ -21,11 +21,11 @@ set -euo pipefail
 # Repo root = parent of this script's dir, so APP_ROOT resolves assets/modules.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-BIN="${MP240_BIN:-${REPO_ROOT}/build/240mp}"
+BIN="${OSDOS_BIN:-${MP240_BIN:-${REPO_ROOT}/build/osdos}}"
 
 if [ ! -x "$BIN" ]; then
     echo "Error: binary not found or not executable at: $BIN" >&2
-    echo "Build it first (cmake --build build) or set MP240_BIN." >&2
+    echo "Build it first (cmake --build build) or set OSDOS_BIN." >&2
     exit 1
 fi
 
@@ -60,7 +60,7 @@ else
         done
     fi
     if [ -n "$KMS_CARD" ] && [ -e "/dev/dri/$KMS_CARD" ]; then
-        KMS_CONF="${XDG_RUNTIME_DIR:-/tmp}/240mp-kms.json"
+        KMS_CONF="${XDG_RUNTIME_DIR:-/tmp}/osdos-kms.json"
         printf '{ "device": "/dev/dri/%s" }\n' "$KMS_CARD" > "$KMS_CONF"
         export QT_QPA_EGLFS_KMS_CONFIG="$KMS_CONF"
     fi

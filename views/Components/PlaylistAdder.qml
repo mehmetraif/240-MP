@@ -42,7 +42,7 @@ ChoiceOverlay {
     // there and on, and taking them.
     function available(forModule) {
         return typeof playlistsBackend !== "undefined" && !!playlistsBackend && !!appCore
-               && appCore.is_module_enabled("com.240mp.playlists") && playlistsBackend.supports(forModule)
+               && appCore.is_module_enabled("com.osdos.playlists") && playlistsBackend.supports(forModule)
     }
 
     function offer(forModule, item) {

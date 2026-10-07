@@ -28,7 +28,7 @@ public:
     static bool compiledIn();
 
 private:
-#if defined(MP240_NFC_PCSC_AVAILABLE) && (defined(Q_OS_LINUX) || defined(Q_OS_MAC))
+#if defined(OSDOS_NFC_PCSC_AVAILABLE) && (defined(Q_OS_LINUX) || defined(Q_OS_MAC))
     QString findReader();
     bool cardPresent(const QString &readerName);
     QString readCardUid(const QString &readerName);

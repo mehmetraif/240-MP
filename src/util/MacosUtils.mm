@@ -16,7 +16,7 @@ void hideMacOSMenuBar() {
 void forceWindowFullScreenOnScreen(void *handle, int screenIndex) {
     NSView   *view   = (__bridge NSView *)(void *)handle;
     NSWindow *win    = [view window];
-    if (!win) { NSLog(@"[240-MP] forceWindowFullScreen: no NSWindow"); return; }
+    if (!win) { NSLog(@"[OSD/OS] forceWindowFullScreen: no NSWindow"); return; }
 
     NSArray<NSScreen *> *screens = [NSScreen screens];
     NSScreen *screen = nil;
@@ -24,9 +24,9 @@ void forceWindowFullScreenOnScreen(void *handle, int screenIndex) {
         screen = screens[screenIndex];
     if (!screen)
         screen = win.screen ?: [NSScreen mainScreen];
-    if (!screen) { NSLog(@"[240-MP] forceWindowFullScreen: no NSScreen"); return; }
+    if (!screen) { NSLog(@"[OSD/OS] forceWindowFullScreen: no NSScreen"); return; }
 
-    NSLog(@"[240-MP] forceWindowFullScreen: index=%d screen.frame = {{%.0f,%.0f},{%.0f,%.0f}}",
+    NSLog(@"[OSD/OS] forceWindowFullScreen: index=%d screen.frame = {{%.0f,%.0f},{%.0f,%.0f}}",
           screenIndex,
           screen.frame.origin.x, screen.frame.origin.y,
           screen.frame.size.width, screen.frame.size.height);

@@ -9,7 +9,7 @@ FocusScope {
 
     // The module's manifest id — the single place it appears in this module's QML.
     // Child views reference it via moduleRoot.moduleId.
-    property string moduleId: "com.240mp.scripts"
+    property string moduleId: "com.osdos.scripts"
     property var _moduleInfo: appCore ? appCore.get_module_info(moduleId) : ({})
     property string moduleName: _moduleInfo.name || ""
     property string moduleIcon: _moduleInfo.icon || ""
@@ -84,7 +84,7 @@ FocusScope {
         }
     }
 
-    // Auto-run on startup, when 240-MP booted straight into this module.
+    // Auto-run on startup, when OSD/OS booted straight into this module.
     readonly property string startupScript:
         appCore ? (appCore.get_setting(moduleId, "startup_script") || "") : ""
 

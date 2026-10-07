@@ -129,10 +129,10 @@ QNetworkRequest PlexBackend::plexRequest(const QUrl &url, const QString &token) 
     QNetworkRequest req(url);
     req.setRawHeader("Accept", "application/json");
     req.setRawHeader("X-Plex-Client-Identifier", clientId().toLatin1());
-    req.setRawHeader("X-Plex-Product", "240-MP");
+    req.setRawHeader("X-Plex-Product", "OSD/OS");
     req.setRawHeader("X-Plex-Version", QCoreApplication::applicationVersion().toLatin1());
     req.setRawHeader("X-Plex-Platform", kPlexPlatform.toLatin1());
-    req.setRawHeader("X-Plex-Device", "240-MP");
+    req.setRawHeader("X-Plex-Device", "OSD/OS");
     req.setRawHeader("X-Plex-Device-Name", QSysInfo::machineHostName().toLatin1());
     if (!token.isEmpty())
         req.setRawHeader("X-Plex-Token", token.toLatin1());
@@ -783,7 +783,7 @@ QString PlexBackend::userToken() const {
 
 QString PlexBackend::videoQuality() const {
     QJsonObject cfg = loadConfig();
-    return cfg["modules"].toObject()["com.240mp.plex"].toObject()["video_quality"].toString("auto");
+    return cfg["modules"].toObject()["com.osdos.plex"].toObject()["video_quality"].toString("auto");
 }
 
 // ---------------------------------------------------------------------------
@@ -1240,9 +1240,9 @@ void PlexBackend::select_user(const QString &userId, const QString &pin) {
     activateUser(userId, pin, [this, userId](const QVariantList &accessibleServers) {
         QJsonObject cfg = loadConfig();
         QJsonObject mods = cfg["modules"].toObject();
-        QJsonObject plexCfg = mods["com.240mp.plex"].toObject();
+        QJsonObject plexCfg = mods["com.osdos.plex"].toObject();
         plexCfg["current_user_id"] = userId;
-        mods["com.240mp.plex"] = plexCfg;
+        mods["com.osdos.plex"] = plexCfg;
         cfg["modules"] = mods;
         saveConfig(cfg);
         emit serversLoaded(accessibleServers);
@@ -1272,9 +1272,9 @@ void PlexBackend::select_server(const QString &machineId) {
 
     QJsonObject cfg = loadConfig();
     QJsonObject mods = cfg["modules"].toObject();
-    QJsonObject plexCfg = mods["com.240mp.plex"].toObject();
+    QJsonObject plexCfg = mods["com.osdos.plex"].toObject();
     plexCfg["server_machine_id"] = machineId;
-    mods["com.240mp.plex"] = plexCfg;
+    mods["com.osdos.plex"] = plexCfg;
     cfg["modules"] = mods;
     saveConfig(cfg);
 
@@ -1428,7 +1428,7 @@ void PlexBackend::load_libraries_impl() {
             QJsonObject auth = loadAuth();
             QString machineId = auth["active_server_machine_id"].toString();
             QJsonObject libEnabled = loadConfig()["modules"].toObject()
-                                     ["com.240mp.plex"].toObject()["libraries"].toObject();
+                                     ["com.osdos.plex"].toObject()["libraries"].toObject();
 
             QVariantList items;
             if (hasCw)
@@ -2945,7 +2945,7 @@ void PlexBackend::getLibraries() {
 
 void PlexBackend::applyCurrentUserSetting() {
     QString userId = loadConfig()["modules"].toObject()
-                     ["com.240mp.plex"].toObject()["current_user_id"].toString();
+                     ["com.osdos.plex"].toObject()["current_user_id"].toString();
     if (userId.isEmpty()) return;
 
     // This runs from the app Settings screen, where the Plex views are not loaded
@@ -2967,9 +2967,9 @@ void PlexBackend::applyCurrentUserSetting() {
 
             QJsonObject cfg = loadConfig();
             QJsonObject mods = cfg["modules"].toObject();
-            QJsonObject plexCfg = mods["com.240mp.plex"].toObject();
+            QJsonObject plexCfg = mods["com.osdos.plex"].toObject();
             plexCfg["server_machine_id"] = newMid;
-            mods["com.240mp.plex"] = plexCfg;
+            mods["com.osdos.plex"] = plexCfg;
             cfg["modules"] = mods;
             saveConfig(cfg);
         }
@@ -2984,7 +2984,7 @@ void PlexBackend::applyCurrentUserSetting() {
 
 void PlexBackend::applyCurrentServerSetting() {
     QString machineId = loadConfig()["modules"].toObject()
-                        ["com.240mp.plex"].toObject()["server_machine_id"].toString();
+                        ["com.osdos.plex"].toObject()["server_machine_id"].toString();
     if (machineId.isEmpty()) return;
     QJsonObject auth = loadAuth();
     QJsonObject server;
@@ -3010,11 +3010,11 @@ void PlexBackend::cancel_pending_pin() {
     QString activeId = loadAuth()["active_user_id"].toString();
     QJsonObject cfg = loadConfig();
     QJsonObject mods = cfg["modules"].toObject();
-    QJsonObject plexCfg = mods["com.240mp.plex"].toObject();
+    QJsonObject plexCfg = mods["com.osdos.plex"].toObject();
     if (plexCfg["current_user_id"].toString() == activeId) return;
 
     plexCfg["current_user_id"] = activeId;
-    mods["com.240mp.plex"] = plexCfg;
+    mods["com.osdos.plex"] = plexCfg;
     cfg["modules"] = mods;
     saveConfig(cfg);
 }
@@ -3024,7 +3024,7 @@ void PlexBackend::reauth_select_user(const QString &userId, const QString &pin) 
         QJsonObject a = loadAuth();
         QJsonObject cfg = loadConfig();
         QJsonObject mods = cfg["modules"].toObject();
-        QJsonObject plexCfg = mods["com.240mp.plex"].toObject();
+        QJsonObject plexCfg = mods["com.osdos.plex"].toObject();
         plexCfg["current_user_id"] = userId;
 
         // Apply saved server, falling back to first accessible if current is unreachable
@@ -3049,7 +3049,7 @@ void PlexBackend::reauth_select_user(const QString &userId, const QString &pin) 
             saveAuth(a);
         }
 
-        mods["com.240mp.plex"] = plexCfg;
+        mods["com.osdos.plex"] = plexCfg;
         cfg["modules"] = mods;
         saveConfig(cfg);
         emit authSuccess();

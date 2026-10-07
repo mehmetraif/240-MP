@@ -2,15 +2,24 @@
 
 A Raspberry Pi OS Lite (64-bit, Trixie) image that boots straight into OSD/OS: flash it, plug the Pi into the TV, and the first thing on screen is the app. It is built with Raspberry Pi's own image builder, [pi-gen](https://github.com/RPi-Distro/pi-gen), so the kernel, firmware, Wi-Fi/Bluetooth drivers and the patched FFmpeg that mpv's Pi 4 HEVC decoding relies on are exactly Raspberry Pi OS's. This directory only adds one stage on top of Raspberry Pi OS Lite.
 
-<img src="boot-screen.gif" width="480" alt="The boot screen: a pixel-art VHS cassette whose tape winds from the left reel onto the right one as the progress bar fills, and the list of services coming up">
+It is a folder of its own because the image is a build of its own: pi-gen's, not the app's CMake, run by its own workflow (`.github/workflows/os-image.yml`) from the app's release tarball, which it puts on the image as `scripts/install.sh` would.
+
+## What it is built on
+
+- **Raspberry Pi OS Lite (64-bit)**, the system without a desktop that Raspberry Pi makes for its boards. It is based on **Debian 13 "trixie"**: its packages are Debian's, with Raspberry Pi's own from Raspberry Pi's archive on top (the kernel, the firmware, a patched FFmpeg, Widevine and more).
+- **pi-gen**, the tool Raspberry Pi builds Raspberry Pi OS with, at a pinned commit of its `arm64` branch (`PI_GEN_REF` in `build.sh`). Its stages 0 to 2 make Raspberry Pi OS Lite, and `stage-osdos` adds OSD/OS and everything below.
+- The image's release name is **OSD/OS** (`PI_GEN_RELEASE`, written to `/boot/firmware/issue.txt`), not pi-gen's default, which pi-gen keeps for Raspberry Pi's own builds.
+- What it is made of, and under which licences, is in [NOTICE](NOTICE); see [Licences](#licences).
+
+<img src="boot-screen.gif" width="480" alt="The boot screen: the OSD/OS cassette, whose reels turn and whose tape winds from the left reel onto the right one as the progress bar fills, and the list of services coming up">
 
 ## What is different from a manual install
 
 Compared with flashing Raspberry Pi OS Lite and running `scripts/install.sh` ([INSTALL.md](../INSTALL.md)):
 
-- **The app comes first.** `240mp.service` starts as soon as the display driver is up (after `basic.target`), not after every other service (`multi-user.target`).
+- **The app comes first.** `osdos.service` starts as soon as the display driver is up (after `basic.target`), not after every other service (`multi-user.target`).
 - **The rest waits for it.** Wi-Fi (NetworkManager), Bluetooth, mDNS (`avahi-daemon`) and, if enabled, SSH hold back until the app has drawn its first frame. Then they start one after another, in that order.
-- **The boot screen.** While those services start, the app shows a pixel-art VHS cassette, the owner's drawing with OSD/OS on its label (`assets/images/cassette.png`, drawn by `views/Components/VhsCassette.qml`): its reels turn, and the tape winds off the left reel onto the right one as the progress bar fills, plus a line per service (`[ OK ] WI-FI`, …). It ends with a check that the network is actually online. The startup module opens once it is done, so modules that need the network find it ready. Keys do nothing while it is up.
+- **The boot screen.** While those services start, the app shows a pixel-art VHS cassette, the owner's drawing (made with ChatGPT) with OSD/OS on its label (`assets/images/cassette.png`, drawn by `views/Components/VhsCassette.qml`): its reels turn, and the tape winds off the left reel onto the right one as the progress bar fills, plus a line per service (`[ OK ] WI-FI`, …). It ends with a check that the network is actually online. The startup module opens once it is done, so modules that need the network find it ready. Keys do nothing while it is up.
 - **A quiet boot.** There is no rainbow splash, no one-second firmware delay (`boot_delay=0`), no kernel text, logo or cursor on `tty1`, and no login prompt on `tty1`.
 - **Less running.** The image has:
   - no apt, man-db, e2scrub or dpkg-backup timers (they wake the SD card at random times, mid-movie included);
@@ -18,19 +27,19 @@ Compared with flashing Raspberry Pi OS Lite and running `scripts/install.sh` ([I
   - no Raspberry Pi Connect agent.
 
   cloud-init applies Raspberry Pi Imager's settings on the first boot and is then switched off, because otherwise its stages delay every boot.
-- **The streaming modules' browser is included.** Chromium with Widevine and the `cage` kiosk compositor, for the Netflix and Prime Video modules, which open each service's own player full screen, and for YouTube's sign-in; `wtype` closes the browser cleanly when BACK is held. They add about 400 MB; build with `MP240_STREAMING=0` to leave them out.
+- **The streaming modules' browser is included.** Chromium with Widevine and the `cage` kiosk compositor, for the Netflix and Prime Video modules, which open each service's own player full screen, and for YouTube's sign-in; `wtype` closes the browser cleanly when BACK is held. They add about 400 MB; build with `OSDOS_STREAMING=0` to leave them out.
 - **YouTube works out of the box.** The image has yt-dlp and Deno, the JavaScript runtime yt-dlp needs to play YouTube's videos ([its EJS notes](https://github.com/yt-dlp/yt-dlp/wiki/EJS)).
   - yt-dlp is its latest nightly build, the channel its own README recommends: YouTube changes often, and a yt-dlp a few weeks old soon stops finding videos.
-  - It lives in the app's data directory (`~/.local/share/240-MP/bin/yt-dlp`), where the app looks first, and replaces itself with the newest build two minutes after each boot and once a day (`240mp-yt-dlp-update.timer`). A check is one small request to GitHub. Without a connection within five minutes, it waits for the next run.
+  - It lives in the app's data directory (`~/.local/share/OSD-OS/bin/yt-dlp`), where the app looks first, and replaces itself with the newest build two minutes after each boot and once a day (`osdos-yt-dlp-update.timer`). A check is one small request to GitHub. Without a connection within five minutes, it waits for the next run.
   - ffmpeg comes with them, for the Playlists module's offline playlists: above 360p YouTube sends a video's picture and sound apart, and ffmpeg puts a download back together.
-  - They add about 90 MB; build with `MP240_YOUTUBE=0` to leave them out.
-- **Films go on the card.** On the first boot the system keeps 8 GiB of the card, and the rest becomes a partition of its own in exFAT, labelled **240-MP**, which Windows and macOS open too. Local Files opens it, and offline playlists download into it. See [Films on the card](#films-on-the-card).
+  - They add about 90 MB; build with `OSDOS_YOUTUBE=0` to leave them out.
+- **Films go on the card.** On the first boot the system keeps 8 GiB of the card, and the rest becomes a partition of its own in exFAT, labelled **OSD-OS**, which Windows and macOS open too. Local Files opens it, and offline playlists download into it. See [Films on the card](#films-on-the-card).
 - **Stopping isn't powering off.** `systemctl stop` and `systemctl restart` leave the Pi on. Quit in the app still powers it off, Restart reboots it, and Exit to Terminal still drops to a login shell, as with `install.sh`.
 - **Bluetooth from the app.** The user the app runs as is in the `bluetooth` group, so Settings → Bluetooth can search for and pair a keyboard, gamepad or remote through BlueZ.
   - Bluetooth is unblocked (`rfkill unblock bluetooth`) as bluetoothd starts, so the app's switch is the only one.
   - Raspberry Pi OS starts every radio blocked, so that Wi-Fi stays off until its country is set (`rfkill.default_state=0`), and then unblocks Bluetooth only on the adapters pi-gen knows by device path. The Pi 4 this was found on wasn't one of them: its adapter stayed blocked, and BlueZ couldn't turn it on.
 
-Everything else (the launcher, in-app updates, Exit to Terminal, the data directory in `~/.local/share/240-MP`) is the same as a manual install. The launcher, stop helper and terminal unit are taken from `scripts/install.sh` at build time.
+Everything else (the launcher, in-app updates, Exit to Terminal, the data directory in `~/.local/share/OSD-OS`) is the same as a manual install. The launcher, stop helper and terminal unit are taken from `scripts/install.sh` at build time.
 
 ## Flashing
 
@@ -42,37 +51,37 @@ Everything else (the launcher, in-app updates, Exit to Terminal, the data direct
 
 ### Films on the card
 
-The first boot splits the card: the system keeps 8 GiB (`MP240_ROOT_SIZE`), and the rest becomes a partition of its own in exFAT, labelled **240-MP**. Windows and macOS open exFAT, so:
+The first boot splits the card: the system keeps 8 GiB (`OSDOS_ROOT_SIZE`), and the rest becomes a partition of its own in exFAT, labelled **OSD-OS**. Windows and macOS open exFAT, so:
 
 1. Quit OSD/OS (it powers the Pi off) and take the card out.
-2. In the computer's card reader the card shows up as two drives, **bootfs** and **240-MP**. Copy films onto **240-MP**, in folders if you like.
+2. In the computer's card reader the card shows up as two drives, **bootfs** and **OSD-OS**. Copy films onto **OSD-OS**, in folders if you like.
 3. Windows also offers to format the system's partition, which it can't read. Always say no (**Cancel**): formatting it erases the system.
-4. Put the card back in the Pi. Local Files opens **240-MP** (`/media/240-MP`) until its Media Directory setting names another folder.
+4. Put the card back in the Pi. Local Files opens **OSD-OS** (`/media/OSD-OS`) until its Media Directory setting names another folder.
 
-The Pi writes to it too: the Playlists module downloads its offline playlists' videos into a **Playlists** folder there (its Download Folder setting can name another), each video once, flushed to the card as it completes. Switching the Pi off at the wall in the middle of a download can still leave the partition untidy, so it is checked (`fsck.exfat`) at every boot before it is mounted. Nothing on it can run (it is mounted `noexec`): it only ever holds media, and anyone with the card can write it. A card flashed with an earlier image mounts it read-only (`ro` in `/etc/fstab`), where offline playlists' downloads fail with the folder named as the reason: flash the new image, or change `ro` to `rw,noexec,nosuid,nodev` (and the last `0` to `2`) on the `/media/240-MP` line.
+The Pi writes to it too: the Playlists module downloads its offline playlists' videos into a **Playlists** folder there (its Download Folder setting can name another), each video once, flushed to the card as it completes. Switching the Pi off at the wall in the middle of a download can still leave the partition untidy, so it is checked (`fsck.exfat`) at every boot before it is mounted. Nothing on it can run (it is mounted `noexec`): it only ever holds media, and anyone with the card can write it. A card flashed with an earlier image mounts it read-only (`ro` in `/etc/fstab`), where offline playlists' downloads fail with the folder named as the reason: flash the new image, or change `ro` to `rw,noexec,nosuid,nodev` (and the last `0` to `2`) on the film partition's line (`/media/240-MP`, as those images named it).
 
 A card with less than 2 GiB to spare past the system gets no film partition, and the system takes all of it, as Raspberry Pi OS does. The split replaces Raspberry Pi OS's first-boot resize (`raspberrypi-sys-mods`' `resize_early`, overridden in `/etc/initramfs-tools/scripts`), so it happens once, on a freshly flashed card.
 
 ### HDMI or a CRT
 
-The display output is set in `240mp-display.txt` on the boot partition (the FAT one any computer can open). To switch, copy one of the presets next to it over that file:
+The display output is set in `osdos-display.txt` on the boot partition (the FAT one any computer can open). To switch, copy one of the presets next to it over that file:
 
 | Preset | Output |
 |---|---|
-| `240mp-display-hdmi.txt` | HDMI, resolution auto-detected (the default) |
-| `240mp-display-crt-ntsc.txt` | Composite, NTSC, 4:3 |
-| `240mp-display-crt-pal.txt` | Composite, PAL, 4:3 |
+| `osdos-display-hdmi.txt` | HDMI, resolution auto-detected (the default) |
+| `osdos-display-crt-ntsc.txt` | Composite, NTSC, 4:3 |
+| `osdos-display-crt-pal.txt` | Composite, PAL, 4:3 |
 
 The rest of `config.txt` matches the settings [INSTALL.md](../INSTALL.md) documents, including the per-model drivers and overclocking.
 
 ## Building
 
-The image needs the app's arm64 tarball (`240-MP-<version>-linux-arm64.tar.gz`, as the release workflow builds it).
+The image needs the app's arm64 tarball (`OSD-OS-<version>-linux-arm64.tar.gz`, as the release workflow builds it).
 
 **On GitHub:**
 
 1. Run the **OS image** workflow from the Actions tab (on a fork, enable Actions first). It builds the app from the chosen branch, then the image, on an arm64 runner. It also runs on pull requests that touch the image or the boot screen.
-2. The image is the run's `240mp-os-image` artifact.
+2. The image is the run's `osdos-image` artifact.
 
 The run gives the `pi` user the repository secret `OS_FIRST_USER_PASS` as its password. Without that secret the account is locked.
 
@@ -81,52 +90,61 @@ The app in these images is built as `dev`, which turns its self-update off. That
 **Locally:** with Docker on an arm64 Linux host (an x86 host works too, through QEMU emulation, but takes hours), run:
 
 ```bash
-FIRST_USER_PASS='…' os/build.sh path/to/240-MP-<version>-linux-arm64.tar.gz
+FIRST_USER_PASS='…' os/build.sh path/to/OSD-OS-<version>-linux-arm64.tar.gz
 ```
 
-The image lands in `os/work/pi-gen/deploy/`. `os/build.sh` fetches pi-gen at a pinned commit of its `arm64` branch and builds stages 0–2 (Raspberry Pi OS Lite), then `stage-240mp`. Settings, all through the environment:
+The image lands in `os/work/pi-gen/deploy/`. `os/build.sh` fetches pi-gen at a pinned commit of its `arm64` branch and builds stages 0–2 (Raspberry Pi OS Lite), then `stage-osdos`. Settings, all through the environment:
 
 | Variable | Default | |
 |---|---|---|
 | `FIRST_USER_PASS` | — | Password of the first user. Without one, the account is locked. |
 | `FIRST_USER_NAME` | `pi` | The first user; the app runs as this user. |
-| `MP240_DISPLAY` | `hdmi` | Initial display preset: `hdmi`, `crt-ntsc` or `crt-pal`. |
-| `MP240_STREAMING` | `1` | `0` leaves out the Netflix and Prime Video modules' browser (Chromium, Widevine, cage, wtype), which YouTube's sign-in uses too. |
-| `MP240_YOUTUBE` | `1` | `0` leaves out the YouTube module's yt-dlp, Deno and ffmpeg; the module then says yt-dlp is missing. |
-| `MP240_ROOT_SIZE` | `8` | GiB the system keeps of the card; the rest becomes the film partition on the first boot. `0`: no film partition, the system takes the whole card. |
+| `OSDOS_DISPLAY` | `hdmi` | Initial display preset: `hdmi`, `crt-ntsc` or `crt-pal`. |
+| `OSDOS_STREAMING` | `1` | `0` leaves out the Netflix and Prime Video modules' browser (Chromium, Widevine, cage, wtype), which YouTube's sign-in uses too. |
+| `OSDOS_YOUTUBE` | `1` | `0` leaves out the YouTube module's yt-dlp, Deno and ffmpeg; the module then says yt-dlp is missing. |
+| `OSDOS_ROOT_SIZE` | `8` | GiB the system keeps of the card; the rest becomes the film partition on the first boot. `0`: no film partition, the system takes the whole card. |
 | `ENABLE_SSH` | `0` | `1` enables SSH (it then also waits for the app, after mDNS). |
-| `TARGET_HOSTNAME` | `240mp` | |
-| `IMG_NAME` | `240mp-os` | |
+| `TARGET_HOSTNAME` | `osdos` | |
+| `IMG_NAME` | `osdos` | |
 | `WPA_COUNTRY`, `LOCALE_DEFAULT`, `KEYBOARD_KEYMAP`, `KEYBOARD_LAYOUT`, `TIMEZONE_DEFAULT`, `PUBKEY_SSH_FIRST_USER`, `PUBKEY_ONLY_SSH`, `DEPLOY_COMPRESSION` | pi-gen's | Passed through to pi-gen. |
-| `MP240_NATIVE` | `0` | `1` runs pi-gen's `build.sh` directly (a Debian host, as root) instead of in Docker. |
-| `MP240_PREPARE_ONLY` | `0` | `1` sets up the pi-gen tree and its config, then stops. |
+| `OSDOS_NATIVE` | `0` | `1` runs pi-gen's `build.sh` directly (a Debian host, as root) instead of in Docker. |
+| `OSDOS_PREPARE_ONLY` | `0` | `1` sets up the pi-gen tree and its config, then stops. |
 | `PI_GEN_REF` | pinned | pi-gen commit to build from. |
 
 ## How the boot works
 
 1. **Firmware.** It loads the kernel with no splash and no delay.
 2. **Kernel.** It boots quietly and logs to `tty3`, so `tty1` stays black.
-3. **systemd reaches `basic.target`.** `240mp.service` starts: `wait-for-display` holds it (at most five seconds) until the KMS driver has a display connector, then the launcher runs as in a manual install.
-4. **The first frame is on screen.** The app writes `/run/240mp/ready` (`MP240_READY_FILE`).
-5. **The held-back units start.** These are the ones listed in `/etc/240mp/boot-units`. Each has a `240mp-defer.conf` drop-in that runs `/usr/lib/240mp/wait-for-app` before it starts and orders it after the unit before it.
+3. **systemd reaches `basic.target`.** `osdos.service` starts: `wait-for-display` holds it (at most five seconds) until the KMS driver has a display connector, then the launcher runs as in a manual install.
+4. **The first frame is on screen.** The app writes `/run/osdos/ready` (`OSDOS_READY_FILE`).
+5. **The held-back units start.** These are the ones listed in `/etc/osdos/boot-units`. Each has a `osdos-defer.conf` drop-in that runs `/usr/lib/osdos/wait-for-app` before it starts and orders it after the unit before it.
    - `wait-for-app` returns as soon as the ready file exists, or after 20 seconds whatever happens.
    - It returns at once when the app isn't starting this boot at all.
-   - It is a wait, not an `After=240mp.service` ordering, on purpose: the worst a wait can cost is its timeout, while an ordering cycle with an early-boot unit could stall the whole boot.
-6. **The boot screen follows them.** `BootProgress` (`src/boot/`) polls `systemctl` for the units in `MP240_BOOT_UNITS_FILE`. It closes once every one has settled (started, failed, or skipped because its condition failed), or after a minute. Keys don't close it.
+   - It is a wait, not an `After=osdos.service` ordering, on purpose: the worst a wait can cost is its timeout, while an ordering cycle with an early-boot unit could stall the whole boot.
+6. **The boot screen follows them.** `BootProgress` (`src/boot/`) polls `systemctl` for the units in `OSDOS_BOOT_UNITS_FILE`. It closes once every one has settled (started, failed, or skipped because its condition failed), or after a minute. Keys don't close it.
 
 Outside this image neither environment variable is set, so `BootProgress` does nothing and a normal install is unaffected. It also stays out of the way when the app restarts after the boot has finished.
 
-`/etc/240mp/boot-units` lists `unit|LABEL` pairs. You can change a label there. To hold back another service, give it the same drop-in and add it to the list.
+`/etc/osdos/boot-units` lists `unit|LABEL` pairs. You can change a label there. To hold back another service, give it the same drop-in and add it to the list.
 
 ### Measuring
 
 The app logs when its first frame appeared and when each service settled, relative to the app's start:
 
 ```bash
-journalctl -b -u 240mp | grep '\[boot\]'
-systemd-analyze critical-chain 240mp.service
+journalctl -b -u osdos | grep '\[boot\]'
+systemd-analyze critical-chain osdos.service
 systemd-analyze blame
 ```
+
+## Licences
+
+[NOTICE](NOTICE), which the image carries as `/usr/share/doc/osdos/NOTICE`, lists what the image is made of and under which licences:
+
+- OSD/OS itself, under GPL-3.0, with its licence at `/opt/osdos/share/osdos/LICENSE` (and in Settings → About).
+- Raspberry Pi OS's and Debian's packages, each with its own licence in `/usr/share/doc/<package>/copyright`. The list of them, with their versions, is the image's `.info` file, which the workflow publishes with the image. Their source is in the Debian and Raspberry Pi archives, and OSD/OS offers the source of the GPL and LGPL software on an image for three years after it is published.
+- What the stage adds: yt-dlp (public domain), Deno (MIT, its licence in `/usr/local/share/doc/deno/LICENSE.md`, from `stage-osdos/06-youtube/files/deno-LICENSE.md`, which is bumped with `DENO_VERSION`) and Widevine, Google's proprietary module, from Raspberry Pi's archive as Raspberry Pi OS installs it.
+- The notices for the data the modules show (TMDB, Open-Meteo, Wikidata), pi-gen's licence, the Raspberry Pi firmware's licence, which asks to be reproduced with it, and the trademarks: Raspberry Pi is a trademark of Raspberry Pi Ltd, Debian a registered trademark of Software in the Public Interest, Inc., and OSD/OS is endorsed by neither.
 
 ## Notes
 

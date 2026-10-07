@@ -19,7 +19,7 @@
 #include <QSet>
 #include <QRegularExpression>
 
-static const QString kModuleId = QStringLiteral("com.240mp.emby");
+static const QString kModuleId = QStringLiteral("com.osdos.emby");
 
 // Library CollectionTypes the module knows how to browse + play. Anything else
 // (music, books, photos, mixed/empty, etc.) is hidden from both the browse list
@@ -30,7 +30,7 @@ static const QSet<QString> kSupportedCollectionTypes = {
 };
 
 static QString authHeaderValue(const QString &token, const QString &deviceId) {
-    QString auth = QStringLiteral("MediaBrowser Client=\"240-MP\", Device=\"%1\", DeviceId=\"%2\", Version=\"%3\"")
+    QString auth = QStringLiteral("MediaBrowser Client=\"OSD/OS\", Device=\"%1\", DeviceId=\"%2\", Version=\"%3\"")
                        .arg(QSysInfo::machineHostName(), deviceId, QCoreApplication::applicationVersion());
     if (!token.isEmpty())
         auth += QStringLiteral(", Token=\"%1\"").arg(token);
@@ -40,7 +40,7 @@ static QString authHeaderValue(const QString &token, const QString &deviceId) {
 // X-Application header the Emby Connect cloud service (connect.emby.media)
 // expects — "AppName/AppVersion".
 static QString connectAppHeader() {
-    return QStringLiteral("240-MP/%1").arg(QCoreApplication::applicationVersion());
+    return QStringLiteral("OSD-OS/%1").arg(QCoreApplication::applicationVersion());
 }
 
 static const QString kConnectBaseUrl = QStringLiteral("https://connect.emby.media/service");
@@ -315,7 +315,7 @@ void EmbyBackend::check_auth() {
 void EmbyBackend::logout() {
     // Revoke the access token server-side so it can't be reused, and drop the
     // device registration. /Sessions/Logout alone leaves the device listed under
-    // Dashboard > Devices (Jellyfin removes it), so signing out in 240-MP would
+    // Dashboard > Devices (Jellyfin removes it), so signing out in OSD/OS would
     // otherwise leave a stale entry behind on every sign-out — and since
     // clearAuthState() regenerates m_deviceId, the next sign-in registers a new
     // one rather than reusing it. DELETE /Devices takes either the reported

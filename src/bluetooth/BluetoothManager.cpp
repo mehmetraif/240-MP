@@ -1,6 +1,6 @@
 #include "BluetoothManager.h"
 
-#ifdef MP240_BLUETOOTH
+#ifdef OSDOS_BLUETOOTH
 #include "BluetoothAgent.h"
 
 #include <QDBusArgument>
@@ -46,14 +46,14 @@ QList<RfkillSwitch> bluetoothSwitches() {
     return switches;
 }
 
-#ifdef MP240_BLUETOOTH
+#ifdef OSDOS_BLUETOOTH
 const QString kBluez         = QStringLiteral("org.bluez");
 const QString kAdapter       = QStringLiteral("org.bluez.Adapter1");
 const QString kDevice        = QStringLiteral("org.bluez.Device1");
 const QString kAgentManager  = QStringLiteral("org.bluez.AgentManager1");
 const QString kProperties    = QStringLiteral("org.freedesktop.DBus.Properties");
 const QString kObjectManager = QStringLiteral("org.freedesktop.DBus.ObjectManager");
-const QString kAgentPath     = QStringLiteral("/com/240mp/BluetoothAgent");
+const QString kAgentPath     = QStringLiteral("/com/osdos/BluetoothAgent");
 const QString kRejected      = QStringLiteral("org.bluez.Error.Rejected");
 
 // Long enough to type a code on a keyboard.
@@ -166,7 +166,7 @@ BluetoothManager::BluetoothManager(QObject *parent) : QObject(parent) {
     m_searchTimer.setInterval(kSearchMs);
     connect(&m_searchTimer, &QTimer::timeout, this, &BluetoothManager::stopSearch);
 
-#ifdef MP240_BLUETOOTH
+#ifdef OSDOS_BLUETOOTH
     if (!bus().isConnected()) {
         qWarning("[Bluetooth] No system bus: %s", qPrintable(bus().lastError().message()));
         return;
@@ -198,7 +198,7 @@ BluetoothManager::BluetoothManager(QObject *parent) : QObject(parent) {
 }
 
 BluetoothManager::~BluetoothManager() {
-#ifdef MP240_BLUETOOTH
+#ifdef OSDOS_BLUETOOTH
     // A search left running would go on after the app.
     if (searching() && m_searchTimer.isActive()) {
         QDBusMessage stop = QDBusMessage::createMethodCall(kBluez, m_adapterPath, kAdapter,
@@ -209,7 +209,7 @@ BluetoothManager::~BluetoothManager() {
 }
 
 bool BluetoothManager::supported() const {
-#ifdef MP240_BLUETOOTH
+#ifdef OSDOS_BLUETOOTH
     return true;
 #else
     return false;
@@ -217,7 +217,7 @@ bool BluetoothManager::supported() const {
 }
 
 QString BluetoothManager::adapterName() const {
-#ifdef MP240_BLUETOOTH
+#ifdef OSDOS_BLUETOOTH
     return m_adapters.value(m_adapterPath).value(QStringLiteral("Alias")).toString();
 #else
     return QString();
@@ -225,7 +225,7 @@ QString BluetoothManager::adapterName() const {
 }
 
 bool BluetoothManager::powered() const {
-#ifdef MP240_BLUETOOTH
+#ifdef OSDOS_BLUETOOTH
     return m_adapters.value(m_adapterPath).value(QStringLiteral("Powered")).toBool();
 #else
     return false;
@@ -233,7 +233,7 @@ bool BluetoothManager::powered() const {
 }
 
 bool BluetoothManager::searching() const {
-#ifdef MP240_BLUETOOTH
+#ifdef OSDOS_BLUETOOTH
     return m_adapters.value(m_adapterPath).value(QStringLiteral("Discovering")).toBool();
 #else
     return false;
@@ -242,7 +242,7 @@ bool BluetoothManager::searching() const {
 
 QVariantList BluetoothManager::devices() const {
     QVariantList list;
-#ifdef MP240_BLUETOOTH
+#ifdef OSDOS_BLUETOOTH
     if (m_adapterPath.isEmpty())
         return list;
     QVariantList found;
@@ -276,7 +276,7 @@ QVariantList BluetoothManager::devices() const {
 }
 
 void BluetoothManager::setPowered(bool on) {
-#ifdef MP240_BLUETOOTH
+#ifdef OSDOS_BLUETOOTH
     if (m_adapterPath.isEmpty())
         return;
     clearMessage();
@@ -297,7 +297,7 @@ void BluetoothManager::setPowered(bool on) {
 }
 
 void BluetoothManager::startSearch() {
-#ifdef MP240_BLUETOOTH
+#ifdef OSDOS_BLUETOOTH
     if (m_adapterPath.isEmpty())
         return;
     clearMessage();
@@ -323,14 +323,14 @@ void BluetoothManager::startSearch() {
 
 void BluetoothManager::stopSearch() {
     m_searchTimer.stop();
-#ifdef MP240_BLUETOOTH
+#ifdef OSDOS_BLUETOOTH
     if (!m_adapterPath.isEmpty() && searching())
         call(m_adapterPath, kAdapter, QStringLiteral("StopDiscovery"), {}, kCallTimeoutMs);
 #endif
 }
 
 void BluetoothManager::pair(const QString &path) {
-#ifdef MP240_BLUETOOTH
+#ifdef OSDOS_BLUETOOTH
     if (!m_devices.contains(path) || !m_pairingPath.isEmpty())
         return;
     // A search under way gets in the way of pairing.
@@ -358,7 +358,7 @@ void BluetoothManager::pair(const QString &path) {
 }
 
 void BluetoothManager::connectDevice(const QString &path) {
-#ifdef MP240_BLUETOOTH
+#ifdef OSDOS_BLUETOOTH
     if (!m_devices.contains(path))
         return;
     setBusy(path, QStringLiteral("connecting"));
@@ -375,7 +375,7 @@ void BluetoothManager::connectDevice(const QString &path) {
 }
 
 void BluetoothManager::disconnectDevice(const QString &path) {
-#ifdef MP240_BLUETOOTH
+#ifdef OSDOS_BLUETOOTH
     if (!m_devices.contains(path))
         return;
     clearMessage();
@@ -391,7 +391,7 @@ void BluetoothManager::disconnectDevice(const QString &path) {
 }
 
 void BluetoothManager::forget(const QString &path) {
-#ifdef MP240_BLUETOOTH
+#ifdef OSDOS_BLUETOOTH
     if (!m_devices.contains(path) || m_adapterPath.isEmpty())
         return;
     clearMessage();
@@ -409,7 +409,7 @@ void BluetoothManager::forget(const QString &path) {
 }
 
 void BluetoothManager::answerPrompt(bool accept) {
-#ifdef MP240_BLUETOOTH
+#ifdef OSDOS_BLUETOOTH
     replyToPending(accept);
     setPrompt({});
 #else
@@ -418,7 +418,7 @@ void BluetoothManager::answerPrompt(bool accept) {
 }
 
 void BluetoothManager::cancelPairing() {
-#ifdef MP240_BLUETOOTH
+#ifdef OSDOS_BLUETOOTH
     replyToPending(false);
     setPrompt({});
     if (!m_pairingPath.isEmpty())
@@ -435,7 +435,7 @@ void BluetoothManager::clearMessage() {
 
 void BluetoothManager::collectDetails() {
     QStringList lines;
-#ifdef MP240_BLUETOOTH
+#ifdef OSDOS_BLUETOOTH
     if (m_adapterPath.isEmpty()) {
         lines << QStringLiteral("BlueZ: no adapter");
     } else {
@@ -501,7 +501,7 @@ void BluetoothManager::collectDetails() {
                      QStringLiteral("600") });
 }
 
-#ifdef MP240_BLUETOOTH
+#ifdef OSDOS_BLUETOOTH
 
 // --- What BlueZ asks of the agent ---
 

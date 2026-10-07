@@ -38,7 +38,7 @@ static const char *kTagsDirName = "nfc_tags";
 // http/https are deliberately absent — those are stream URLs this module's own
 // player hands straight to mpv, not handoffs.
 static const QHash<QString, QString> kHandoffModules = {
-    {QStringLiteral("plex"), QStringLiteral("com.240mp.plex")},
+    {QStringLiteral("plex"), QStringLiteral("com.osdos.plex")},
 };
 
 // Libraries still on a legacy metadata agent report guids like
@@ -67,7 +67,7 @@ static QString handoffModuleForRef(const QString &ref) {
     const QString scheme = refScheme(ref);
     if (scheme.isEmpty()) return {};
     if (scheme.startsWith(kPlexLegacyAgentPrefix))
-        return QStringLiteral("com.240mp.plex");
+        return QStringLiteral("com.osdos.plex");
     return kHandoffModules.value(scheme);
 }
 // Must track the "enabled" toggle's default in modules/nfc_reader/manifest.json,
@@ -165,7 +165,7 @@ NfcReaderBackend::NfcReaderBackend(const QString &appRoot, const QString &dataRo
     QFile f(m_dataRoot + "/config.json");
     if (f.open(QIODevice::ReadOnly)) {
         const QJsonObject moduleConfig = QJsonDocument::fromJson(f.readAll()).object()
-            ["modules"].toObject()["com.240mp.nfc_reader"].toObject();
+            ["modules"].toObject()["com.osdos.nfc_reader"].toObject();
         const QString dir = moduleConfig["tags_directory"].toString();
         if (!dir.isEmpty())
             m_tagsDir = dir;
@@ -331,7 +331,7 @@ void NfcReaderBackend::setTagsDir(const QString &path) {
 }
 
 void NfcReaderBackend::onSettingChanged(const QString &moduleId, const QString &key, const QVariant &value) {
-    if (moduleId != QLatin1String("com.240mp.nfc_reader")) return;
+    if (moduleId != QLatin1String("com.osdos.nfc_reader")) return;
 
     if (key == QLatin1String("enabled")) {
         // Same rule as the constructor / AppCore::isModuleEnabled: only an

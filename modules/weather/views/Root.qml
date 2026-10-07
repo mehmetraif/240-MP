@@ -9,7 +9,7 @@ FocusScope {
     property var navParams: ({})
 
     // The module's manifest id — the single place it appears in this module's QML.
-    property string moduleId: "com.240mp.weather"
+    property string moduleId: "com.osdos.weather"
     property var _moduleInfo: appCore ? appCore.get_module_info(moduleId) : ({})
     property string moduleName: _moduleInfo.name || ""
     property string moduleIcon: _moduleInfo.icon || ""

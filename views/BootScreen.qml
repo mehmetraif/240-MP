@@ -1,11 +1,12 @@
 import QtQuick
 import Components
 
-// Boot screen of the 240-MP OS image (os/README.md). The image puts the app on
+// Boot screen of the OSD/OS image (os/README.md). The image puts the app on
 // screen first and starts the services it held back afterwards, in the order
-// it lists them; this shows them coming up while the cassette plays — the tape
-// winds across in step with the progress bar. It stays until they have all
-// settled, or a minute has passed, whatever keys are pressed.
+// it lists them; this shows them coming up while the cassette plays: its reels
+// turn, and the tape winds from one onto the other in step with the progress
+// bar. It stays until they have all settled, or a minute has passed, whatever
+// keys are pressed.
 //
 // Binds only to root.* (Main.qml mirrors bootProgress there), which stays
 // valid while this Loader-hosted view is torn down.
@@ -118,6 +119,7 @@ FocusScope {
         width: Math.round(root.sw * 612 / 1448)
         height: Math.round(root.sh * 284 / 1086)
         ink: root.primaryColor
+        ground: root.surfaceColor
         x: Math.round((root.sw - width) / 2)
         y: bootRoot.blockY
         progress: bootRoot.shownProgress

@@ -97,7 +97,7 @@ private:
     // The module's Scaling, or the app's when it is "Default", as
     // web-player.sh takes it: letterbox, 14:9, panscan or anamorphic.
     QString scaling() const;
-    QString moduleId() const { return QStringLiteral("com.240mp.") + m_service; }
+    QString moduleId() const { return QStringLiteral("com.osdos.") + m_service; }
     QString script() const;
     void    applySetting(const QString &key, const QVariant &value);
     // close()'s last resort: SIGTERM, then SIGKILL, to everything the run started.

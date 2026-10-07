@@ -2,6 +2,7 @@
 #ifndef APP_BUILD
 #define APP_BUILD ""
 #endif
+#include "util/LegacyNames.h"
 #include <QObject>
 #include <QVariant>
 #include <QVariantList>
@@ -31,17 +32,17 @@ public:
     QString appVersion() const { return QCoreApplication::applicationVersion(); }
     QString appBuild() const { return QStringLiteral(APP_BUILD); }
 
-    // True when launched by the autostart systemd service (which injects MP240_AUTOSTART=1).
+    // True when launched by the autostart systemd service (which injects OSDOS_AUTOSTART=1).
     // Gates the quit overlay's "Exit to Terminal" option, which only makes sense on a
-    // headless RPi running under the service. See scripts/install.sh and 240mp-stop.
+    // headless RPi running under the service. See scripts/install.sh and osdos-stop.
     Q_INVOKABLE bool isAutostartSession() const {
-        return qEnvironmentVariableIsSet("MP240_AUTOSTART");
+        return legacy::envIsSet("AUTOSTART");
     }
     // The quit overlay's "Restart": exit 12, which the service's stop helper
-    // (240mp-stop) takes as a reboot since launcher API 2. An older install's
+    // (osdos-stop) takes as a reboot since launcher API 2. An older install's
     // helper would power the Pi off instead, so it isn't offered there.
     Q_INVOKABLE bool canRestartSystem() const {
-        return isAutostartSession() && qEnvironmentVariableIntValue("MP240_LAUNCHER_API") >= 2;
+        return isAutostartSession() && legacy::envInt("LAUNCHER_API") >= 2;
     }
 
     Q_INVOKABLE void scan_for_modules();

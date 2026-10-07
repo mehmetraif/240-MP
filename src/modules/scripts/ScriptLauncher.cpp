@@ -240,10 +240,14 @@ bool ScriptLauncher::start(const ScriptEntry &entry, QString *errorOut) {
     QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
     env.insert(QStringLiteral("APP_ROOT"),  m_appRoot);
     env.insert(QStringLiteral("DATA_ROOT"), m_dataRoot);
-    env.insert(QStringLiteral("MP240_MODE"),
-               takeover ? QStringLiteral("takeover") : QStringLiteral("console"));
-    if (vt > 0)
+    const QString modeName = takeover ? QStringLiteral("takeover") : QStringLiteral("console");
+    env.insert(QStringLiteral("OSDOS_MODE"), modeName);
+    // Under their 240-MP names too, for scripts written before OSD/OS.
+    env.insert(QStringLiteral("MP240_MODE"), modeName);
+    if (vt > 0) {
+        env.insert(QStringLiteral("OSDOS_VT"), QString::number(vt));
         env.insert(QStringLiteral("MP240_VT"), QString::number(vt));
+    }
 #ifdef Q_OS_LINUX
     // Strip the wrong-word-size Steam overlay hook the Gaming Mode session hands
     // down, so ld.so's "wrong ELF class ... ignored" warning stops appearing in
@@ -339,7 +343,7 @@ bool ScriptLauncher::start(const ScriptEntry &entry, QString *errorOut) {
     return true;
 }
 
-// Reached only from console mode and downgraded-takeover runs, where 240-MP kept
+// Reached only from console mode and downgraded-takeover runs, where OSD/OS kept
 // the screen and a stop key is still offered. A real takeover run has no stop key
 // (the child owns input; see Takeover.qml) — for those the group either exits on
 // its own or is cleared at app quit.

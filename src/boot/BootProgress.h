@@ -9,14 +9,14 @@
 class QProcess;
 class QTimer;
 
-// Boot screen state for the 240-MP OS image (os/). The image starts the app
+// Boot screen state for the OSD/OS image (os/). The image starts the app
 // ahead of the rest of the system and holds a list of services back until the
 // app's first frame is on screen; this object releases them (markReady) and
 // reports how far they have got, so Main.qml can show it.
 //
-// Inert everywhere else: unless MP240_BOOT_UNITS_FILE names a unit list and
+// Inert everywhere else: unless OSDOS_BOOT_UNITS_FILE names a unit list and
 // systemd says the boot is still in progress, `active` stays false and nothing
-// is polled. markReady only writes MP240_READY_FILE when that is set.
+// is polled. markReady only writes OSDOS_READY_FILE when that is set.
 class BootProgress : public QObject {
     Q_OBJECT
     Q_PROPERTY(bool active READ active NOTIFY activeChanged)
@@ -36,7 +36,7 @@ public:
     QVariantList steps() const;
     QString currentLabel() const;
 
-    // The first frame is on screen: write MP240_READY_FILE so the held-back
+    // The first frame is on screen: write OSDOS_READY_FILE so the held-back
     // services start. Safe to call more than once; only the first call acts.
     void markReady();
 

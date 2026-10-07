@@ -33,9 +33,9 @@
 
 namespace {
 
-const QString kModuleId = QStringLiteral("com.240mp.playlists");
-const QString kLocalFiles = QStringLiteral("com.240mp.local_files");
-const QString kYouTube = QStringLiteral("com.240mp.youtube");
+const QString kModuleId = QStringLiteral("com.osdos.playlists");
+const QString kLocalFiles = QStringLiteral("com.osdos.local_files");
+const QString kYouTube = QStringLiteral("com.osdos.youtube");
 
 // The prefix of an item's key, by module: a server's is its id's last part
 // ("jellyfin:", "emby:").

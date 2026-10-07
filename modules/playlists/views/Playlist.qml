@@ -24,8 +24,8 @@ FocusScope {
     readonly property var currentRow: rows[list.currentIndex]
 
     readonly property var sourceNames: ({
-        "com.240mp.local_files": "Local", "com.240mp.youtube": "YouTube",
-        "com.240mp.jellyfin": "Jellyfin", "com.240mp.emby": "Emby" })
+        "com.osdos.local_files": "Local", "com.osdos.youtube": "YouTube",
+        "com.osdos.jellyfin": "Jellyfin", "com.osdos.emby": "Emby" })
 
     function itemValue(item) {
         if (item.state === "missing")

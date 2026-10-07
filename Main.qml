@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Window
-import MP240.Video
+import OSDOS.Video
 import Components
 
 Window {
@@ -255,7 +255,7 @@ Window {
     readonly property string appVersion: appCore ? appCore.appVersion : ""
     readonly property string appBuild: appCore ? appCore.appBuild : ""
 
-    // --- BOOT SCREEN (240-MP OS image only, see os/README.md) ---
+    // --- BOOT SCREEN (OSD/OS image only, see os/README.md) ---
     // bootProgress mirrors, for the same teardown-safety reason as above.
     readonly property bool   bootActive: bootProgress ? bootProgress.active : false
     readonly property real   bootValue:  bootProgress ? bootProgress.progress : 0

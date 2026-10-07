@@ -1,4 +1,5 @@
 #include "TmdbCatalog.h"
+#include "util/LegacyNames.h"
 #include <QDateTime>
 #include <QFile>
 #include <QJsonArray>
@@ -15,7 +16,7 @@
 namespace {
 
 // Wikimedia asks every client to say who it is.
-const char *const kUserAgent = "240-MP (https://github.com/anthonycaccese/240-MP)";
+const char *const kUserAgent = "OSD/OS (https://github.com/anthonycaccese/240-MP)";
 constexpr int kTimeoutMs = 12000;
 // A list that failed is shown empty for this long before it is asked for again,
 // so a tree refreshing on the failure can't loop on it.
@@ -42,8 +43,8 @@ TmdbCatalog::TmdbCatalog(const QString &dataRoot, const Service &service, QObjec
     : QObject(parent), m_dataRoot(dataRoot), m_service(service)
 {
     // Overridable so tests can stand a local server in for TMDB and Wikidata.
-    m_tmdbUrl = qEnvironmentVariable("MP240_TMDB_URL", QStringLiteral("https://api.themoviedb.org/3"));
-    m_wikidataUrl = qEnvironmentVariable("MP240_WIKIDATA_URL",
+    m_tmdbUrl = legacy::env("TMDB_URL", QStringLiteral("https://api.themoviedb.org/3"));
+    m_wikidataUrl = legacy::env("WIKIDATA_URL",
                                          QStringLiteral("https://query.wikidata.org/sparql"));
     m_nam.setTransferTimeout(kTimeoutMs);
 }

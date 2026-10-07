@@ -194,9 +194,9 @@ However, if you already have Raspberry Pi OS set up and working for your TV then
     - You will get an option at the end of the install script that asks: `Install systemd autostart service? [y/N]` 
     - If you type `Y` and press enter it will set up OSD/OS to autostart when your Raspberry Pi boots to create a simple appliance experience (bascially a dedicated OSD/OS device).
     - If you choose that option please make sure to enter your primary user for the pi at the next prompt.  If you don't provide one it will set it up for the `Pi` user.
-    - If you ever need to inspect the autostart logs later, use `sudo journalctl -u 240mp -f`
+    - If you ever need to inspect the autostart logs later, use `sudo journalctl -u osdos -f`
 
-At this point you can type `240mp` at any time to start up the app.  And if you installed the autostart service then the next time you boot your Pi it will boot directly into OSD/OS.
+At this point you can type `osdos` at any time to start up the app.  And if you installed the autostart service then the next time you boot your Pi it will boot directly into OSD/OS.
 
 ### Post Install
 
@@ -248,9 +248,9 @@ At this point you can type `240mp` at any time to start up the app.  And if you 
 - If you have the autostart service installed, the Quit dialog gains an `Exit to Terminal` option alongside `Power Off`. Choosing that will drop you to a login shell on the Pi instead of powering off, and leaves autostart intact for subsequent reboots. 
 - It also offers `Restart`, which reboots the Pi. An install from before it was added needs `install.sh` run again to get it, since the service's stop helper is what reboots.
 - To get back into OSD/OS from that shell you can do one of the following:
-    1. (*Recommended*) type `sudo systemctl start 240mp` to start up OSD/OS and the autostart service again
+    1. (*Recommended*) type `sudo systemctl start osdos` to start up OSD/OS and the autostart service again
     2. type `sudo reboot` to reboot and start up the device from scratch (which will also restart the autostart service)
-    3. type `240mp` which will relaunch the app unmanaged in your shell; here the Quit dialog shows the plain Yes/No menu and selecting Yes will just return you to the shell rather than powering off
+    3. type `osdos` which will relaunch the app unmanaged in your shell; here the Quit dialog shows the plain Yes/No menu and selecting Yes will just return you to the shell rather than powering off
 
 ### Update
 
@@ -276,16 +276,16 @@ At this point you can type `240mp` at any time to start up the app.  And if you 
 1) If you'd like to remove OSD/OS and continue to use your SD card for other things then you can run the following commands via terminal or over SSH:
 
     ```bash
-    sudo rm -rf /opt/240mp
-    sudo rm /usr/local/bin/240mp
+    sudo rm -rf /opt/osdos
+    sudo rm /usr/local/bin/osdos
     ```
 
 2) If you installed the autostart service and want to remove it then please run the running the following commands:
 
     ```bash
     sudo systemctl unmask getty@tty1.service autovt@.service
-    sudo systemctl disable 240mp.service
-    sudo rm -f /etc/systemd/system/240mp.service /etc/systemd/system/240mp-terminal.service /usr/local/bin/240mp-stop
+    sudo systemctl disable osdos.service
+    sudo rm -f /etc/systemd/system/osdos.service /etc/systemd/system/osdos-terminal.service /usr/local/bin/osdos-stop
     sudo systemctl daemon-reload
     ```
 
@@ -301,9 +301,9 @@ If you don't have a Raspberry Pi and would like to try OSD/OS, I also provide a 
 ### Steps
 
 1. Download the DMG archive from the latest release
-2. Mount it and move the 240mp.app into your Applications folder
+2. Mount it and move the osdos.app into your Applications folder
 3. Make sure you have mpv installed (OSD/OS requires MPV for playback): `brew install mpv`
-4. Double click the app (`240mp.app`) and it should open full screen
+4. Double click the app (`osdos.app`) and it should open full screen
 
 ### Post Install
 
@@ -318,12 +318,12 @@ If you don't have a Raspberry Pi and would like to try OSD/OS, I also provide a 
 
 Or manually:
 1. Download the DMG archive from the latest release
-2. Mount it and move the 240mp.app into your Applications folder to overwrite your existing version. *Your existing settings will be retained and it's safe to overwrite*
+2. Mount it and move the osdos.app into your Applications folder to overwrite your existing version. *Your existing settings will be retained and it's safe to overwrite*
 
 ### Uninstall
 
 - Remove it just like you would any application on macOS
-- Remove the configuration files in `~/Library/Application Support/240-MP/`
+- Remove the configuration files in `~/Library/Application Support/OSD-OS/`
 
 ## On SteamOS / Linux x86_64
 
@@ -340,7 +340,7 @@ The AppImage carries its own copy of the Wayland client libraries and uses them 
 
 > **Note for SteamOS**: please switch to Desktop Mode for the following steps
 
-1. Download `240-MP-linux-x86_64.AppImage` from the [latest release](https://github.com/mehmetraif/OSD-OS/releases/latest).
+1. Download `OSD-OS-linux-x86_64.AppImage` from the [latest release](https://github.com/mehmetraif/OSD-OS/releases/latest).
 2. In your file manager, right-click the file → **Properties → Permissions** → tick *Is executable* (or run `chmod +x` on it from terminal).
 3. Double-click to launch. The Local Files module is enabled by default; open Settings to enable others (see the [modules section](https://github.com/anthonycaccese/240-MP/wiki#modules) in the wiki for details on each).
 
@@ -354,7 +354,7 @@ The AppImage carries its own copy of the Wayland client libraries and uses them 
 **SteamOS Gaming Mode**
 
 - To run OSD/OS from SteamOS Gaming Mode...
-- In Desktop Mode, open **Steam → Games → Add a Non-Steam Game to My Library**, click **Browse**, and select the AppImage (`240-MP-linux-x86_64.AppImage`).
+- In Desktop Mode, open **Steam → Games → Add a Non-Steam Game to My Library**, click **Browse**, and select the AppImage (`OSD-OS-linux-x86_64.AppImage`).
 - When in Gaming Mode it will appear in your library under "Non Steam Games".
 - There is a set of artwork available [here](https://github.com/anthonycaccese/240-MP/discussions/249#discussioncomment-18115953) that can be used for Gaming Mode grid display.
 
@@ -363,10 +363,10 @@ The AppImage carries its own copy of the Wayland client libraries and uses them 
 - **From within the app (recommended):** go to `Settings → Update`, check for updates, download, and choose Apply & Relaunch. 
 - The app verifies the download, swaps the new `.AppImage` over your current one in place (keeping a `.bak` of the previous version until the new one launches cleanly). 
 - In **Gaming Mode** the app needs to close after applying; so simply relaunch it from your Steam library to pick up the new version (the file path is unchanged, so your existing shortcut will still work). 
-- Your settings in `~/.local/share/240-MP/` are retained.
+- Your settings in `~/.local/share/OSD-OS/` are retained.
 - If the app is stored in a read-only location the in-app update can't write to then the update screen simply point you at the [Releases page](https://github.com/mehmetraif/OSD-OS/releases/latest) to download and replace the `.AppImage` manually.
 
 ### Uninstall
 
 - Delete the `.AppImage` file (and remove it from Steam if you added it as a non-Steam game)
-- Remove the configuration files in `~/.local/share/240-MP/`
+- Remove the configuration files in `~/.local/share/OSD-OS/`

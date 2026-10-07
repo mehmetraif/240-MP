@@ -20,6 +20,10 @@ Item {
     // where its download is): the label is cut short with "…" instead, two
     // dots before the value, so the value always shows whole.
     property bool keepValue: false
+    // A line whose value, when it is too long for the line, scrolls through
+    // all the time rather than only while the line is selected: lines that
+    // are read rather than chosen (About's).
+    property bool alwaysScroll: false
     property real fontSize: root.sh * 0.05 //24
 
     readonly property color ink: selected ? root.surfaceColor : root.primaryColor
@@ -98,7 +102,8 @@ Item {
     }
 
     // The value: cut short with "…" when it is too long for the line, and
-    // scrolled through instead while the line is selected.
+    // scrolled through instead while the line is selected (or always, with
+    // alwaysScroll).
     Item {
         id: valueClip
         visible: menuRow.value !== ""
@@ -110,7 +115,8 @@ Item {
         Text {
             id: valueText
             anchors.verticalCenter: parent.verticalCenter
-            width: menuRow.selected ? implicitWidth : Math.min(implicitWidth, valueClip.width)
+            width: menuRow.selected || menuRow.alwaysScroll ? implicitWidth
+                                                            : Math.min(implicitWidth, valueClip.width)
             text: menuRow.value
             color: menuRow.ink
             elide: Text.ElideRight
@@ -119,8 +125,25 @@ Item {
             font.pixelSize: menuRow.fontSize
         }
 
+        // Whether the value scrolls, and how far. The animation keeps the
+        // distance it started with, so it is started (and started over) once
+        // the line's layout has settled, a turn of the event loop later: one
+        // started in the middle of it, as a line that scrolls from the start
+        // is, would keep a stale distance for good.
+        readonly property bool scrolls: (menuRow.selected || menuRow.alwaysScroll)
+                                        && valueText.implicitWidth > valueClip.width
+        readonly property real scrollBy: valueClip.width - valueText.implicitWidth
+        onScrollsChanged: Qt.callLater(updateScroll)
+        onScrollByChanged: Qt.callLater(updateScroll)
+        function updateScroll() {
+            if (scrolls)
+                scroll.restart()
+            else
+                scroll.stop()
+        }
+
         SequentialAnimation {
-            running: menuRow.selected && valueText.implicitWidth > valueClip.width
+            id: scroll
             loops: Animation.Infinite
             onRunningChanged: if (!running) valueText.x = 0
 
@@ -128,7 +151,7 @@ Item {
             NumberAnimation {
                 target: valueText
                 property: "x"
-                to: valueClip.width - valueText.implicitWidth
+                to: valueClip.scrollBy
                 duration: Math.abs(to) * 20
             }
             PauseAnimation { duration: 2000 }

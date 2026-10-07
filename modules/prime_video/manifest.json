@@ -1,5 +1,5 @@
 {
-  "id": "com.240mp.prime_video",
+  "id": "com.osdos.prime_video",
   "name": "Prime Video",
   "icon": "assets/images/logo.svg",
   "entry_point_qml": "views/Root.qml",

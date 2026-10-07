@@ -7,7 +7,7 @@
 //
 // Resolution order (first hit wins), returning an absolute path or empty:
 //   1. <appDir>/mpv  — sibling of the app binary. Inside the Linux AppImage,
-//                      usr/bin/mpv sits beside usr/bin/240mp and linuxdeploy's
+//                      usr/bin/mpv sits beside usr/bin/osdos and linuxdeploy's
 //                      AppRun does not add usr/bin to PATH, so findExecutable()
 //                      alone would miss it.
 //   2. mpv on PATH   — system installs (brew on macOS, apt on the Pi).

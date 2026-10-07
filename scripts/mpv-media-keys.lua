@@ -1,4 +1,4 @@
--- HID media-key handling for 240-MP.
+-- HID media-key handling for OSD/OS.
 --
 -- Loaded for every mpv launch (all modules) so keyboard media keys work anytime
 -- mpv is playing. Binds the canonical mpv key names — which both real HID media
@@ -30,7 +30,7 @@ end
 
 -- The navigation menu (mpv-osc.lua) broadcasts this when it opens; the volume
 -- bar and the menu share the same spot, so we stand down.
-mp.register_script_message("240mp-osd-volume-hide", hide_bar)
+mp.register_script_message("osdos-osd-volume-hide", hide_bar)
 
 -- Draw a filled rectangle (no border) at an absolute position.
 local function draw_rect(ass, x, y, w, h, colour, alpha)
@@ -53,7 +53,7 @@ end
 local function show_volume_bar()
     -- Tell the navigation menu (mpv-osc.lua) to stand down — the two OSDs share
     -- the same spot and are mutually exclusive.
-    mp.commandv("script-message", "240mp-osd-menu-hide")
+    mp.commandv("script-message", "osdos-osd-menu-hide")
 
     local ww, wh = mp.get_osd_size()
     if ww == 0 or wh == 0 then return end
@@ -117,7 +117,7 @@ end
 -- position is shown.
 local function seek_with_menu(command)
     mp.command(command)
-    mp.commandv("script-message", "240mp-osd-menu-show")
+    mp.commandv("script-message", "osdos-osd-menu-show")
 end
 
 mp.add_forced_key_binding("VOLUME_UP",   "mk-vol-up",   function() change_volume(VOLUME_STEP)  end, {repeatable = true})

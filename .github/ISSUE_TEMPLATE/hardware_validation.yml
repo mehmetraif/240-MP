@@ -1,5 +1,5 @@
 name: Hardware validation report
-description: Report whether 240-MP works (or doesn't) on your specific hardware and display setup
+description: Report whether OSD/OS works (or doesn't) on your specific hardware and display setup
 title: "[Hardware]: "
 labels: ["hardware-validation"]
 body:
@@ -58,4 +58,4 @@ body:
     id: photos
     attributes:
       label: Photos of the setup (optional)
-      description: Drag & drop photos of your setup or screen here — always fun to see 240-MP running in the wild.
+      description: Drag & drop photos of your setup or screen here — always fun to see OSD/OS running in the wild.

@@ -4,13 +4,26 @@
 
 # OSD/OS
 
-**Smart TV for CRT.** OSD/OS, formerly 240-MP, is a retro VCR style frontend to play content on [Raspberry Pi](https://github.com/anthonycaccese/240-MP/wiki/Hardware-Testing) (preferably hooked up to a CRT TV), Steam OS (and other Linux x86_64 distros) or MacOS (ARM). Every screen is drawn like a VCR's on-screen display, in two colours and large type, with menus laid out like a camcorder's. Everything works with the arrows, select and back, on a remote, a keyboard or a gamepad.
+**Smart TV for CRT.** OSD/OS is an operating system for the [Raspberry Pi](https://github.com/anthonycaccese/240-MP/wiki/Hardware-Testing) that makes a TV, preferably a CRT, a smart TV with the look of a VCR: flash it to an SD card, plug the Pi into the TV, and it starts straight into OSD/OS, with nothing to log in to and no desktop to start it from. Every screen is drawn like a VCR's on-screen display, in two colours and large type, with menus laid out like a camcorder's. Everything works with the arrows, select and back, on a remote, a keyboard or a gamepad.
+
+It grew out of [240-MP](https://github.com/anthonycaccese/240-MP), a retro VCR style frontend that runs as an app, and OSD/OS runs as one too, on Raspberry Pi OS, Steam OS (and other Linux x86_64 distros) or MacOS (ARM).
 
 Playback experiences are handled via modules to enable new integrations without requiring major changes to the overall frontend. Try to think of each module as a different input on a VHS deck. There are 12 included modules currently: [Local Files](https://github.com/anthonycaccese/240-MP/wiki/Module:-Local-Files), [Plex](https://github.com/anthonycaccese/240-MP/wiki/Module:-Plex), [Jellyfin](https://github.com/anthonycaccese/240-MP/wiki/Module:-Jellyfin), Emby, Netflix, Prime Video, [YouTube](https://github.com/anthonycaccese/240-MP/wiki/Module:-YouTube), Playlists, [NFC Reader](https://github.com/anthonycaccese/240-MP/wiki/Module:-NFC-Reader), [Weather](https://github.com/anthonycaccese/240-MP/wiki/Module:-Weather), [Scripts](https://github.com/anthonycaccese/240-MP/wiki/Module:-Scripts) and a module similar to art/wallpaper modes on modern tvs called [Ambient:Mode](https://github.com/anthonycaccese/240-MP/wiki/Module:-Ambient-Mode).
 
 It's built to work in conjunction with [MPV](https://github.com/anthonycaccese/240-MP/wiki/MPV) which will be installed (or updated) as a dependency during the [install](#install) steps.  Some modules (like YouTube and NFC Reader) have additional dependencies which are covered on their associated wiki pages under the "To Enable" sections.
 
-On a Raspberry Pi, OSD/OS can also be the whole system. The **OSD/OS** image ([os/README.md](os/README.md)) boots straight into it, with no desktop, display server or window manager in between.
+## An operating system, not an app
+
+240-MP is an app: it is installed on a system that is already set up, Raspberry Pi OS, Steam OS or macOS, and starts once that system has booted its own way, its splash, boot messages and login prompt or desktop included. The **OSD/OS** image ([os/README.md](os/README.md)) is the system itself:
+
+- **It boots into OSD/OS.** No rainbow splash, no boot messages, no login prompt: from the moment the Pi is switched on the screen is OSD/OS's, starting with its own boot screen: the OSD/OS cassette, its reels turning and its tape winding from one onto the other while the system comes up under it, a line per service.
+- **No desktop, no window manager, no file manager.** There is no display server (X11 or Wayland) and no compositor: OSD/OS draws straight to the screen through the kernel's display driver, and mpv plays straight to it too ([Nothing between the app and the screen](#nothing-between-the-app-and-the-screen)).
+- **Every screen is OSD/OS's own.** The boot screen, the menus, the file browser (Local Files' tree), the on-screen keyboard, the info screens, Settings, Bluetooth pairing, updates, and quitting, restarting or switching off: all of it is drawn by OSD/OS, in its own letters, and worked with a remote. It hands the screen over only to what plays: mpv for a video, and Chromium, full screen with nothing around it, for Netflix and Prime Video, whose players only run in a browser (and to sign in to YouTube), or a script of yours that asks for the screen.
+- **No needless background jobs.** The services Raspberry Pi OS keeps, Wi-Fi, Bluetooth, the local network and SSH (when enabled), wait until OSD/OS is on screen and then start one after another. The apt, man-db, e2scrub and dpkg-backup timers that wake the SD card at random times, mid-film included, are gone, as are cron and the Raspberry Pi Connect agent, and cloud-init runs on the first boot only.
+- **Films on the card.** The card's free space is a partition of its own, in exFAT, which Windows and macOS open too: copy films onto it from a computer and Local Files plays them.
+- **Linux underneath.** The image is Raspberry Pi OS Lite (64-bit), which is based on Debian 13 "trixie", built with Raspberry Pi's own image builder, pi-gen. The kernel, the firmware and the drivers are Raspberry Pi OS's, and OSD/OS adds one stage on top. What the image is made of, and under which licences, is in [os/NOTICE](os/NOTICE).
+
+As an app ([Install](#install)), OSD/OS is the same on screen, on top of whatever the system around it runs.
 
 ## Highlights
 
@@ -18,7 +31,7 @@ On a Raspberry Pi, OSD/OS can also be the whole system. The **OSD/OS** image ([o
 - **Search with the remote**, typed on an on-screen keyboard.
 - **Info screens** for films and videos: the story, genre, director, cast and rating. One comes up when the cursor rests on a title (3 seconds by default), or straight away with ►.
 - **Options** on any entry, with ►: add it to **Favorites**, have it **Play at Startup**, straight after the boot screen, where it was stopped or from the beginning (Settings → Startup From), without asking, or **Add to Playlist**.
-- **Playlists** from several modules at once: Local Files, YouTube, Jellyfin and Emby videos on one list, played in order (on from where it stopped) or shuffled. An **online** playlist plays each video from where it lives. An **offline** one downloads every video to the device once, whatever lists it is on (on the OSD/OS image, into the card's 240-MP partition), and plays without the network.
+- **Playlists** from several modules at once: Local Files, YouTube, Jellyfin and Emby videos on one list, played in order (on from where it stopped) or shuffled. An **online** playlist plays each video from where it lives. An **offline** one downloads every video to the device once, whatever lists it is on (on the OSD/OS image, into the card's OSD-OS partition), and plays without the network.
 - **Transparent Background.** Back from a video returns to the menus while the video keeps playing behind them, like a deck's menu over the tape, and the first row of the main menu takes it back to full screen. A Local Files or YouTube video first opens a menu of its own over the picture: its module's settings for it, Favorites, Browse, and Close Video. A slider from TRANSPARENT to SOLID sets how much of it shows through: at SOLID none, while it plays on, sound and all. Select on the setting turns it off. It needs libmpv (`libmpv2` on Raspberry Pi OS, part of Homebrew's mpv on macOS).
 - **Bluetooth** in Settings: search for a keyboard, gamepad or remote and pair it from the couch. A keyboard's pairing code comes up on screen, to type on it.
 - **A mouse pointer** (a mouse, or a keyboard's touchpad) that shows while the mouse moves and hides again after 5 seconds (Settings → Mouse Pointer).
@@ -62,165 +75,29 @@ A manual install starts OSD/OS last, once every service is up. The OSD/OS image 
 
 [ARCHITECTURE.md](ARCHITECTURE.md) has the rest.
 
-## Tour
+## Screens
 
-Every screen below is the app itself, running at 640×480. The film and YouTube entries are sample data; the weather is real.
-
-### Starting and stopping
+Every screen is the app itself, running at 640×480. The film entries are sample data.
 
 <table>
-<tr><th width="33%">Boot screen</th><th width="33%">Main menu</th><th width="33%">Quit</th></tr>
-<tr><td><img src="docs/screenshots/boot.png" width="100%" alt="Boot screen" /></td><td><img src="docs/screenshots/main-menu.png" width="100%" alt="Main menu" /></td><td><img src="docs/screenshots/quit.png" width="100%" alt="Quit" /></td></tr>
-<tr><td>On the OSD/OS image, a cassette (the owner's drawing) winds its tape from reel to reel while the services start, <code>[ OK ]</code> once each is up. It closes by itself when the last one has settled.</td><td>The modules, like the inputs on a deck. Select opens one; back opens Settings.</td><td>Settings → Quit. When OSD/OS starts with the system, it offers Power Off, Restart or Exit to Terminal instead.</td></tr>
-</table>
-
-### Local Files
-
-<table>
-<tr><th width="50%">Recently Watched</th><th width="50%">Favorites</th></tr>
-<tr><td><img src="docs/screenshots/local-files.png" width="100%" alt="Recently Watched" /></td><td><img src="docs/screenshots/favorites.png" width="100%" alt="Favorites" /></td></tr>
-<tr><td>The tree opens on what you played last, then Favorites, Search and your folders. The entry under the cursor branches out to its first few items.</td><td>Files, folders and playlists you marked from their options.</td></tr>
+<tr><th width="50%">Boot screen</th><th width="50%">Main menu</th></tr>
+<tr><td><img src="docs/screenshots/boot.png" width="100%" alt="Boot screen" /></td><td><img src="docs/screenshots/main-menu.png" width="100%" alt="Main menu" /></td></tr>
+<tr><td>On the OSD/OS image, the OSD/OS cassette winds its tape from reel to reel while the services start, <code>[ OK ]</code> once each is up.</td><td>The modules, like the inputs on a deck.</td></tr>
 </table>
 
 <table>
-<tr><th width="50%">Folders</th><th width="50%">Search</th></tr>
-<tr><td><img src="docs/screenshots/tree.png" width="100%" alt="Folders" /></td><td><img src="docs/screenshots/keyboard.png" width="100%" alt="Search" /></td></tr>
-<tr><td>The open folders run along the line through the middle. The folder under the cursor branches out once more: TV Shows › Twin Peaks › its seasons › their episodes.</td><td>An on-screen keyboard: the arrows move, select types.</td></tr>
+<tr><th width="50%">File browser</th><th width="50%">Transparent Background</th></tr>
+<tr><td><img src="docs/screenshots/tree.png" width="100%" alt="File browser" /></td><td><img src="docs/screenshots/main-menu-over-video.png" width="100%" alt="Transparent Background" /></td></tr>
+<tr><td>Local Files' tree: the open folders run along the line through the middle, and the one under the cursor branches out to what is in it.</td><td>Back from a video, the menus lie over it while it plays on. The first row takes it back to full screen.</td></tr>
 </table>
 
 <table>
-<tr><th width="50%">Search results</th><th width="50%">Options</th></tr>
-<tr><td><img src="docs/screenshots/search-results.png" width="100%" alt="Search results" /></td><td><img src="docs/screenshots/options.png" width="100%" alt="Options" /></td></tr>
-<tr><td>Names that match anywhere under the media folder.</td><td>► on any entry: Add to Favorites (or Remove), Play at Startup, and Add to Playlist.</td></tr>
+<tr><th width="50%">Settings</th><th width="50%">About</th></tr>
+<tr><td><img src="docs/screenshots/settings.png" width="100%" alt="Settings" /></td><td><img src="docs/screenshots/about.png" width="100%" alt="About" /></td></tr>
+<tr><td>Laid out like a camcorder's menu, each line's detail in the help line under it.</td><td>What OSD/OS is, who makes it, what it is made of and under which license.</td></tr>
 </table>
 
-### Playing
-
-<table>
-<tr><th width="33%">Resume</th><th width="33%">Loading</th><th width="33%">Deck menu</th></tr>
-<tr><td><img src="docs/screenshots/resume.png" width="100%" alt="Resume" /></td><td><img src="docs/screenshots/loading.png" width="100%" alt="Loading" /></td><td><img src="docs/screenshots/playback-menu.png" width="100%" alt="Deck menu" /></td></tr>
-<tr><td>Pick up where you left off, or start from the beginning.</td><td>While a video starts, a tape loads: live VHS noise in the theme's colours, the tracking band rolling through, and a dubbing deck's display, TAPE A at where the video is and TAPE B LOADING with its length once known. Settings → Loading Effect turns the noise off.</td><td>▲ or ▼ during playback opens the deck's menu: the position bar, audio and subtitle tracks, crop (the four Scalings in turn) and stop.</td></tr>
-</table>
-
-<table>
-<tr><th width="33%">The video's menu</th><th width="33%">Back to the menus</th><th width="33%">Main menu</th></tr>
-<tr><td><img src="docs/screenshots/player-menu.png" width="100%" alt="The video's menu" /></td><td><img src="docs/screenshots/menus-over-video.png" width="100%" alt="Back to the menus" /></td><td><img src="docs/screenshots/main-menu-over-video.png" width="100%" alt="Main menu" /></td></tr>
-<tr><td>With Transparent Background, back during a Local Files or YouTube video opens its menu over the picture, which plays on, here at 40% solid. ◄ ► change its module's settings for it, at once or as you go back to it. Close Video goes to the main menu; back, to the video.</td><td>Browse in that menu, or back from any other module's video, returns to the module's menus, the video playing on behind them. Choose it again to watch it full screen from where it is.</td><td>The main menu leads with the video, the cursor on it: select takes it back to full screen where it is. Play/pause stops it (<code>[SPACE]:STOP</code>), and playing anything else replaces it.</td></tr>
-</table>
-
-### Netflix, Prime Video and YouTube
-
-<table>
-<tr><th width="50%">Netflix</th><th width="50%">Movies › Popular</th></tr>
-<tr><td><img src="docs/screenshots/netflix.png" width="100%" alt="Netflix" /></td><td><img src="docs/screenshots/netflix-movies.png" width="100%" alt="Movies › Popular" /></td></tr>
-<tr><td>Recently Watched, Favorites, Search, then Movies and Series, and the service's own home page.</td><td>Popular, then each genre, a page of titles at a time.</td></tr>
-</table>
-
-<table>
-<tr><th width="50%">Info screen</th><th width="50%">Playing on Netflix</th></tr>
-<tr><td><img src="docs/screenshots/info-screen.png" width="100%" alt="Info screen" /></td><td><img src="docs/screenshots/netflix-player.png" width="100%" alt="Playing on Netflix" /></td></tr>
-<tr><td>Story, genre, director, cast and rating, from TMDB. Select plays the title; ► offers its options.</td><td>The service's own player, in Chromium, has the screen. Hold back for two seconds to come back.</td></tr>
-</table>
-
-<table>
-<tr><th width="50%">Prime Video</th><th width="50%">YouTube</th></tr>
-<tr><td><img src="docs/screenshots/prime-video.png" width="100%" alt="Prime Video" /></td><td><img src="docs/screenshots/youtube.png" width="100%" alt="YouTube" /></td></tr>
-<tr><td>The same tree, for Prime Video.</td><td>Recently Watched, Favorites, Search, Subscriptions, Channels, Playlists and Watch Later.</td></tr>
-</table>
-
-<table>
-<tr><th width="50%">Subscriptions</th><th width="50%">A video's info screen</th></tr>
-<tr><td><img src="docs/screenshots/youtube-subscriptions.png" width="100%" alt="Subscriptions" /></td><td><img src="docs/screenshots/youtube-info.png" width="100%" alt="A video's info screen" /></td></tr>
-<tr><td>The latest videos from your channels, newest first.</td><td>Channel, date, length, views and description.</td></tr>
-</table>
-
-### Plex, Jellyfin and Emby
-
-<table>
-<tr><th width="33%">Plex</th><th width="33%">Jellyfin</th><th width="33%">Emby</th></tr>
-<tr><td><img src="docs/screenshots/plex-sign-in.png" width="100%" alt="Plex" /></td><td><img src="docs/screenshots/jellyfin.png" width="100%" alt="Jellyfin" /></td><td><img src="docs/screenshots/emby.png" width="100%" alt="Emby" /></td></tr>
-<tr><td>Sign in with a code at plex.tv/link.</td><td>Connect to a server with Quick Connect.</td><td>A server on your network, or Emby Connect.</td></tr>
-</table>
-
-Once signed in, each opens on the server's Continue Watching and its libraries. See [Modules](#modules) for everything they do.
-
-### Playlists
-
-<table>
-<tr><th width="50%">Playlists</th><th width="50%">An offline playlist</th></tr>
-<tr><td><img src="docs/screenshots/playlists.png" width="100%" alt="Playlists" /></td><td><img src="docs/screenshots/playlist.png" width="100%" alt="An offline playlist" /></td></tr>
-<tr><td>Online playlists play each video from where it lives; offline ones, from the device, with how many of their videos are on it.</td><td>Each video downloads once, in the background: ready, under way, or why not (a server that doesn't let you download it).</td></tr>
-</table>
-
-<table>
-<tr><th width="50%">Adding videos</th><th width="50%">Add to Playlist</th></tr>
-<tr><td><img src="docs/screenshots/playlist-add.png" width="100%" alt="Adding videos" /></td><td><img src="docs/screenshots/add-to-playlist.png" width="100%" alt="Add to Playlist" /></td></tr>
-<tr><td>Local Files, YouTube, Jellyfin and Emby in one tree, down to a show's episodes. Select adds a video and stays, for the next.</td><td>From a module itself: a video's options (►), or ► on PLAY in Jellyfin and Emby.</td></tr>
-</table>
-
-### Weather, Ambient:Mode, NFC Reader and Scripts
-
-<table>
-<tr><th width="50%">Weather</th><th width="50%">Extended forecast</th></tr>
-<tr><td><img src="docs/screenshots/weather.png" width="100%" alt="Weather" /></td><td><img src="docs/screenshots/weather-forecast.png" width="100%" alt="Extended forecast" /></td></tr>
-<tr><td>In the style of WeatherStar 3000+: current conditions…</td><td>…the extended forecast and an almanac, in turn.</td></tr>
-</table>
-
-<table>
-<tr><th width="50%">Ambient:Mode</th><th width="50%">NFC Reader</th></tr>
-<tr><td><img src="docs/screenshots/ambient-mode.png" width="100%" alt="Ambient:Mode" /></td><td><img src="docs/screenshots/nfc-reader.png" width="100%" alt="NFC Reader" /></td></tr>
-<tr><td>A video, with music of your choice, on a loop.</td><td>Tap a card to play the video it is mapped to.</td></tr>
-</table>
-
-<table>
-<tr><th width="50%">Scripts</th><th width="50%">A console script</th></tr>
-<tr><td><img src="docs/screenshots/scripts.png" width="100%" alt="Scripts" /></td><td><img src="docs/screenshots/scripts-console.png" width="100%" alt="A console script" /></td></tr>
-<tr><td>Your own shell scripts. ► puts one on the main menu.</td><td>A console script shows its output. A takeover script gets the whole screen until it exits.</td></tr>
-</table>
-
-### Settings
-
-<table>
-<tr><th width="50%">Settings</th><th width="50%">Modules</th></tr>
-<tr><td><img src="docs/screenshots/settings.png" width="100%" alt="Settings" /></td><td><img src="docs/screenshots/settings-modules.png" width="100%" alt="Modules" /></td></tr>
-<tr><td>Laid out like a camcorder's menu. Transparent Background is a slider, the deck's tape bar, from TRANSPARENT to SOLID. Hint Bar takes the key hints off the foot of every screen, Help Line the box under the menu. Channel Logo puts OSD/OS's logo in a corner of the picture while a video plays.</td><td>Each module is turned on and set up from here.</td></tr>
-</table>
-
-<table>
-<tr><th width="50%">OSD Background: Window</th><th width="50%">OSD Background: Off</th></tr>
-<tr><td><img src="docs/screenshots/osd-window.png" width="100%" alt="OSD Background: Window" /></td><td><img src="docs/screenshots/osd-off.png" width="100%" alt="OSD Background: Off" /></td></tr>
-<tr><td>The menus in a framed window of the color scheme's background, black around it. Over a video behind the menus, the picture shows whole around the window.</td><td>No background: the menus on black, like a deck's on-screen display with nothing playing, in the scheme's lighter color.</td></tr>
-</table>
-
-<table>
-<tr><th width="50%">A module's settings</th><th width="50%">Picking a folder</th></tr>
-<tr><td><img src="docs/screenshots/module-settings.png" width="100%" alt="A module's settings" /></td><td><img src="docs/screenshots/folder-picker.png" width="100%" alt="Picking a folder" /></td></tr>
-<tr><td>Local Files: its folder, looping, shuffle, resume, subtitles, and its own Scaling.</td><td>Folders are picked by browsing to them.</td></tr>
-</table>
-
-<table>
-<tr><th width="50%">Bluetooth</th><th width="50%">Pairing a keyboard</th></tr>
-<tr><td><img src="docs/screenshots/bluetooth.png" width="100%" alt="Bluetooth" /></td><td><img src="docs/screenshots/bluetooth-pairing.png" width="100%" alt="Pairing a keyboard" /></td></tr>
-<tr><td>Search finds what is in pairing mode nearby for a minute, keyboards, gamepads and the like. Select pairs one and connects it, and it comes back by itself after a restart. Select on a paired one connects, disconnects or forgets it.</td><td>A keyboard is paired by typing the code it asks for, then its Enter. The digits light up as they are typed.</td></tr>
-</table>
-
-<table>
-<tr><th width="50%">Controls</th><th width="50%">Update</th></tr>
-<tr><td><img src="docs/screenshots/controls.png" width="100%" alt="Controls" /></td><td><img src="docs/screenshots/update.png" width="100%" alt="Update" /></td></tr>
-<tr><td>One more button for each action, from any keyboard, remote or gamepad.</td><td>Checks for a newer release and installs it.</td></tr>
-</table>
-
-<table>
-<tr><th width="50%">About</th><th width="50%">The license</th></tr>
-<tr><td><img src="docs/screenshots/about.png" width="100%" alt="About" /></td><td><img src="docs/screenshots/license.png" width="100%" alt="The license" /></td></tr>
-<tr><td>What OSD/OS is, who makes it, what it is made of and under which license, each line's detail in the help line.</td><td>Behind the LICENSE line: the notice, then the GNU GPL's text, a page at a time.</td></tr>
-</table>
-
-<table>
-<tr><th width="50%">Channel Logo</th><th width="50%">Under the menus</th></tr>
-<tr><td><img src="docs/screenshots/channel-logo.png" width="100%" alt="Channel Logo" /></td><td><img src="docs/screenshots/channel-logo-menu.png" width="100%" alt="The logo under the menus" /></td></tr>
-<tr><td>OSD/OS's logo in a corner of the picture while a video plays, the way a channel's sits in a broadcast. Settings → Channel Logo picks the corner, all four, or none.</td><td>It is in the picture itself, so with Transparent Background the menus lie over it.</td></tr>
-</table>
+Every other screen, from each module to the player's menus, playlists, the tape loading and Bluetooth pairing, is in the **[screen tour](docs/TOUR.md)**.
 
 ## Modules
 
@@ -257,7 +134,7 @@ Once signed in, each opens on the server's Continue Watching and its libraries. 
 
 ### Local Files ([Wiki](https://github.com/anthonycaccese/240-MP/wiki/Module:-Local-Files))
 - Supported file types: `"mp4", "mkv", "avi", "mov", "m4v", "webm", "wmv", "flv", "f4v", "mpg", "mpeg", "vob"`
-- On the OSD/OS image, films go on the SD card itself: its **240-MP** partition opens on Windows and macOS like a USB stick, and Local Files opens it ([os/README.md](os/README.md#films-on-the-card))
+- On the OSD/OS image, films go on the SD card itself: its **OSD-OS** partition opens on Windows and macOS like a USB stick, and Local Files opens it ([os/README.md](os/README.md#films-on-the-card))
 - Playlist support using `m3u` and `m3u8` files
 - Folder browsing as a horizontal tree: the open folders run along a line across the screen, every folder in the current one branches off to a few of its own entries, and the folder under the cursor branches once more
 - **Recently Watched**, **Favorites** and **Search** lead the tree: what you played last, what you marked (right on a file, then **Add to Favorites**), and file and folder names anywhere in the media folder, typed on an on-screen keyboard
@@ -293,7 +170,7 @@ Once signed in, each opens on the server's Continue Watching and its libraries. 
 ### Playlists
 - Lists of videos from Local Files, YouTube, Jellyfin and Emby together, played as one: **In Order**, carrying on from where the list stopped (it asks), or **Shuffle**, in a new order each time. **Play from Here** on a video starts there. mpv's display has ◄ ► for the previous and next video
 - **Online** playlists play each video from where it lives: a file from Local Files, a YouTube video as the YouTube module plays it (its Advanced settings, through yt-dlp), a Jellyfin or Emby item streamed from its server
-- **Offline** playlists play only what is on the device: Local Files' files as they are, and a copy of every other video, downloaded in the background into a **Playlists** folder in Local Files' folder (the **Download Folder** setting can name another). On OSD/OS image that is the card's 240-MP partition. A video is downloaded once, whatever lists it is on, and deleted once no offline list has it
+- **Offline** playlists play only what is on the device: Local Files' files as they are, and a copy of every other video, downloaded in the background into a **Playlists** folder in Local Files' folder (the **Download Folder** setting can name another). On OSD/OS image that is the card's OSD-OS partition. A video is downloaded once, whatever lists it is on, and deleted once no offline list has it
 - YouTube videos download with yt-dlp in the YouTube module's resolution, codec and audio language (ffmpeg puts a video above 360p back together; the OSD/OS image has it). Jellyfin and Emby items download as their original file, where the server lets the user download (a user without the right shows **Not Allowed**)
 - Add videos from inside the module (**Add Videos**: a tree of Local Files, YouTube, Jellyfin and Emby, with their libraries, shows and seasons), from a video's options in Local Files and YouTube (►, **Add to Playlist**), or with ► on **PLAY** on a Jellyfin or Emby item's page. A list can also be started from there (**New Online Playlist**, **New Offline Playlist**)
 - Back during a video opens its menu: subtitles, looping and Scaling, then Browse Playlists and Close Video. With Transparent Background, the list plays on behind the menus and the main menu's first row takes it back
@@ -384,7 +261,7 @@ Once signed in, each opens on the server's Continue Watching and its libraries. 
     - If its not on that list then the short answer is "we don't know but please feel free try and let us know if it works"
 - Where does the name "OSD/OS" come from?
     - OSD is the on-screen display: the menu a VCR or a TV draws over the picture, which is all this app ever shows. OS because on a Raspberry Pi it can be the whole system ([os/README.md](os/README.md)).
-    - It started as 240-MP. 240 had a double meaning referring to the longest [VHS tape length](https://en.wikipedia.org/wiki/VHS#Tape_lengths) and love for [CRT TVs](https://consolemods.org/wiki/CRT:What_is_240p%3F) as a display type, and MP a double meaning of "Media Player" and a play on the "SP/LP/EP/SLP" terminology that was used to refer to the recording quality for VHS recordings. The old name lives on in the data folder, the service and the card's film partition, so nothing already set up changes.
+    - It started as 240-MP. 240 had a double meaning referring to the longest [VHS tape length](https://en.wikipedia.org/wiki/VHS#Tape_lengths) and love for [CRT TVs](https://consolemods.org/wiki/CRT:What_is_240p%3F) as a display type, and MP a double meaning of "Media Player" and a play on the "SP/LP/EP/SLP" terminology that was used to refer to the recording quality for VHS recordings. OSD/OS takes over what 240-MP set up: on its first start it moves 240-MP's data folder, with its settings, lists and NFC cards, over to its own; the installer replaces a 240-MP install; and scripts and launch settings under the old names (`MP240_…`) still work.
 - Does it output at 240p resolution?
     - The UI scales based on the OS config and output cables you are using.
     - For example: the output resolution for the menu and video playback when using it on a CRT with the configs I use is 480i/576i
@@ -400,21 +277,31 @@ Once signed in, each opens on the server's Continue Watching and its libraries. 
 
 ## Credits & Acknowledgments
 
-- OSD/OS is a modified version of [240-MP](https://github.com/anthonycaccese/240-MP) by Anthony Caccese and its contributors. Settings → About lists these credits on the device.
+Settings → About lists these credits on the device.
+
+- OSD/OS is developed by mehmet raif tasdemir (darkBLACK), [github.com/mehmetraif](https://github.com/mehmetraif).
+- It is a modified version of [240-MP](https://github.com/anthonycaccese/240-MP) by Anthony Caccese and its contributors: the app it all started from.
+- OSD/OS's changes to 240-MP were written with [Claude Code](https://www.anthropic.com/claude-code), Anthropic's coding agent.
+- The OSD/OS logo, the channel logo over the picture and the boot screen's cassette were made with [ChatGPT](https://chatgpt.com), OpenAI's assistant.
+- 240-MP was made the same way. In Anthony's words, from its README: "Because this is a hobby project (and a fairly niche use case), I am using [Claude Code](https://www.anthropic.com/product/claude-code) to build a large part of the backend C++ code and structure the modules. If you have concerns with that, I am glad to talk through it. Also, please feel free to fork this repo, update any aspects and tailor things to your own use case; that's why the source is fully open and available."
 - The `VCR OSD Mono` font was created by Riciery Santos Leal (a.k.a. mrmanet) https://www.dafont.com/vcr-osd-mono.font
 - The `Unifont` font (used as a fallback for characters that VCR OSD Mono does not cover) is GNU Unifont by Roman Czyborra, Paul Hardy, et al., licensed under the SIL Open Font License v1.1. https://unifoundry.com/unifont/ — license text: [assets/fonts/LICENSE-unifont.txt](assets/fonts/LICENSE-unifont.txt)
-- Because this is a hobby project (and a fairly niche use case), I am using [Claude Code](https://www.anthropic.com/product/claude-code) to build a large part of the backend C++ code and structure the modules.  If you have concerns with that, I am glad to talk through it.  Also, please feel free to fork this repo, update any aspects and tailor things to your own use case; that's why the source is fully open and available.
-- Thank you to Plex, Jellyfin, Emby and Open-Meteo for providing open and free apis to enable building modules for each.
-- Thank you to [the MPV team](https://mpv.io/) for a simple, extensible and cross platform media player
-- And thank you to the [Raspberry Pi Foundation](https://www.raspberrypi.org/) for helping me fill a drawer with SBCs to tinker with and inspire fun ideas like this project ❤️
+- Thank you to Plex, Jellyfin, Emby and Open-Meteo for providing open and free apis to enable building modules for each, and to [TMDB](https://www.themoviedb.org), [JustWatch](https://www.justwatch.com) and [Wikidata](https://www.wikidata.org) for the catalogues behind Netflix and Prime Video. This product uses the TMDB API but is not endorsed or certified by TMDB. Weather data by [Open-Meteo.com](https://open-meteo.com), under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+- Thank you to [the MPV team](https://mpv.io/) for a simple, extensible and cross platform media player, and to [Qt](https://www.qt.io), [SDL](https://www.libsdl.org), [FFmpeg](https://ffmpeg.org), [yt-dlp](https://github.com/yt-dlp/yt-dlp), [Deno](https://deno.com) and [Chromium](https://www.chromium.org), which OSD/OS stands on.
+- Thank you to [Raspberry Pi](https://www.raspberrypi.com) for the boards, and for Raspberry Pi OS and [pi-gen](https://github.com/RPi-Distro/pi-gen), which the OSD/OS image is built with, and to [Debian](https://www.debian.org), which Raspberry Pi OS is based on. What the image carries, under which licences, is in [os/NOTICE](os/NOTICE).
+- And from 240-MP's README, Anthony's thanks to the [Raspberry Pi Foundation](https://www.raspberrypi.org/) "for helping me fill a drawer with SBCs to tinker with and inspire fun ideas like this project ❤️"
 
 ## License
 
 OSD/OS is free software under the GNU General Public License v3.0. See [LICENSE](LICENSE) for the full text; every build carries it next to the app, and Settings → About → License shows it on the device, with the notice.
 
-OSD/OS is a modified version of [240-MP](https://github.com/anthonycaccese/240-MP), Copyright (C) 2026 Anthony Caccese and the 240-MP contributors. The modifications, from 2026 on, are Copyright (C) 2026 Mehmet Raif. The whole stays under GPL-3.0.
+OSD/OS is a modified version of [240-MP](https://github.com/anthonycaccese/240-MP), Copyright (C) 2026 Anthony Caccese and the 240-MP contributors. The modifications, from 2026 on, are Copyright (C) 2026 mehmet raif tasdemir (darkBLACK). The whole stays under GPL-3.0.
 
 You are free to use, study, and modify this code. If you distribute a modified version, you must also distribute it under GPL-3.0 and make the source available.
+
+The OSD/OS image carries Raspberry Pi OS Lite and the software OSD/OS needs alongside it, each under its own licence: [os/NOTICE](os/NOTICE) lists them, and the image has it as `/usr/share/doc/osdos/NOTICE`.
+
+Raspberry Pi is a trademark of Raspberry Pi Ltd, and Debian a registered trademark of Software in the Public Interest, Inc. Netflix, Prime Video, YouTube, Plex, Jellyfin and Emby are their owners' trademarks, named for the services the modules reach. OSD/OS is not affiliated with or endorsed by any of them.
 
 ## 240-MP
 

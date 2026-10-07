@@ -9,7 +9,7 @@
 #include <type_traits>
 #include <vector>
 
-#ifdef MP240_EMBEDDED_MPV
+#ifdef OSDOS_EMBEDDED_MPV
 #include <mpv/client.h>
 #include <mpv/render.h>
 
@@ -431,7 +431,7 @@ void EmbeddedMpv::teardown() {
     m_frame = QImage();
 }
 
-#else // !MP240_EMBEDDED_MPV — built without libmpv's headers: never available.
+#else // !OSDOS_EMBEDDED_MPV — built without libmpv's headers: never available.
 
 class EmbeddedMpv::Renderer {};
 

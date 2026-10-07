@@ -1,0 +1,9 @@
+# For the Netflix and Prime Video modules and YouTube's sign-in
+# (scripts/web-player.sh): Chromium with Widevine, which their players need,
+# cage, which gives the browser the screen when there is no desktop, and wtype,
+# with which holding BACK closes the browser the way Ctrl+W does, keeping a
+# fresh sign-in. Without recommends, like the rest, so the Pi's Chromium tweaks
+# (rpi-chromium-mods), the GPU drivers and the fonts that Chromium only
+# recommends are named here. os/build.sh skips all of it with OSDOS_STREAMING=0.
+chromium rpi-chromium-mods libwidevinecdm0 libgl1-mesa-dri fonts-liberation
+cage wtype

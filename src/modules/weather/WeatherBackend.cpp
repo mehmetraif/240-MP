@@ -24,14 +24,14 @@
 
 namespace {
 
-const char *kModuleId   = "com.240mp.weather";
+const char *kModuleId   = "com.osdos.weather";
 const char *kForecastUrl = "https://api.open-meteo.com/v1/forecast";
 const char *kGeocodeUrl  = "https://geocoding-api.open-meteo.com/v1/search";
 const char *kNwsPointsUrl = "https://api.weather.gov/points";
 
 // api.weather.gov answers 403 to requests without a User-Agent, and asks for
 // contact information in it. Qt sends none by default.
-const char *kNwsUserAgent = "240-MP/" APP_VERSION " (https://github.com/anthonycaccese/240-MP)";
+const char *kNwsUserAgent = "OSD-OS/" APP_VERSION " (https://github.com/anthonycaccese/240-MP)";
 
 // Open-Meteo publishes data roughly every 15 minutes.
 constexpr int kRefreshMs = 10 * 60 * 1000;
@@ -449,9 +449,9 @@ WeatherBackend::WeatherBackend(const QString &appRoot, const QString &dataRoot,
         fetchOtherObservations();
     });
 
-    // Its own socket name: MpvController uses /240mp-mpv.sock for the player,
+    // Its own socket name: MpvController uses /osdos-mpv.sock for the player,
     // and two mpvs sharing one path would hand the wrong process our commands.
-    m_musicSocketPath = QDir::tempPath() + QStringLiteral("/240mp-weather-music.sock");
+    m_musicSocketPath = QDir::tempPath() + QStringLiteral("/osdos-weather-music.sock");
 }
 
 WeatherBackend::~WeatherBackend() {

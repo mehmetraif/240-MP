@@ -70,12 +70,12 @@ jobs:
 
       - name: Deploy Qt frameworks
         run: |
-          APP="${GITHUB_WORKSPACE}/install/240mp.app"
+          APP="${GITHUB_WORKSPACE}/install/osdos.app"
           "${QT_ROOT_DIR}/bin/macdeployqt" "$APP" -qmldir="${GITHUB_WORKSPACE}" -verbose=2
 
       - name: Verify SDL bundling
         run: |
-          FW="${GITHUB_WORKSPACE}/install/240mp.app/Contents/Frameworks"
+          FW="${GITHUB_WORKSPACE}/install/osdos.app/Contents/Frameworks"
           test -f "$FW/libSDL2-2.0.0.dylib" || { echo "SDL2 not bundled"; exit 1; }
           ! ls "$FW" | grep -qi sdl3 || { echo "SDL3 leaked into bundle"; exit 1; }
 
@@ -98,7 +98,7 @@ jobs:
 
       - name: Sign app
         run: |
-          APP="${GITHUB_WORKSPACE}/install/240mp.app"
+          APP="${GITHUB_WORKSPACE}/install/osdos.app"
           IDENTITY="Developer ID Application"
           find "$APP/Contents/Frameworks" \( -name "*.dylib" -o -name "*.framework" \) \
             -exec codesign --force --options runtime --sign "$IDENTITY" {} \;
@@ -113,13 +113,13 @@ jobs:
           # /Applications could produce an alias instead of a copy.
           STAGE="${RUNNER_TEMP}/dmg-stage"
           mkdir -p "$STAGE"
-          ditto "${GITHUB_WORKSPACE}/install/240mp.app" "$STAGE/240mp.app"
+          ditto "${GITHUB_WORKSPACE}/install/osdos.app" "$STAGE/osdos.app"
           ln -s /Applications "$STAGE/Applications"
           hdiutil create \
-            -volname "240-MP" \
+            -volname "OSD-OS" \
             -srcfolder "$STAGE" \
             -ov -format UDZO \
-            "240-MP-${{ github.ref_name }}-macOS-arm64.dmg"
+            "OSD-OS-${{ github.ref_name }}-macOS-arm64.dmg"
 
       - name: Notarize and staple
         env:
@@ -127,7 +127,7 @@ jobs:
           APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
-          DMG="240-MP-${{ github.ref_name }}-macOS-arm64.dmg"
+          DMG="OSD-OS-${{ github.ref_name }}-macOS-arm64.dmg"
           xcrun notarytool submit "$DMG" \
             --apple-id "$APPLE_ID" \
             --password "$APPLE_APP_PASSWORD" \
@@ -143,7 +143,7 @@ jobs:
         uses: actions/upload-artifact@v7.0.1
         with:
           name: dmg-arm64
-          path: "240-MP-*-macOS-arm64.dmg"
+          path: "OSD-OS-*-macOS-arm64.dmg"
           if-no-files-found: error
 
   # ──────────────────────────────────────────────────────────────────────────────
@@ -197,13 +197,13 @@ jobs:
       - name: Create tarball
         run: |
           cd "${GITHUB_WORKSPACE}/install"
-          tar -czf "${GITHUB_WORKSPACE}/240-MP-${{ github.ref_name }}-linux-arm64.tar.gz" .
+          tar -czf "${GITHUB_WORKSPACE}/OSD-OS-${{ github.ref_name }}-linux-arm64.tar.gz" .
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7.0.1
         with:
           name: tarball-linux-arm64
-          path: "240-MP-*-linux-arm64.tar.gz"
+          path: "OSD-OS-*-linux-arm64.tar.gz"
           if-no-files-found: error
 
   # ──────────────────────────────────────────────────────────────────────────────
@@ -314,7 +314,7 @@ jobs:
         with:
           name: appimage-linux-x86_64
           # Version-less on purpose — the AppImage self-updates in place.
-          path: "240-MP-linux-x86_64.AppImage"
+          path: "OSD-OS-linux-x86_64.AppImage"
           if-no-files-found: error
 
   # ──────────────────────────────────────────────────────────────────────────────
@@ -349,7 +349,7 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
-          name: "240-MP ${{ github.ref_name }}"
+          name: "OSD/OS ${{ github.ref_name }}"
           draft: false
           prerelease: ${{ contains(github.ref_name, '-rc') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-alpha') }}
           files: |
@@ -362,10 +362,10 @@ jobs:
           body: |
             Install:
             - Raspberry Pi OS Trixie (arm64): Please follow [these instructions](INSTALL.md#on-a-raspberry-pi)
-            - macOS (Apple Silicon): Download the `.dmg`, open and move 240mp.app to your applications folder
-            - Steam Deck / Linux (x86_64): Download `240-MP-linux-x86_64.AppImage`, make it executable (`chmod +x`), and run it. See [these instructions](INSTALL.md#on-a-steam-deck--linux-x86_64)
+            - macOS (Apple Silicon): Download the `.dmg`, open and move osdos.app to your applications folder
+            - Steam Deck / Linux (x86_64): Download `OSD-OS-linux-x86_64.AppImage`, make it executable (`chmod +x`), and run it. See [these instructions](INSTALL.md#on-a-steam-deck--linux-x86_64)
 
             Update:
             - Raspberry Pi OS Trixie (arm64): Use the in-app updater or follow [these instructions](INSTALL.md#update)
-            - macOS (Apple Silicon): Use the in-app updater or download the `.dmg`, open and move 240mp.app to your applications folder
-            - Steam Deck / Linux (x86_64): Use the in-app updater (it swaps the AppImage in place) or download the latest `240-MP-linux-x86_64.AppImage` and replace your copy
+            - macOS (Apple Silicon): Use the in-app updater or download the `.dmg`, open and move osdos.app to your applications folder
+            - Steam Deck / Linux (x86_64): Use the in-app updater (it swaps the AppImage in place) or download the latest `OSD-OS-linux-x86_64.AppImage` and replace your copy

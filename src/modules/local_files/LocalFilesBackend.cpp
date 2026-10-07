@@ -1,4 +1,5 @@
 #include "LocalFilesBackend.h"
+#include "util/LegacyNames.h"
 #include "../../AppCore.h"
 #include <QDir>
 #include <QDirIterator>
@@ -48,7 +49,7 @@ LocalFilesBackend::LocalFilesBackend(const QString &appRoot, const QString &data
     QFile f(m_dataRoot + "/config.json");
     if (f.open(QIODevice::ReadOnly)) {
         QJsonObject cfg = QJsonDocument::fromJson(f.readAll()).object();
-        QString dir = cfg["modules"].toObject()["com.240mp.local_files"].toObject()
+        QString dir = cfg["modules"].toObject()["com.osdos.local_files"].toObject()
                           ["media_directory"].toString();
         if (!dir.isEmpty())
             setMediaRoot(dir);
@@ -188,7 +189,7 @@ void LocalFilesBackend::get_subtitle_languages() {
 }
 
 QVariant LocalFilesBackend::entries(const QString &path) {
-    static const QString kModuleId = QStringLiteral("com.240mp.local_files");
+    static const QString kModuleId = QStringLiteral("com.osdos.local_files");
     if (path == QLatin1String("recent") || path == QLatin1String("favorites"))
         return existing(m_appCore ? m_appCore->get_list(kModuleId, path) : QVariantList());
     if (path.startsWith(QLatin1String("search/")))
@@ -215,7 +216,7 @@ QString LocalFilesBackend::mediaRoot() const {
 }
 
 QString LocalFilesBackend::defaultMediaRoot() const {
-    const QString dir = qEnvironmentVariable("MP240_MEDIA_DIR");
+    const QString dir = legacy::env("MEDIA_DIR");
     return dir.isEmpty() ? m_dataRoot + QStringLiteral("/media") : dir;
 }
 
@@ -231,7 +232,7 @@ void LocalFilesBackend::setMediaRoot(const QString &path) {
 }
 
 void LocalFilesBackend::onSettingChanged(const QString &moduleId, const QString &key, const QVariant &value) {
-    if (moduleId == QLatin1String("com.240mp.local_files") && key == QLatin1String("media_directory"))
+    if (moduleId == QLatin1String("com.osdos.local_files") && key == QLatin1String("media_directory"))
         setMediaRoot(value.toString());
 }
 

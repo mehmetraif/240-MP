@@ -1,0 +1,3 @@
+# rfkill: bluetooth.service's OSD/OS drop-in unblocks Bluetooth with it
+# (00-run.sh). Raspberry Pi OS Lite has it already; named so it stays.
+rfkill

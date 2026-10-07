@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ──────────────────────────────────────────────────────────────────────────────
-# Build a self-contained Linux x86_64 AppImage of 240-MP.
+# Build a self-contained Linux x86_64 AppImage of OSD/OS.
 #
 # Produces a single portable file that runs on immutable distros (SteamOS /
 # SteamDeck) and modern Intel/AMD desktops with no apt/pacman step — Qt, SDL2 and
@@ -39,7 +39,7 @@ VERSION="${VERSION:-$(git describe --tags --always 2>/dev/null || echo dev)}"
 # path. The real version is baked in (APP_VERSION) and shown in-app; the release
 # tag records it on GitHub. (dmg/tarball keep their version — they're installers,
 # not the installed-in-place runtime.)
-OUTPUT="240-MP-linux-x86_64.AppImage"
+OUTPUT="OSD-OS-linux-x86_64.AppImage"
 
 CONFIGURE=0
 [ "${1:-}" = "--configure" ] && CONFIGURE=1
@@ -86,8 +86,8 @@ if [ "$CONFIGURE" = "1" ]; then
 fi
 
 # ── 3. Install into the AppDir (FHS layout) ───────────────────────────────────
-# The Linux install() rules put the binary at usr/bin/240mp and QML/assets at
-# usr/share/240mp — exactly what resolveAppRoot() discovers via ../share/240mp,
+# The Linux install() rules put the binary at usr/bin/osdos and QML/assets at
+# usr/share/osdos — exactly what resolveAppRoot() discovers via ../share/osdos,
 # so APP_ROOT does not need to be set at runtime.
 log "Installing into $APPDIR"
 rm -rf "$APPDIR"
@@ -95,7 +95,7 @@ DESTDIR="$SRC_ROOT/$APPDIR" cmake --install "$BUILD_DIR" --prefix /usr
 
 # ── 4. Bundle mpv ─────────────────────────────────────────────────────────────
 # Stock SteamOS has no system mpv, so ship our own next to the app binary
-# (usr/bin/mpv beside usr/bin/240mp). src/util/MpvLocator resolves mpv as a
+# (usr/bin/mpv beside usr/bin/osdos). src/util/MpvLocator resolves mpv as a
 # sibling of its own executable first (linuxdeploy's AppRun does NOT add usr/bin
 # to PATH, so findExecutable alone would miss it) — and every spawner, video and
 # audio-only alike, goes through it. linuxdeploy pulls in mpv's own libs.
@@ -124,10 +124,10 @@ fi
 [ -n "$QMAKE" ] && export QMAKE || echo "WARN: qmake not found — linuxdeploy-plugin-qt may fail to locate Qt" >&2
 log "Deploying Qt + libraries"
 "$LINUXDEPLOY" --appdir "$APPDIR" --plugin qt \
-    --executable "$APPDIR/usr/bin/240mp" \
+    --executable "$APPDIR/usr/bin/osdos" \
     --executable "$APPDIR/usr/bin/mpv" \
-    --desktop-file "$SRC_ROOT/packaging/linux/240-mp.desktop" \
-    --icon-file "$SRC_ROOT/packaging/linux/240-mp.png"
+    --desktop-file "$SRC_ROOT/packaging/linux/osd-os.desktop" \
+    --icon-file "$SRC_ROOT/packaging/linux/osd-os.png"
 
 # ── 6. Stage the Wayland fallback set ─────────────────────────────────────────
 # Debian/Ubuntu build SDL2 and mpv with Wayland support on, so the bundle needs

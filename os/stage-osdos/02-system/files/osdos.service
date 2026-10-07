@@ -1,0 +1,37 @@
+[Unit]
+Description=OSD/OS Media Player
+# On screen as early as the display allows: after basic.target (the default
+# dependencies) and the sound card, not after multi-user.target like the
+# unit scripts/install.sh writes. The services listed in /etc/osdos/boot-units
+# hold back until the app has drawn its first frame and written
+# OSDOS_READY_FILE (see /usr/lib/osdos/wait-for-app); the boot screen shows
+# them coming up.
+After=sound.target
+# Pulls in the connection check the boot screen ends on, without waiting for it.
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=@FIRST_USER_NAME@
+SupplementaryGroups=tty video input
+AmbientCapabilities=CAP_SYS_TTY_CONFIG
+Environment=QT_QPA_PLATFORM=eglfs
+Environment=QT_QPA_EGLFS_ALWAYS_SET_MODE=1
+Environment=QT_QPA_EGLFS_KMS_ATOMIC=1
+Environment=QML2_IMPORT_PATH=/usr/lib/aarch64-linux-gnu/qt6/qml
+Environment=OSDOS_AUTOSTART=1
+Environment=OSDOS_BOOT_UNITS_FILE=/etc/osdos/boot-units
+Environment=OSDOS_READY_FILE=/run/osdos/ready
+RuntimeDirectory=osdos
+ExecStartPre=+-/usr/bin/systemctl stop osdos-terminal.service
+ExecStartPre=-/usr/lib/osdos/wait-for-display
+ExecStart=/usr/local/bin/osdos
+Restart=on-failure
+RestartSec=5s
+RestartPreventExitStatus=10 12
+ExecStopPost=+/usr/local/bin/osdos-stop
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

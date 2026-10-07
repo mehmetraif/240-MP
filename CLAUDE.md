@@ -16,7 +16,7 @@ cmake -B build -DCMAKE_PREFIX_PATH=/path/to/Qt/6.x/macos . && cmake --build buil
 cmake --build build
 
 # Run:
-APP_ROOT=$(pwd) ./build/240mp
+APP_ROOT=$(pwd) ./build/osdos
 ```
 
 For the full build/install story on both targets (macOS and Raspberry Pi OS), CI, and config paths, see **[BUILDING.md](BUILDING.md)** and **[INSTALL.md](INSTALL.md)**.

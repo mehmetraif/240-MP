@@ -245,7 +245,7 @@ FocusScope {
         choices: confirmOptions
         onActivated: function(act) {
             if (act === "apply" && updateManager) {
-                // Linux exits with code 11 under autostart (see 240mp-stop in
+                // Linux exits with code 11 under autostart (see osdos-stop in
                 // scripts/install.sh) or quits for apply-on-next-launch; macOS
                 // spawns the swap helper and quits.
                 updateManager.applyAndRestart()

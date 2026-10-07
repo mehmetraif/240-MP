@@ -19,7 +19,7 @@ FocusScope {
     property var navListState: ({})
 
     // Who makes OSD/OS, and whose work it carries on.
-    readonly property string developer: "Mehmet Raif"
+    readonly property string developer: "mehmet raif tasdemir (darkBLACK)"
     readonly property string developerUrl: "github.com/mehmetraif"
     readonly property string sourceUrl: "github.com/mehmetraif/OSD-OS"
     readonly property string upstreamAuthor: "Anthony Caccese"
@@ -40,12 +40,28 @@ FocusScope {
                        + " • It comes with no warranty • " + root.hints.select + " The notice and the license's text" },
         { key: "source", label: "Source", value: aboutRoot.sourceUrl,
           description: "The source code, the releases and the issues • Changes are welcome: see CONTRIBUTING.md there" },
+        { key: "code", label: "Written With", value: "Claude Code",
+          description: "OSD/OS's changes to 240-MP were written with Claude Code, Anthropic's coding agent,"
+                       + " as a large part of 240-MP's own code was" },
+        { key: "artwork", label: "Artwork", value: "ChatGPT",
+          description: "The OSD/OS logo, the channel logo over the picture and the boot screen's cassette"
+                       + " were made with ChatGPT, OpenAI's assistant" },
         { key: "fonts", label: "Fonts", value: "VCR OSD Mono, Unifont",
           description: "VCR OSD Mono by Riciery Santos Leal (mrmanet), free from dafont.com"
                        + " • GNU Unifont by Roman Czyborra, Paul Hardy and others, under the SIL Open Font License 1.1" },
         { key: "built", label: "Built With", value: "Qt, SDL2, mpv",
           description: "Qt 6 (LGPL v3) • SDL2 (zlib) • mpv and libmpv (GPL v2+)"
-                       + " • On the OSD/OS image: yt-dlp (Unlicense), Deno (MIT), FFmpeg (LGPL/GPL), Chromium (BSD), Raspberry Pi OS" }
+                       + " • On the OSD/OS image: yt-dlp (Unlicense), Deno (MIT), FFmpeg (LGPL/GPL), Chromium (BSD)" },
+        { key: "system", label: "Image OS", value: "Raspberry Pi OS",
+          description: "The OSD/OS image is Raspberry Pi OS Lite (64-bit), which is based on Debian 13 (trixie),"
+                       + " built with Raspberry Pi's pi-gen, and OSD/OS on top • Each package keeps its own license:"
+                       + " /usr/share/doc on the image, and /usr/share/doc/osdos/NOTICE for the rest"
+                       + " • Raspberry Pi is a trademark of Raspberry Pi Ltd, and Debian a registered trademark of"
+                       + " Software in the Public Interest, Inc.; OSD/OS is not affiliated with or endorsed by either" },
+        { key: "data", label: "Data", value: "TMDB, Open-Meteo",
+          description: "This product uses the TMDB API but is not endorsed or certified by TMDB: the Netflix and"
+                       + " Prime Video catalogues, with JustWatch's listings through it • Weather data by"
+                       + " Open-Meteo.com, under CC BY 4.0 • Titles' pages on the services from Wikidata" }
     ]
 
     // The notice at the head of the licence page: the GPL's own, for this
@@ -124,8 +140,9 @@ FocusScope {
         model: aboutRoot.rows
         visible: !licensePage.visible
         focus: !licensePage.visible
-        // Under the wordmark: six lines, the rest on ▼.
-        anchors.topMargin: root.sh * 0.3583333 //172
+        // Under the wordmark: six lines, the rest on ▼, and room above them
+        // for the ▲ clear of the tagline.
+        anchors.topMargin: root.sh * 0.375 //180
         height: root.sh * 0.35 //168
 
         delegate: MenuRow {
@@ -134,6 +151,9 @@ FocusScope {
             label: modelData.label
             value: modelData.value
             selected: list.currentIndex === index
+            // Read rather than chosen: a value too long for its line (the
+            // developer, the source) scrolls through, selected or not.
+            alwaysScroll: true
         }
 
         Keys.onReturnPressed: {

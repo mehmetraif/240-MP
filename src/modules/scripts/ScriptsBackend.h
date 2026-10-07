@@ -30,7 +30,7 @@ struct ScriptEntry {
 class ScriptLauncher;
 class DisplayHandoff;
 
-// Lists the user's own .sh scripts and runs them, so 240-MP can act as a
+// Lists the user's own .sh scripts and runs them, so OSD/OS can act as a
 // remote-friendly front end for anything else on the machine. Owns the
 // ScriptLauncher and is the single object QML talks to.
 class ScriptsBackend : public QObject {

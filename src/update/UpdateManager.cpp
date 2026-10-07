@@ -1,4 +1,5 @@
 #include "UpdateManager.h"
+#include "util/LegacyNames.h"
 
 #include <QCoreApplication>
 #include <QDir>
@@ -34,14 +35,14 @@ QString assetSuffix() {
 #endif
 }
 
-// "Apply & Restart" under the autostart service: 240mp-stop (scripts/install.sh)
+// "Apply & Restart" under the autostart service: osdos-stop (scripts/install.sh)
 // treats exit 11 as a no-op so Restart=on-failure relaunches through the
 // launcher, which applies the staged tarball. Sibling of Qt.exit(10) ("Exit to
 // Terminal") in views/Settings.qml.
 constexpr int kExitCodeUpdateRestart = 11;
 
 QString feedUrl() {
-    const QString env = qEnvironmentVariable("MP240_UPDATE_FEED_URL");
+    const QString env = legacy::env("UPDATE_FEED_URL");
     return env.isEmpty() ? kDefaultFeedUrl : env;
 }
 
@@ -49,7 +50,7 @@ QNetworkRequest githubRequest(const QUrl &url) {
     QNetworkRequest req(url);
     // GitHub's API rejects requests without a User-Agent.
     req.setRawHeader("User-Agent",
-                     QStringLiteral("240-MP/%1").arg(QCoreApplication::applicationVersion()).toUtf8());
+                     QStringLiteral("OSD-OS/%1").arg(QCoreApplication::applicationVersion()).toUtf8());
     req.setRawHeader("Accept", "application/vnd.github+json");
     req.setRawHeader("X-GitHub-Api-Version", "2022-11-28");
     return req;
@@ -66,7 +67,7 @@ bool isGamingMode() {
 }
 
 #ifdef Q_OS_MAC
-// Bundle root ("/Applications/240mp.app") when running from a bundle, else empty.
+// Bundle root ("/Applications/osdos.app") when running from a bundle, else empty.
 QString macBundlePath() {
     const QString binDir = QCoreApplication::applicationDirPath();
     if (!binDir.endsWith(QStringLiteral(".app/Contents/MacOS")))
@@ -139,19 +140,23 @@ void UpdateManager::evaluateApplyCapability() {
         return;
     }
 
-    // The launcher exports MP240_LAUNCHER_API when it knows how to apply staged
+    // The launcher exports OSDOS_LAUNCHER_API when it knows how to apply staged
     // updates (see scripts/install.sh). Older installs must re-run the installer
-    // once; non-standard installs (dev builds, custom prefixes) are not managed.
-    const bool standardInstall =
-        QCoreApplication::applicationDirPath() == QStringLiteral("/opt/240mp/bin");
-    if (!standardInstall) {
+    // once, and so must one from 240-MP's days (/opt/240mp): its launcher looks
+    // for bin/240mp in a release, which OSD/OS's don't have. Non-standard
+    // installs (dev builds, custom prefixes) are not managed.
+    const QString appDir = QCoreApplication::applicationDirPath();
+    const bool from240mp = appDir == QStringLiteral("/opt/240mp/bin");
+    if (!from240mp && appDir != QStringLiteral("/opt/osdos/bin")) {
         m_canApply = false;
         m_applyHint = QStringLiteral("Not a standard install — update manually.");
-    } else if (!qEnvironmentVariableIsSet("MP240_LAUNCHER_API")) {
+    } else if (from240mp || !legacy::envIsSet("LAUNCHER_API")) {
         m_canApply = false;
-        m_applyHint = QStringLiteral("This install predates in-app updates. Re-run the "
-                                     "installer once:\nbash <(curl -fsSL https://github.com/"
-                                     "mehmetraif/OSD-OS/releases/latest/download/install.sh)");
+        m_applyHint = (from240mp ? QStringLiteral("This install is 240-MP's. ")
+                                 : QStringLiteral("This install predates in-app updates. "))
+                      + QStringLiteral("Re-run the installer once:\nbash <(curl -fsSL "
+                                       "https://github.com/mehmetraif/OSD-OS/releases/latest/"
+                                       "download/install.sh)");
     } else {
         m_canApply = true;
     }
@@ -458,7 +463,7 @@ void UpdateManager::applyLinux() {
     sums.write(QStringLiteral("%1  %2\n").arg(sha256, asset).toUtf8());
     sums.close();
 
-    if (qEnvironmentVariableIsSet("MP240_AUTOSTART"))
+    if (legacy::envIsSet("AUTOSTART"))
         QTimer::singleShot(0, qApp, []() { QCoreApplication::exit(kExitCodeUpdateRestart); });
     else
         QTimer::singleShot(0, qApp, &QCoreApplication::quit);
@@ -522,7 +527,7 @@ void UpdateManager::applyAppImage() {
     // (Steam relaunches; the file path is unchanged so its shortcut still works).
     if (!isGamingMode()) {
         static const char kHelper[] = R"HELPER(#!/bin/bash
-# apply-appimage.sh <pid> <appimage> — spawned detached by 240-MP before it quits.
+# apply-appimage.sh <pid> <appimage> — spawned detached by OSD/OS before it quits.
 exec >>"$(dirname "$0")/apply.log" 2>&1
 echo "=== $(date) relaunch $2"
 PID="$1"; APP="$2"
@@ -560,7 +565,7 @@ void UpdateManager::applyMacos() {
     }
 
     static const char kHelper[] = R"HELPER(#!/bin/bash
-# apply-macos.sh <pid> <dmg> <bundle> — spawned detached by 240-MP before it quits.
+# apply-macos.sh <pid> <dmg> <bundle> — spawned detached by OSD/OS before it quits.
 exec >>"$(dirname "$0")/apply.log" 2>&1
 echo "=== $(date) apply $2 -> $3"
 PID="$1"; DMG="$2"; BUNDLE="$3"

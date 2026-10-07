@@ -23,12 +23,12 @@ FocusScope {
     // What became of the last video selected.
     property string outcome: ""
 
-    readonly property string kLocal: "com.240mp.local_files"
-    readonly property string kYouTube: "com.240mp.youtube"
-    readonly property string kJellyfin: "com.240mp.jellyfin"
-    readonly property string kEmby: "com.240mp.emby"
+    readonly property string kLocal: "com.osdos.local_files"
+    readonly property string kYouTube: "com.osdos.youtube"
+    readonly property string kJellyfin: "com.osdos.jellyfin"
+    readonly property string kEmby: "com.osdos.emby"
     // A server's paths: its module, by the prefix they start with.
-    readonly property var servers: ({ "jf": "com.240mp.jellyfin", "em": "com.240mp.emby" })
+    readonly property var servers: ({ "jf": "com.osdos.jellyfin", "em": "com.osdos.emby" })
     // Where the on-screen keyboard searches: a module's prefix ("local:",
     // "yt:").
     property string searchIn: ""

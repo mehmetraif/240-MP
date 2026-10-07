@@ -85,7 +85,7 @@ FocusScope {
             // script's children.
             //
             // One exception: a downgraded run that never handed the display over (the
-            // script is running console-style inside this view), 240-MP still has
+            // script is running console-style inside this view), OSD/OS still has
             // the screen, so stopping must remain possible.
             if (busy) {
                 if (downgraded) scriptsBackend.stopScript()

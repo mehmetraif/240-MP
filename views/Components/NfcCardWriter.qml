@@ -31,7 +31,7 @@ FocusScope {
         typeof nfcReaderBackend !== "undefined"
         && nfcReaderBackend.available
         && nfcReaderBackend.readerConnected
-        && appCore.is_module_enabled("com.240mp.nfc_reader")
+        && appCore.is_module_enabled("com.osdos.nfc_reader")
 
     // "armed" | "choose" | "replace" | "done" | "failed"
     property string phase: "armed"

@@ -106,7 +106,7 @@ int DisplayHandoff::acquire(const QString &owner) {
         // This is not cosmetic. Without the switch, Qt's renderer keeps drawing
         // while DRM master is dropped below it: expect a stream of
         // "Failed to commit atomic request (code=-13)" (EACCES), and a child that
-        // draws nothing will leave the 240-MP UI on screen rather than blanking,
+        // draws nothing will leave the OSD/OS UI on screen rather than blanking,
         // so a "takeover" doesn't visibly take over. It usually still recovers,
         // which is exactly what makes it easy to miss — so say so plainly.
         qWarning("[DisplayHandoff] Could not switch VT, so Qt's renderer will keep "
@@ -212,7 +212,7 @@ int DisplayHandoff::findFreeVt(int activeVt) const {
 
     // VT_OPENQRY reports the lowest VT that no process currently has OPEN, which
     // is NOT the same as "a VT other than the one we are displaying on". Under
-    // the installed service getty@tty1 and autovt@ are masked and 240mp.service
+    // the installed service getty@tty1 and autovt@ are masked and osdos.service
     // opens no tty of its own, so nothing holds /dev/tty1 open and this can hand
     // back the very VT Qt is on.
     //

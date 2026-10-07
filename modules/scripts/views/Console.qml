@@ -1,7 +1,7 @@
 import QtQuick
 import Components
 
-// Console run mode: 240-MP keeps the screen and shows the script's output.
+// Console run mode: OSD/OS keeps the screen and shows the script's output.
 // Identical on every target — nothing is handed off.
 FocusScope {
     id: consoleRoot

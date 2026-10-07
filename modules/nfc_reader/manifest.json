@@ -1,5 +1,5 @@
 {
-  "id": "com.240mp.nfc_reader",
+  "id": "com.osdos.nfc_reader",
   "name": "NFC Reader",
   "icon": "assets/images/logo.svg",
   "entry_point_qml": "views/Root.qml",

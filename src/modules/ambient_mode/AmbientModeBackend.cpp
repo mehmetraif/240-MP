@@ -21,7 +21,7 @@ AmbientModeBackend::AmbientModeBackend(const QString &dataRoot, QObject *parent)
     QFile f(m_dataRoot + "/config.json");
     if (f.open(QIODevice::ReadOnly)) {
         QJsonObject cfg = QJsonDocument::fromJson(f.readAll()).object();
-        QString dir = cfg["modules"].toObject()["com.240mp.ambient_mode"].toObject()
+        QString dir = cfg["modules"].toObject()["com.osdos.ambient_mode"].toObject()
                           ["media_directory"].toString();
         if (!dir.isEmpty())
             setMediaRoot(dir);
@@ -125,6 +125,6 @@ void AmbientModeBackend::stopAudio()
 
 void AmbientModeBackend::onSettingChanged(const QString &moduleId, const QString &key, const QVariant &value)
 {
-    if (moduleId == QLatin1String("com.240mp.ambient_mode") && key == QLatin1String("media_directory"))
+    if (moduleId == QLatin1String("com.osdos.ambient_mode") && key == QLatin1String("media_directory"))
         setMediaRoot(value.toString());
 }
