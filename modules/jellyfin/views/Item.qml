@@ -192,7 +192,7 @@ FocusScope {
         if (isLaunching) return
         if (!detail) return
         if (focusRow === 0 && adder.available(moduleRoot.moduleId)) {
-            adder.offer(moduleRoot.moduleId, playlistEntry())
+            adder.offer(moduleRoot.moduleId, detail)
         } else if (focusRow === 1 && detail.audioStreams && detail.audioStreams.length > 1) {
             audioIdx = (audioIdx + 1) % detail.audioStreams.length
             userChangedTracks = true
@@ -223,12 +223,6 @@ FocusScope {
             goBack()
             event.accepted = true
         }
-    }
-
-    // The video as a playlist keeps it: an episode with its show.
-    function playlistEntry() {
-        return { itemId: detail.itemId, title: detail.title,
-                 seriesName: detail.type === "episode" ? (detail.grandparentTitle || "") : "" }
     }
 
     // Safety net: save the current selection when the view is destroyed

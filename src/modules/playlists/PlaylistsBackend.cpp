@@ -1,11 +1,12 @@
 #include "PlaylistsBackend.h"
 
 #include "../../AppCore.h"
+#include "../../util/FileNames.h"
 #include "../../util/YtDlpLocator.h"
-#include "../emby/EmbyBackend.h"
-#include "../jellyfin/JellyfinBackend.h"
 #include "../local_files/LocalFilesBackend.h"
 #include "../youtube/YouTubeBackend.h"
+#include "MediaServer.h"
+#include "ServerDownload.h"
 
 #include <QDebug>
 #include <QDir>
@@ -13,20 +14,20 @@
 #include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
-#include <QNetworkReply>
 #include <QProcess>
 #include <QRandomGenerator>
 #include <QRegularExpression>
 #include <QSaveFile>
 #include <QStandardPaths>
+#include <QThread>
 #include <QTimer>
-#include <QUrl>
 #include <QUuid>
 
 #include <algorithm>
 
 #ifdef Q_OS_UNIX
 #include <fcntl.h>
+#include <signal.h>
 #include <unistd.h>
 #endif
 
@@ -35,51 +36,47 @@ namespace {
 const QString kModuleId = QStringLiteral("com.240mp.playlists");
 const QString kLocalFiles = QStringLiteral("com.240mp.local_files");
 const QString kYouTube = QStringLiteral("com.240mp.youtube");
-const QString kJellyfin = QStringLiteral("com.240mp.jellyfin");
-const QString kEmby = QStringLiteral("com.240mp.emby");
 
-// The prefix of an item's key, by module.
+// The prefix of an item's key, by module: a server's is its id's last part
+// ("jellyfin:", "emby:").
 QString keyPrefix(const QString &moduleId) {
     if (moduleId == kLocalFiles) return QStringLiteral("local:");
     if (moduleId == kYouTube) return QStringLiteral("youtube:");
-    if (moduleId == kJellyfin) return QStringLiteral("jellyfin:");
-    if (moduleId == kEmby) return QStringLiteral("emby:");
-    return {};
+    return moduleId.section(QLatin1Char('.'), -1) + QLatin1Char(':');
 }
 
-// A file name every filesystem the folder may be on takes: exFAT's rules,
-// which are Windows' (no \ / : * ? " < > |, no control characters, no
-// trailing dot or space), and short enough for any of them.
-QString safeName(const QString &name) {
-    static const QString kForbidden = QStringLiteral("\\/:*?\"<>|");
-    QString out;
-    for (const QChar c : name)
-        out += (c.unicode() < 32 || kForbidden.contains(c)) ? QChar(QLatin1Char(' ')) : c;
-    out = out.simplified();
-    if (out.size() > 80)
-        out = out.left(80).trimmed();
-    while (out.endsWith(QLatin1Char('.')) || out.endsWith(QLatin1Char(' ')))
-        out.chop(1);
-    return out.isEmpty() ? QStringLiteral("video") : out;
+// The folder a module's downloads go in, under the download folder.
+QString sourceFolderName(const QString &moduleId) {
+    if (moduleId == kYouTube) return QStringLiteral("YouTube");
+    QString name = moduleId.section(QLatin1Char('.'), -1);
+    name[0] = name[0].toUpper();
+    return name;
 }
 
-// The file's data, then its folder's entry for it, flushed to the card: the
-// film partition is exFAT, which a power cut mid-write can leave half done.
-void syncToDisk(const QString &path) {
+// A file's data flushed to the card, then its folder's entry for it: the film
+// partition is exFAT, which a power cut mid-write can leave half done. Slow
+// on a card (seconds for a film), so never on the app's thread.
+void syncFile(const QString &path) {
 #ifdef Q_OS_UNIX
     const int fd = ::open(QFile::encodeName(path).constData(), O_RDONLY);
     if (fd >= 0) {
         ::fsync(fd);
         ::close(fd);
     }
-    const int dir = ::open(QFile::encodeName(QFileInfo(path).absolutePath()).constData(),
-                           O_RDONLY | O_DIRECTORY);
-    if (dir >= 0) {
-        ::fsync(dir);
-        ::close(dir);
-    }
 #else
     Q_UNUSED(path)
+#endif
+}
+
+void syncFolder(const QString &folder) {
+#ifdef Q_OS_UNIX
+    const int fd = ::open(QFile::encodeName(folder).constData(), O_RDONLY | O_DIRECTORY);
+    if (fd >= 0) {
+        ::fsync(fd);
+        ::close(fd);
+    }
+#else
+    Q_UNUSED(folder)
 #endif
 }
 
@@ -98,45 +95,13 @@ QString youtubeId(const QVariantMap &entry) {
     return {};
 }
 
-// What a server's reply says the file is: from its Content-Disposition name,
-// else its type.
-QString extensionOf(QNetworkReply *reply) {
-    static const QRegularExpression kName(
-        QStringLiteral("filename\\*?=(?:UTF-8'')?\"?([^\";]+)\"?"), QRegularExpression::CaseInsensitiveOption);
-    const QString disposition = QString::fromUtf8(reply->rawHeader("Content-Disposition"));
-    const QRegularExpressionMatch m = kName.match(disposition);
-    if (m.hasMatch()) {
-        const QString suffix = QFileInfo(QUrl::fromPercentEncoding(m.captured(1).toUtf8())).suffix();
-        if (!suffix.isEmpty() && suffix.size() <= 5)
-            return suffix.toLower();
-    }
-    const QString type = reply->header(QNetworkRequest::ContentTypeHeader).toString().toLower();
-    if (type.contains(QLatin1String("mp4"))) return QStringLiteral("mp4");
-    if (type.contains(QLatin1String("webm"))) return QStringLiteral("webm");
-    if (type.contains(QLatin1String("quicktime"))) return QStringLiteral("mov");
-    if (type.contains(QLatin1String("msvideo"))) return QStringLiteral("avi");
-    return QStringLiteral("mkv");
-}
-
 } // namespace
 
-void PlaylistsBackend::removePartials(const QString &key) const {
-    // What yt-dlp leaves of a video it didn't finish: its .part files and the
-    // streams it was to merge (".f137.mp4"), all named with "[<id>]".
-    if (!key.startsWith(QLatin1String("youtube:")))
-        return;
-    const QString tag = QLatin1Char('[') + key.mid(8) + QLatin1Char(']');
-    QDir dir(QDir(downloadFolder()).filePath(QStringLiteral("YouTube")));
-    for (const QFileInfo &f : dir.entryInfoList(QDir::Files))
-        if (f.fileName().contains(tag))
-            QFile::remove(f.absoluteFilePath());
-}
-
-PlaylistsBackend::PlaylistsBackend(const QString &appRoot, const QString &dataRoot, AppCore *appCore,
-                                   LocalFilesBackend *localFiles, YouTubeBackend *youtube,
-                                   JellyfinBackend *jellyfin, EmbyBackend *emby, QObject *parent)
-    : QObject(parent), m_appRoot(appRoot), m_dataRoot(dataRoot), m_appCore(appCore),
-      m_localFiles(localFiles), m_youtube(youtube), m_jellyfin(jellyfin), m_emby(emby) {
+PlaylistsBackend::PlaylistsBackend(const QString &dataRoot, AppCore *appCore, LocalFilesBackend *localFiles,
+                                   YouTubeBackend *youtube, const QHash<QString, MediaServer *> &servers,
+                                   QObject *parent)
+    : QObject(parent), m_dataRoot(dataRoot), m_appCore(appCore), m_localFiles(localFiles),
+      m_youtube(youtube), m_servers(servers) {
     load();
     // What was left to download goes on once the app has settled (and the
     // network, at boot, has had a chance to come up).
@@ -151,11 +116,8 @@ PlaylistsBackend::~PlaylistsBackend() {
         m_active.process->kill();
         m_active.process->waitForFinished(2000);
     }
-    if (m_active.reply) {
-        m_active.reply->disconnect(this);
-        m_active.reply->abort();
-    }
-    delete m_active.file;
+    if (m_active.download)
+        m_active.download->cancel();
 }
 
 // ---------------------------------------------------------------------------
@@ -199,6 +161,14 @@ int PlaylistsBackend::indexOf(const QString &id) const {
         if (m_playlists[i].value(QStringLiteral("id")).toString() == id)
             return i;
     return -1;
+}
+
+QJsonObject PlaylistsBackend::itemByKey(const QString &key) const {
+    for (const QJsonObject &p : m_playlists)
+        for (const QJsonValue &v : p.value(QStringLiteral("items")).toArray())
+            if (v.toObject().value(QStringLiteral("key")).toString() == key)
+                return v.toObject();
+    return {};
 }
 
 QString PlaylistsBackend::downloadFolder() const {
@@ -264,11 +234,14 @@ QVariantMap PlaylistsBackend::playlist(const QString &id) const {
         int percent = 0;
         QString reason;
         const QString state = itemState(item, kind, &percent, &reason);
-        QVariantMap row = item.toVariantMap();
-        row.insert(QStringLiteral("state"), state);
-        row.insert(QStringLiteral("percent"), percent);
-        row.insert(QStringLiteral("reason"), reason);
-        items << row;
+        items << QVariantMap{{QStringLiteral("id"), item.value(QStringLiteral("id")).toString()},
+                             {QStringLiteral("module"), item.value(QStringLiteral("module")).toString()},
+                             {QStringLiteral("key"), item.value(QStringLiteral("key")).toString()},
+                             {QStringLiteral("title"), item.value(QStringLiteral("title")).toString()},
+                             {QStringLiteral("source"), item.value(QStringLiteral("source")).toObject().toVariantMap()},
+                             {QStringLiteral("state"), state},
+                             {QStringLiteral("percent"), percent},
+                             {QStringLiteral("reason"), reason}};
     }
     return {{QStringLiteral("id"), id},
             {QStringLiteral("name"), p.value(QStringLiteral("name")).toString()},
@@ -323,11 +296,10 @@ void PlaylistsBackend::setOrder(const QString &id, const QString &order) {
     emit playlistsChanged();
 }
 
-bool PlaylistsBackend::supports(const QString &moduleId, const QString &kind) const {
-    Q_UNUSED(kind)
+bool PlaylistsBackend::supports(const QString &moduleId) const {
     // Every source mpv plays here can also be put on the device: Local Files'
     // files are on it already, the others download.
-    return !keyPrefix(moduleId).isEmpty();
+    return moduleId == kLocalFiles || moduleId == kYouTube || m_servers.contains(moduleId);
 }
 
 QJsonObject PlaylistsBackend::itemFor(const QString &moduleId, const QVariantMap &entry) const {
@@ -347,14 +319,15 @@ QJsonObject PlaylistsBackend::itemFor(const QString &moduleId, const QVariantMap
         id = youtubeId(entry);
         source.insert(QStringLiteral("videoId"), id);
         source.insert(QStringLiteral("channel"), entry.value(QStringLiteral("channelName")).toString());
-    } else if (moduleId == kJellyfin || moduleId == kEmby) {
+    } else if (m_servers.contains(moduleId)) {
+        if (entry.value(QStringLiteral("isFolder")).toBool())
+            return {};
         id = entry.value(QStringLiteral("itemId")).toString();
         source.insert(QStringLiteral("itemId"), id);
         // An episode: its show, to tell it from another show's "Pilot".
-        QString series = entry.value(QStringLiteral("seriesName")).toString();
-        if (series.isEmpty())
-            series = entry.value(QStringLiteral("grandparentTitle")).toString();
-        if (!series.isEmpty() && !title.startsWith(series))
+        const QString series = entry.value(QStringLiteral("grandparentTitle")).toString();
+        if (entry.value(QStringLiteral("type")).toString() == QLatin1String("episode")
+            && !series.isEmpty() && !title.startsWith(series))
             title = series + QStringLiteral(" - ") + title;
     }
     if (id.isEmpty())
@@ -373,26 +346,25 @@ QVariantMap PlaylistsBackend::addEntry(const QString &playlistId, const QString 
     const int i = indexOf(playlistId);
     if (i < 0)
         return {{QStringLiteral("ok"), false}, {QStringLiteral("reason"), QStringLiteral("unknown")}};
-    const QString kind = m_playlists[i].value(QStringLiteral("kind")).toString();
-    if (!supports(moduleId, kind))
-        return {{QStringLiteral("ok"), false}, {QStringLiteral("reason"), QStringLiteral("unsupported")}};
-    const QJsonObject item = itemFor(moduleId, entry);
+    const QJsonObject item = supports(moduleId) ? itemFor(moduleId, entry) : QJsonObject();
     if (item.isEmpty())
         return {{QStringLiteral("ok"), false}, {QStringLiteral("reason"), QStringLiteral("unsupported")}};
 
+    const QString title = item.value(QStringLiteral("title")).toString();
     QJsonArray items = m_playlists[i].value(QStringLiteral("items")).toArray();
     const QString key = item.value(QStringLiteral("key")).toString();
     for (const QJsonValue &v : items)
         if (v.toObject().value(QStringLiteral("key")).toString() == key)
             return {{QStringLiteral("ok"), false}, {QStringLiteral("reason"), QStringLiteral("duplicate")},
-                    {QStringLiteral("title"), item.value(QStringLiteral("title")).toString()}};
+                    {QStringLiteral("title"), title}};
     items << item;
     m_playlists[i].insert(QStringLiteral("items"), items);
     save();
-    if (kind == QLatin1String("offline") && moduleId != kLocalFiles)
-        enqueue(key);
+    const bool downloading = m_playlists[i].value(QStringLiteral("kind")).toString() == QLatin1String("offline")
+                             && moduleId != kLocalFiles && enqueue(key);
     emit playlistsChanged();
-    return {{QStringLiteral("ok"), true}, {QStringLiteral("title"), item.value(QStringLiteral("title")).toString()}};
+    return {{QStringLiteral("ok"), true}, {QStringLiteral("title"), title},
+            {QStringLiteral("downloading"), downloading}};
 }
 
 void PlaylistsBackend::removeItem(const QString &playlistId, const QString &itemId) {
@@ -459,11 +431,8 @@ QString PlaylistsBackend::itemState(const QJsonObject &item, const QString &kind
         return QFileInfo::exists(source.value(QStringLiteral("path")).toString()) ? QStringLiteral("ready")
                                                                                   : QStringLiteral("missing");
     if (kind != QLatin1String("offline")) {
-        if (module == kJellyfin && !(m_jellyfin && m_jellyfin->signedIn())) {
-            *reason = QStringLiteral("signed out");
-            return QStringLiteral("missing");
-        }
-        if (module == kEmby && !(m_emby && m_emby->signedIn())) {
+        const MediaServer *server = m_servers.value(module);
+        if (server && !server->signedIn()) {
             *reason = QStringLiteral("signed out");
             return QStringLiteral("missing");
         }
@@ -500,12 +469,9 @@ QString PlaylistsBackend::playableUrl(const QJsonObject &item, const QString &ki
     }
     if (module == kYouTube)
         return QStringLiteral("https://www.youtube.com/watch?v=") + source.value(QStringLiteral("videoId")).toString();
-    const QString itemId = source.value(QStringLiteral("itemId")).toString();
-    if (module == kJellyfin)
-        return m_jellyfin && m_jellyfin->signedIn() ? m_jellyfin->streamUrl(itemId) : QString();
-    if (module == kEmby)
-        return m_emby && m_emby->signedIn() ? m_emby->streamUrl(itemId) : QString();
-    return {};
+    const MediaServer *server = m_servers.value(module);
+    return server && server->signedIn() ? server->streamUrl(source.value(QStringLiteral("itemId")).toString())
+                                        : QString();
 }
 
 QVariantMap PlaylistsBackend::prepare(const QString &playlistId, const QString &fromItemId) {
@@ -521,16 +487,13 @@ QVariantMap PlaylistsBackend::prepare(const QString &playlistId, const QString &
         QString url;
     };
     QList<Entry> entries;
-    int skipped = 0;
     bool youtube = false;
     bool images = false;
     for (const QJsonValue &v : p.value(QStringLiteral("items")).toArray()) {
         const QJsonObject item = v.toObject();
         const QString url = playableUrl(item, kind);
-        if (url.isEmpty()) {
-            ++skipped;
+        if (url.isEmpty())
             continue;
-        }
         const QString module = item.value(QStringLiteral("module")).toString();
         if (kind != QLatin1String("offline") && module == kYouTube)
             youtube = true;
@@ -558,10 +521,10 @@ QVariantMap PlaylistsBackend::prepare(const QString &playlistId, const QString &
         m3u += QStringLiteral("#EXTINF:-1,") + e.title + QLatin1Char('\n') + e.url + QLatin1Char('\n');
         ids << e.id;
     }
-    // A new file each time, so a list played afresh is never taken for the
-    // same one still playing behind the menus (MpvController carries that
-    // on when it is started again just as it was). It may hold a server's
-    // token: for this user's eyes only, and the last one only.
+    // A new file each time: MpvController takes an identical command line for
+    // the same session (one still playing behind the menus is carried on,
+    // not started again), and a list played afresh is a new one. It may hold
+    // a server's token: for this user's eyes only, and the last one only.
     const QString folder = m_dataRoot + QStringLiteral("/playlists");
     QDir().mkpath(folder);
     removeM3us(playlistId);
@@ -581,10 +544,8 @@ QVariantMap PlaylistsBackend::prepare(const QString &playlistId, const QString &
                                 ? -1 : int(ids.indexOf(resume.value(QStringLiteral("itemId")).toString()));
     return {{QStringLiteral("file"), path},
             {QStringLiteral("count"), int(ids.size())},
-            {QStringLiteral("skipped"), skipped},
             {QStringLiteral("youtube"), youtube},
             {QStringLiteral("images"), images},
-            {QStringLiteral("shuffled"), shuffled},
             {QStringLiteral("startIndex"), fromItemId.isEmpty() ? -1 : int(ids.indexOf(fromItemId))},
             {QStringLiteral("resumeIndex"), resumeIndex},
             {QStringLiteral("resumeMs"), resumeIndex >= 0 ? resume.value(QStringLiteral("positionMs")).toInt() : 0}};
@@ -631,54 +592,32 @@ QVariant PlaylistsBackend::serverListing(const QString &moduleId, const QString 
     const auto cached = m_listings.constFind(key);
     if (cached != m_listings.constEnd())
         return *cached;
-    const bool jellyfin = moduleId == kJellyfin;
-    if (!jellyfin && moduleId != kEmby)
-        return QVariantList();
-    if (!(jellyfin ? (m_jellyfin && m_jellyfin->signedIn()) : (m_emby && m_emby->signedIn())))
+    MediaServer *server = m_servers.value(moduleId);
+    if (!server || !server->signedIn())
         return QVariantList();
     if (preview || m_listingsPending.contains(key))
         return QVariant();
     m_listingsPending.insert(key);
-    QNetworkReply *reply = m_nam.get(jellyfin ? m_jellyfin->browseRequest(parentId)
-                                              : m_emby->browseRequest(parentId));
     const int epoch = m_listingsEpoch;
-    connect(reply, &QNetworkReply::finished, this, [this, reply, key, moduleId, parentId, epoch]() {
-        reply->deleteLater();
+    // Episodes in a season come with their numbers; what is being watched
+    // doesn't, as the servers' own views have them.
+    const bool numbered = parentId != QLatin1String("resume") && parentId != QLatin1String("nextup");
+    server->browse(parentId, this, [this, key, moduleId, parentId, epoch, numbered](bool ok, const QVariantList &items) {
         // Asked for again since (forgetListings): this answer is not wanted.
         if (epoch != m_listingsEpoch)
             return;
         m_listingsPending.remove(key);
+        if (!ok)
+            qWarning("[Playlists] %s listing %s failed", qPrintable(moduleId), qPrintable(parentId));
         QVariantList out;
-        if (reply->error() != QNetworkReply::NoError) {
-            qWarning("[Playlists] %s listing %s failed: %s", qPrintable(moduleId), qPrintable(parentId),
-                     qPrintable(reply->errorString()));
-        }
-        const QJsonArray items = QJsonDocument::fromJson(reply->readAll()).object()
-                                     .value(QStringLiteral("Items")).toArray();
-        for (const QJsonValue &v : items) {
-            const QJsonObject item = v.toObject();
-            const bool folder = item.value(QStringLiteral("IsFolder")).toBool();
-            if (parentId.isEmpty()) {
-                // The libraries with videos in them.
-                static const QStringList kNoVideo{QStringLiteral("music"), QStringLiteral("books"),
-                                                  QStringLiteral("photos"), QStringLiteral("livetv")};
-                if (kNoVideo.contains(item.value(QStringLiteral("CollectionType")).toString().toLower()))
-                    continue;
-            } else if (!folder && item.value(QStringLiteral("MediaType")).toString() != QLatin1String("Video")) {
-                continue;
-            }
-            const QString type = item.value(QStringLiteral("Type")).toString();
-            QString name = item.value(QStringLiteral("Name")).toString();
-            // An episode in a season: its number first.
-            if (type == QLatin1String("Episode") && item.contains(QStringLiteral("IndexNumber"))
-                && parentId != QLatin1String("resume") && parentId != QLatin1String("nextup"))
-                name = QString::number(item.value(QStringLiteral("IndexNumber")).toInt()) + QStringLiteral(". ") + name;
-            out << QVariantMap{{QStringLiteral("name"), name},
-                               {QStringLiteral("title"), item.value(QStringLiteral("Name")).toString()},
-                               {QStringLiteral("itemId"), item.value(QStringLiteral("Id")).toString()},
-                               {QStringLiteral("isFolder"), folder},
-                               {QStringLiteral("type"), type.toLower()},
-                               {QStringLiteral("seriesName"), item.value(QStringLiteral("SeriesName")).toString()}};
+        for (const QVariant &v : items) {
+            QVariantMap item = v.toMap();
+            QString name = item.value(QStringLiteral("title")).toString();
+            if (numbered && item.value(QStringLiteral("type")).toString() == QLatin1String("episode")
+                && item.value(QStringLiteral("index")).toInt() > 0)
+                name = QString::number(item.value(QStringLiteral("index")).toInt()) + QStringLiteral(". ") + name;
+            item.insert(QStringLiteral("name"), name);
+            out << item;
         }
         m_listings.insert(key, out);
         emit serverListingReady(moduleId, parentId);
@@ -712,6 +651,7 @@ void PlaylistsBackend::dropUnreferenced() {
     if (!m_active.key.isEmpty())
         keys << m_active.key;
     keys.removeDuplicates();
+    QSet<QString> folders;
     for (const QString &key : keys) {
         if (referencedOffline(key))
             continue;
@@ -719,7 +659,17 @@ void PlaylistsBackend::dropUnreferenced() {
         const QJsonObject download = m_downloads.take(key);
         const QString path = download.value(QStringLiteral("path")).toString();
         if (!path.isEmpty() && QFile::remove(path))
-            syncToDisk(path);
+            folders.insert(QFileInfo(path).absolutePath());
+    }
+    // The folders' entries flushed to the card, each once, off the app's
+    // thread.
+    if (!folders.isEmpty()) {
+        QThread *thread = QThread::create([folders]() {
+            for (const QString &folder : folders)
+                syncFolder(folder);
+        });
+        connect(thread, &QThread::finished, thread, &QObject::deleteLater);
+        thread->start();
     }
 }
 
@@ -743,16 +693,17 @@ void PlaylistsBackend::queueOfflineItems() {
     }
 }
 
-void PlaylistsBackend::enqueue(const QString &key) {
+bool PlaylistsBackend::enqueue(const QString &key) {
     if (m_active.key == key || m_queue.contains(key))
-        return;
+        return true;
     // On the device already, for another list: never fetched twice.
     const QJsonObject download = m_downloads.value(key);
     if (download.value(QStringLiteral("state")).toString() == QLatin1String("done")
         && QFileInfo::exists(download.value(QStringLiteral("path")).toString()))
-        return;
+        return false;
     m_queue << key;
     QTimer::singleShot(0, this, &PlaylistsBackend::startNext);
+    return true;
 }
 
 void PlaylistsBackend::startNext() {
@@ -762,30 +713,24 @@ void PlaylistsBackend::startNext() {
         const QString key = m_queue.takeFirst();
         if (!referencedOffline(key))
             continue;
-        QJsonObject item;
-        for (const QJsonObject &p : m_playlists) {
-            for (const QJsonValue &v : p.value(QStringLiteral("items")).toArray())
-                if (v.toObject().value(QStringLiteral("key")).toString() == key) {
-                    item = v.toObject();
-                    break;
-                }
-            if (!item.isEmpty())
-                break;
-        }
+        const QJsonObject item = itemByKey(key);
         const QString module = item.value(QStringLiteral("module")).toString();
+        if (module != kYouTube && !m_servers.contains(module))
+            continue;
         m_active = Active();
         m_active.key = key;
         if (module == kYouTube)
             startYouTube(key, item);
-        else if (module == kJellyfin || module == kEmby)
+        else
             startServer(key, item);
-        else {
-            m_active = Active();
-            continue;
-        }
         emit playlistsChanged();
         return;
     }
+}
+
+void PlaylistsBackend::failLater(const QString &reason) {
+    m_active.reason = reason;
+    QTimer::singleShot(0, this, [this]() { finish(false); });
 }
 
 bool PlaylistsBackend::writable(const QString &folder) {
@@ -793,41 +738,23 @@ bool PlaylistsBackend::writable(const QString &folder) {
     if (info.isDir() && info.isWritable())
         return true;
     // A card from before the film partition was writable, say (ro in fstab).
-    m_active.reason = QStringLiteral("can't write to ") + downloadFolder();
-    QTimer::singleShot(0, this, [this]() { finish(false); });
+    failLater(QStringLiteral("can't write to ") + downloadFolder());
     return false;
 }
 
 void PlaylistsBackend::startYouTube(const QString &key, const QJsonObject &item) {
     const QString program = ytdlp::locate(m_dataRoot);
     if (program.isEmpty() || !m_youtube) {
-        m_active.reason = QStringLiteral("no yt-dlp");
-        QTimer::singleShot(0, this, [this]() { finish(false); });
+        failLater(QStringLiteral("no yt-dlp"));
         return;
     }
-    const QString folder = sourceFolder(QStringLiteral("YouTube"));
+    const QString folder = sourceFolder(sourceFolderName(kYouTube));
     if (!writable(folder))
         return;
     const QString videoId = item.value(QStringLiteral("source")).toObject().value(QStringLiteral("videoId")).toString();
-    // The way the YouTube module plays it (its ADVANCED settings), as a file.
-    auto setting = [this](const QString &key, const QString &fallback) {
-        const QString value = m_appCore ? m_appCore->get_setting(kYouTube, key).toString() : QString();
-        return value.isEmpty() ? fallback : value;
-    };
-    const QString resolution = setting(QStringLiteral("playback_resolution"), QStringLiteral("480p"));
-    QStringList args = m_youtube->downloadArgs({
-        {QStringLiteral("resolution"), resolution},
-        {QStringLiteral("codec"), setting(QStringLiteral("video_codec"), QStringLiteral("H.264"))},
-        {QStringLiteral("maxFrameRate"), setting(QStringLiteral("max_frame_rate"), QStringLiteral("Any"))},
-        {QStringLiteral("audioLanguage"), setting(QStringLiteral("audio_language"), QStringLiteral("original"))}});
-    // Video and sound come apart above 360p, and only ffmpeg puts them back
-    // together; without it, the best file that has both.
-    if (!QStandardPaths::findExecutable(QStringLiteral("ffmpeg")).isEmpty()) {
-        args << QStringLiteral("--merge-output-format") << QStringLiteral("mp4");
-    } else {
-        const int height = QString(resolution).remove(QLatin1Char('p')).toInt();
-        args[1] = QStringLiteral("best[height<=?%1][vcodec^=avc1]/best[height<=?%1]/best").arg(height > 0 ? height : 480);
-    }
+    // The way the YouTube module plays it (its ADVANCED settings), as a file;
+    // ffmpeg puts the picture and sound YouTube sends apart back together.
+    QStringList args = m_youtube->downloadArgs(!QStandardPaths::findExecutable(QStringLiteral("ffmpeg")).isEmpty());
     args << QStringLiteral("--newline") << QStringLiteral("--no-playlist") << QStringLiteral("--no-mtime")
          // exFAT's rules for names, which are Windows'.
          << QStringLiteral("--windows-filenames")
@@ -839,6 +766,10 @@ void PlaylistsBackend::startYouTube(const QString &key, const QJsonObject &item)
 
     auto *process = new QProcess(this);
     process->setProcessChannelMode(QProcess::MergedChannels);
+#ifdef Q_OS_UNIX
+    // Its own process group, so that cancel() reaches the ffmpeg it runs too.
+    process->setChildProcessModifier([]() { ::setsid(); });
+#endif
     m_active.process = process;
     connect(process, &QProcess::readyRead, this, [this, process, key]() {
         static const QRegularExpression kPercent(QStringLiteral("\\[download\\]\\s+([0-9.]+)%"));
@@ -878,85 +809,78 @@ void PlaylistsBackend::startYouTube(const QString &key, const QJsonObject &item)
 }
 
 void PlaylistsBackend::startServer(const QString &key, const QJsonObject &item) {
-    const bool jellyfin = item.value(QStringLiteral("module")).toString() == kJellyfin;
-    const QString itemId = item.value(QStringLiteral("source")).toObject().value(QStringLiteral("itemId")).toString();
-    const bool signedIn = jellyfin ? (m_jellyfin && m_jellyfin->signedIn()) : (m_emby && m_emby->signedIn());
-    if (!signedIn) {
-        m_active.reason = QStringLiteral("signed out");
-        QTimer::singleShot(0, this, [this]() { finish(false); });
+    const QString module = item.value(QStringLiteral("module")).toString();
+    const MediaServer *server = m_servers.value(module);
+    if (!server || !server->signedIn()) {
+        failLater(QStringLiteral("signed out"));
         return;
     }
-    const QString folder = sourceFolder(jellyfin ? QStringLiteral("Jellyfin") : QStringLiteral("Emby"));
+    const QString folder = sourceFolder(sourceFolderName(module));
     if (!writable(folder))
         return;
-    const QString base = folder + QLatin1Char('/') + safeName(item.value(QStringLiteral("title")).toString())
+    const QString itemId = item.value(QStringLiteral("source")).toObject().value(QStringLiteral("itemId")).toString();
+    const QString base = folder + QLatin1Char('/')
+                         + safeFileName(item.value(QStringLiteral("title")).toString(), QLatin1Char(' '), 80,
+                                        QStringLiteral("video"))
                          + QStringLiteral(" [") + itemId + QLatin1Char(']');
-    m_active.partPath = base + QStringLiteral(".part");
-    m_active.file = new QFile(m_active.partPath);
-    if (!m_active.file->open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-        m_active.reason = QStringLiteral("can't write to ") + downloadFolder();
-        QTimer::singleShot(0, this, [this]() { finish(false); });
-        return;
-    }
-    const QNetworkRequest request = jellyfin ? m_jellyfin->downloadRequest(itemId) : m_emby->downloadRequest(itemId);
-    QNetworkReply *reply = m_nam.get(request);
-    m_active.reply = reply;
-    connect(reply, &QNetworkReply::readyRead, this, [this, reply]() {
-        if (m_active.file && reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt() < 300)
-            m_active.file->write(reply->readAll());
-    });
-    connect(reply, &QNetworkReply::downloadProgress, this, [this, key](qint64 received, qint64 total) {
-        if (total <= 0)
-            return;
-        const int percent = int(received * 100 / total);
+    ServerDownload *download = ServerDownload::start(server->downloadRequest(itemId), base, this);
+    m_active.download = download;
+    connect(download, &ServerDownload::progress, this, [this, key](int percent) {
         if (percent != m_active.percent) {
             m_active.percent = percent;
             emit downloadProgress(key, percent);
         }
     });
-    connect(reply, &QNetworkReply::finished, this, [this, reply, base]() {
-        const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-        bool ok = reply->error() == QNetworkReply::NoError && status < 300 && m_active.file;
-        if (ok) {
-            m_active.file->write(reply->readAll());
-            ok = m_active.file->flush();
-            m_active.file->close();
-            const QString finalPath = base + QLatin1Char('.') + extensionOf(reply);
-            QFile::remove(finalPath);
-            ok = ok && QFile::rename(m_active.partPath, finalPath);
-            if (ok)
-                m_active.finalPath = finalPath;
-        } else {
-            m_active.reason = (status == 401 || status == 403) ? QStringLiteral("not allowed")
-                                                               : reply->errorString();
-        }
-        reply->deleteLater();
+    connect(download, &ServerDownload::finished, this, [this](bool ok, const QString &finalPath, const QString &reason) {
+        m_active.finalPath = finalPath;
+        m_active.reason = reason;
         finish(ok);
     });
     qDebug("[Playlists] downloading %s", qPrintable(key));
 }
 
 void PlaylistsBackend::finish(bool ok) {
-    const QString key = m_active.key;
-    if (key.isEmpty())
+    if (m_active.key.isEmpty() || m_active.flushing)
         return;
-    if (m_active.file) {
-        m_active.file->close();
-        delete m_active.file;
-        m_active.file = nullptr;
-    }
-    if (m_active.process)
+    if (m_active.process) {
         m_active.process->deleteLater();
+        m_active.process = nullptr;
+    }
+    m_active.download = nullptr;
+    if (!ok) {
+        record(false);
+        return;
+    }
+    // The file to the card before it is counted as there, off the app's
+    // thread: the write-back of a film takes a while. Until then the item is
+    // still downloading, at 100%.
+    m_active.flushing = true;
+    m_active.percent = 100;
+    const QString key = m_active.key;
+    const QString path = m_active.finalPath;
+    QThread *thread = QThread::create([path]() {
+        syncFile(path);
+        syncFolder(QFileInfo(path).absolutePath());
+    });
+    connect(thread, &QThread::finished, this, [this, thread, key]() {
+        thread->deleteLater();
+        // Cancelled while it was flushing: its record is gone with it.
+        if (m_active.key == key && m_active.flushing)
+            record(true);
+    });
+    thread->start();
+}
+
+void PlaylistsBackend::record(bool ok) {
+    const QString key = m_active.key;
     if (ok) {
-        syncToDisk(m_active.finalPath);
         m_downloads.insert(key, QJsonObject{{QStringLiteral("path"), m_active.finalPath},
                                             {QStringLiteral("state"), QStringLiteral("done")},
                                             {QStringLiteral("bytes"), double(QFileInfo(m_active.finalPath).size())}});
         qDebug("[Playlists] downloaded %s: %s", qPrintable(key), qPrintable(m_active.finalPath));
     } else {
-        if (!m_active.partPath.isEmpty())
-            QFile::remove(m_active.partPath);
-        removePartials(key);
+        // What was fetched stays for a retry to carry on from (yt-dlp does);
+        // only a download no list wants loses it (cancel).
         const QString reason = m_active.reason.isEmpty() ? QStringLiteral("error") : m_active.reason;
         m_downloads.insert(key, QJsonObject{{QStringLiteral("state"), QStringLiteral("failed")},
                                             {QStringLiteral("reason"), reason}});
@@ -975,24 +899,44 @@ void PlaylistsBackend::cancel(const QString &key) {
     m_queue.removeAll(key);
     if (m_active.key != key)
         return;
-    if (m_active.process) {
-        m_active.process->disconnect(this);
-        m_active.process->kill();
-        m_active.process->waitForFinished(2000);
-        m_active.process->deleteLater();
+    if (QProcess *process = m_active.process) {
+        process->disconnect(this);
+        // yt-dlp and the ffmpeg under it, by their group: an interrupt first,
+        // for yt-dlp to tidy up, and the kill a moment later if it hasn't
+        // gone; the app's thread never waits on it.
+#ifdef Q_OS_UNIX
+        if (process->processId() > 0)
+            ::killpg(pid_t(process->processId()), SIGINT);
+        else
+            process->kill();
+#else
+        process->kill();
+#endif
+        connect(process, &QProcess::finished, process, &QObject::deleteLater);
+        QTimer::singleShot(2000, process, [process]() {
+            if (process->state() != QProcess::NotRunning)
+                process->kill();
+        });
     }
-    if (m_active.reply) {
-        m_active.reply->disconnect(this);
-        m_active.reply->abort();
-        m_active.reply->deleteLater();
-    }
-    if (m_active.file) {
-        m_active.file->close();
-        delete m_active.file;
-    }
-    if (!m_active.partPath.isEmpty())
-        QFile::remove(m_active.partPath);
+    if (m_active.download)
+        m_active.download->cancel();
+    // A finished file still on its way to the card, or what a download got
+    // through: no list wants it now.
+    if (!m_active.finalPath.isEmpty())
+        QFile::remove(m_active.finalPath);
     removePartials(key);
     m_active = Active();
     QTimer::singleShot(0, this, &PlaylistsBackend::startNext);
+}
+
+void PlaylistsBackend::removePartials(const QString &key) const {
+    // What yt-dlp leaves of a video it didn't finish: its .part files and the
+    // streams it was to merge (".f137.mp4"), all named with "[<id>]".
+    if (!key.startsWith(QLatin1String("youtube:")))
+        return;
+    const QString tag = QLatin1Char('[') + key.mid(8) + QLatin1Char(']');
+    QDir dir(QDir(downloadFolder()).filePath(sourceFolderName(kYouTube)));
+    for (const QFileInfo &f : dir.entryInfoList(QDir::Files))
+        if (f.fileName().contains(tag))
+            QFile::remove(f.absoluteFilePath());
 }

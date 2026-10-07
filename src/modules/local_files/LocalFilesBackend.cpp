@@ -1,4 +1,5 @@
 #include "LocalFilesBackend.h"
+#include "../../AppCore.h"
 #include <QDir>
 #include <QDirIterator>
 #include <QFile>
@@ -38,8 +39,9 @@ static constexpr int kSearchSlice = 400;
 
 LocalFilesBackend::~LocalFilesBackend() = default;
 
-LocalFilesBackend::LocalFilesBackend(const QString &appRoot, const QString &dataRoot, QObject *parent)
-    : QObject(parent), m_appRoot(appRoot), m_dataRoot(dataRoot)
+LocalFilesBackend::LocalFilesBackend(const QString &appRoot, const QString &dataRoot, AppCore *appCore,
+                                     QObject *parent)
+    : QObject(parent), m_appRoot(appRoot), m_dataRoot(dataRoot), m_appCore(appCore)
 {
     m_mediaRoot = defaultMediaRoot();
     // Resolve the configured media directory (falls back to the default above).
@@ -183,6 +185,29 @@ void LocalFilesBackend::get_subtitle_languages() {
     }
 
     emit dynamicOptionsReady("sub_lang", options);
+}
+
+QVariant LocalFilesBackend::entries(const QString &path) {
+    static const QString kModuleId = QStringLiteral("com.240mp.local_files");
+    if (path == QLatin1String("recent") || path == QLatin1String("favorites"))
+        return existing(m_appCore ? m_appCore->get_list(kModuleId, path) : QVariantList());
+    if (path.startsWith(QLatin1String("search/")))
+        return search(path, path.mid(7));
+    QVariantList items = getItems(path);
+    // An empty media folder has nothing to search either.
+    if (path == m_mediaRoot && !items.isEmpty()) {
+        auto folder = [](const char *name, const char *path) {
+            return QVariantMap{{QStringLiteral("name"), QString::fromLatin1(name)},
+                               {QStringLiteral("path"), QString::fromLatin1(path)},
+                               {QStringLiteral("isFolder"), true}};
+        };
+        items = QVariantList{folder("Recently Watched", "recent"), folder("Favorites", "favorites"),
+                             QVariantMap{{QStringLiteral("name"), QStringLiteral("Search")},
+                                         {QStringLiteral("path"), QStringLiteral("search")},
+                                         {QStringLiteral("isFolder"), false},
+                                         {QStringLiteral("kind"), QStringLiteral("search")}}} + items;
+    }
+    return items;
 }
 
 QString LocalFilesBackend::mediaRoot() const {

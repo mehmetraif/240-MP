@@ -167,7 +167,7 @@ int main(int argc, char *argv[]) {
     qInfo("[main] UI target display index %d -> %dx%d at (%d,%d)",
           displayIndex, screenGeo.width(), screenGeo.height(), screenGeo.x(), screenGeo.y());
 
-    LocalFilesBackend   localFiles(appRoot, dataRoot);
+    LocalFilesBackend   localFiles(appRoot, dataRoot, &appCore);
     PlexBackend         plexBackend(appRoot, dataRoot);
     JellyfinBackend     jellyfinBackend(appRoot, dataRoot);
     EmbyBackend         embyBackend(appRoot, dataRoot);
@@ -176,7 +176,7 @@ int main(int argc, char *argv[]) {
     // Ahead of everything that takes the screen through it, so that all of
     // them are destroyed before it is.
     DisplayHandoff      displayHandoff;
-    YouTubeBackend      youtubeBackend(appRoot, dataRoot, &displayHandoff);
+    YouTubeBackend      youtubeBackend(appRoot, dataRoot, &appCore, &displayHandoff);
     WeatherBackend      weatherBackend(appRoot, dataRoot);
     ScriptsBackend      scriptsBackend(appRoot, dataRoot, &displayHandoff);
     // The streaming services opened as their own web players. TMDB's
@@ -199,8 +199,9 @@ int main(int argc, char *argv[]) {
         appRoot, dataRoot, &displayHandoff);
     // Lists of videos from the modules above, downloaded through them for
     // the offline ones.
-    PlaylistsBackend    playlistsBackend(appRoot, dataRoot, &appCore, &localFiles,
-                                         &youtubeBackend, &jellyfinBackend, &embyBackend);
+    PlaylistsBackend    playlistsBackend(dataRoot, &appCore, &localFiles, &youtubeBackend,
+                                         {{QStringLiteral("com.240mp.jellyfin"), &jellyfinBackend},
+                                          {QStringLiteral("com.240mp.emby"), &embyBackend}});
     MpvController       mpvController(appRoot, dataRoot, &appCore, &displayHandoff);
     InputManager        inputManager(dataRoot, &appCore);
     IdleTracker         idleTracker(60);   // disabled until Main.qml applies the saved setting

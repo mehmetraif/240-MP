@@ -9,13 +9,15 @@
 #include <QUrl>
 #include <functional>
 
-class JellyfinBackend : public QObject {
+#include "../playlists/MediaServer.h"
+
+class JellyfinBackend : public QObject, public MediaServer {
     Q_OBJECT
 public:
     explicit JellyfinBackend(const QString &appRoot, const QString &dataRoot, QObject *parent = nullptr);
 
     // Auth
-    Q_INVOKABLE bool has_auth();
+    Q_INVOKABLE bool has_auth() const;
     Q_INVOKABLE QString get_server_name();
     Q_INVOKABLE QString get_user_name();
     Q_INVOKABLE void check_auth();
@@ -56,19 +58,12 @@ public:
     // URL helpers for QML
     Q_INVOKABLE QString get_access_token() const { return m_accessToken; }
 
-    // For the Playlists module. The item's original file, as the server lets
-    // this user download it (/Items/{id}/Download, which answers 401/403
-    // otherwise). And a URL mpv can stream it from with the token in its
-    // query rather than a header, so that in a playlist mixing sources the
-    // token goes to this server and nowhere else.
-    bool signedIn() const { return !m_serverUrl.isEmpty() && !m_accessToken.isEmpty(); }
-    QNetworkRequest downloadRequest(const QString &itemId) const;
-    QString streamUrl(const QString &itemId) const;
-    // A folder's children (a library's, a show's, a season's), this user's
-    // libraries (""), or what they are watching ("resume") and the episodes
-    // next in their shows ("nextup"): the Playlists module's own tree, kept
-    // apart from this module's views' signals.
-    QNetworkRequest browseRequest(const QString &parentId) const;
+    // The Playlists module's server (MediaServer): see the interface.
+    bool signedIn() const override { return has_auth(); }
+    QNetworkRequest downloadRequest(const QString &itemId) const override;
+    QString streamUrl(const QString &itemId) const override;
+    void browse(const QString &parentId, QObject *context,
+                std::function<void(bool ok, const QVariantList &items)> done) override;
 
     // Settings
     Q_INVOKABLE QString get_auth_state();

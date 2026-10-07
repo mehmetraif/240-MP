@@ -29,19 +29,16 @@ FocusScope {
     readonly property string kEmby: "com.240mp.emby"
     // A server's paths: its module, by the prefix they start with.
     readonly property var servers: ({ "jf": "com.240mp.jellyfin", "em": "com.240mp.emby" })
-
-    // As the YouTube module shows them: Shorts only with DISPLAY SHORTS on.
-    readonly property bool showShorts: {
-        var raw = appCore ? appCore.get_setting(kYouTube, "display_shorts") : undefined
-        return raw === undefined || raw === null || raw === true || raw === "ON"
-    }
+    // Where the on-screen keyboard searches: a module's prefix ("local:",
+    // "yt:").
+    property string searchIn: ""
 
     function sources() {
         var out = []
         if (appCore.is_module_enabled(kLocal) && typeof localFilesBackend !== "undefined" && localFilesBackend)
-            out.push({ name: "Local Files", path: "local", isFolder: true })
+            out.push({ name: "Local Files", path: "local:" + localFilesBackend.mediaRoot(), isFolder: true })
         if (appCore.is_module_enabled(kYouTube) && typeof youtubeBackend !== "undefined" && youtubeBackend)
-            out.push({ name: "YouTube", path: "yt", isFolder: true })
+            out.push({ name: "YouTube", path: "yt:home", isFolder: true })
         if (appCore.is_module_enabled(kJellyfin) && typeof jellyfinBackend !== "undefined" && jellyfinBackend
                 && jellyfinBackend.has_auth())
             out.push({ name: "Jellyfin", path: "jf", isFolder: true })
@@ -51,26 +48,19 @@ FocusScope {
         return out
     }
 
-    // A module's entries as this tree has them: folders under its own paths,
-    // videos with their module and the entry as the module gave it.
-    function localEntries(entries) {
-        return entries.map(function(e) {
-            return e.isFolder ? { name: e.name, path: "local:dir:" + e.path, isFolder: true }
-                              : { name: e.name, path: "local:file:" + e.path, isFolder: false,
-                                  kind: "video", module: kLocal, entry: e }
-        })
-    }
-    function youtubeEntries(entries) {
-        if (!showShorts)
-            entries = entries.filter(function(e) { return !e.isShort })
+    // A module's tree's entries, as its own browser has them (its backend's
+    // entries()), as this tree has them: folders under the module's prefix
+    // and its own paths, videos with their module and the entry as the
+    // module gave it, and what else the module's tree offers (SEARCH, MORE),
+    // acted on as it does.
+    function moduleEntries(prefix, moduleId, entries) {
         return entries.map(function(e) {
             if (e.isFolder)
-                return { name: e.name, path: "yt:" + e.path, isFolder: true }
-            if (e.kind === "video")
-                return { name: e.name, path: "yt:video:" + e.path, isFolder: false,
-                         kind: "video", module: kYouTube, entry: e }
-            // SEARCH and MORE, acted on as the YouTube module's tree does.
-            return { name: e.name, path: "yt:" + e.path, isFolder: false, kind: e.kind, entry: e }
+                return { name: e.name, path: prefix + e.path, isFolder: true }
+            if (!e.kind || e.kind === "video")
+                return { name: e.name, path: prefix + e.path, isFolder: false,
+                         kind: "video", module: moduleId, entry: e }
+            return { name: e.name, path: prefix + e.path, isFolder: false, kind: e.kind, entry: e }
         })
     }
     function serverEntries(prefix, items) {
@@ -79,7 +69,8 @@ FocusScope {
             if (e.isFolder)
                 return { name: e.name, path: prefix + ":" + e.itemId, isFolder: true }
             // An episode out of its season (CONTINUE WATCHING, NEXT UP): with its show.
-            var shown = e.seriesName && e.name === e.title ? e.seriesName + " - " + e.name : e.name
+            var shown = e.type === "episode" && e.grandparentTitle && e.name === e.title
+                        ? e.grandparentTitle + " - " + e.name : e.name
             return { name: shown, path: prefix + ":item:" + e.itemId, isFolder: false,
                      kind: "video", module: moduleId, entry: e }
         })
@@ -90,32 +81,14 @@ FocusScope {
             return []
         if (path === "sources")
             return sources()
-
-        // Local Files
-        if (path === "local")
-            return [{ name: "Recently Watched", path: "local:recent", isFolder: true },
-                    { name: "Favorites", path: "local:favorites", isFolder: true }]
-                   .concat(localEntries(localFilesBackend.getItems(localFilesBackend.mediaRoot())))
-        if (path === "local:recent" || path === "local:favorites")
-            return localEntries(localFilesBackend.existing(appCore.get_list(kLocal, path.substring(6))))
-        if (path.indexOf("local:dir:") === 0)
-            return localEntries(localFilesBackend.getItems(path.substring(10)))
-
-        // YouTube
-        if (path === "yt") {
-            var home = youtubeBackend.listing("home", preview)
-            if (home === undefined)
-                return null
-            return [{ name: "Recently Watched", path: "yt:history", isFolder: true },
-                    { name: "Favorites", path: "yt:favorites", isFolder: true }].concat(youtubeEntries(home))
+        if (path.indexOf("local:") === 0) {
+            var files = localFilesBackend.entries(path.substring(6))
+            return files === undefined ? null : moduleEntries("local:", kLocal, files)
         }
-        if (path === "yt:favorites")
-            return youtubeEntries(appCore.get_list(kYouTube, "favorites"))
         if (path.indexOf("yt:") === 0) {
-            var listing = youtubeBackend.listing(path.substring(3), preview)
-            return listing === undefined ? null : youtubeEntries(listing)
+            var videos = youtubeBackend.entries(path.substring(3), preview)
+            return videos === undefined ? null : moduleEntries("yt:", kYouTube, videos)
         }
-
         // Jellyfin and Emby
         var prefix = path.substring(0, 2)
         if (servers[prefix] !== undefined) {
@@ -134,7 +107,7 @@ FocusScope {
 
     function add(item) {
         var result = playlistsBackend.addEntry(playlistId, item.module, item.entry)
-        outcome = result.ok ? (offline && item.module !== kLocal ? "Added, to download: " : "Added: ") + result.title
+        outcome = result.ok ? (result.downloading ? "Added, to download: " : "Added: ") + result.title
                 : result.reason === "duplicate" ? "Already on " + playlistName + ": " + result.title
                 : "This one can't go on a playlist"
     }
@@ -163,12 +136,14 @@ FocusScope {
         reservedBottom: treeBottom - helpLine.y
         fetch: function(path, preview) { return addRoot.fetch(path, preview) }
         onActivated: function(item) {
-            if (item.kind === "video")
+            if (item.kind === "video") {
                 addRoot.add(item)
-            else if (item.kind === "search")
+            } else if (item.kind === "search") {
+                addRoot.searchIn = item.path.substring(0, item.path.indexOf(":") + 1)
                 osk.open("")
-            else if (item.kind === "more")
+            } else if (item.kind === "more") {
                 youtubeBackend.loadMore(item.entry.path.replace("#more", ""))
+            }
         }
         onCurrentEntryChanged: addRoot.outcome = ""
         onLeaveRequested: addRoot.goBack()
@@ -177,11 +152,12 @@ FocusScope {
     Connections {
         target: typeof youtubeBackend !== "undefined" ? youtubeBackend : null
         ignoreUnknownSignals: true
-        function onListingReady(path) {
-            tree.refresh("yt:" + path)
-            if (path === "home")
-                tree.refresh("yt")
-        }
+        function onListingReady(path) { tree.refresh("yt:" + path) }
+    }
+    Connections {
+        target: typeof localFilesBackend !== "undefined" ? localFilesBackend : null
+        ignoreUnknownSignals: true
+        function onSearchReady(path) { tree.refresh("local:" + path) }
     }
     Connections {
         target: playlistsBackend
@@ -222,10 +198,16 @@ FocusScope {
     OnScreenKeyboard {
         id: osk
         anchors.fill: parent
-        title: "Search YouTube"
+        title: addRoot.searchIn === "local:" ? "Search Local Files" : "Search YouTube"
         onAccepted: function(text) {
             tree.forceActiveFocus()
-            tree.openItem({ name: "Search: " + text, path: "yt:search/" + text })
+            var path = "search/" + text
+            // Afresh: the folder may have changed since the same words last ran.
+            if (addRoot.searchIn === "local:") {
+                localFilesBackend.search(path, text, true)
+                tree.refresh("local:" + path)
+            }
+            tree.openItem({ name: "Search: " + text, path: addRoot.searchIn + path })
         }
         onCanceled: tree.forceActiveFocus()
     }

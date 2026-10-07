@@ -56,6 +56,7 @@ add_executable(240mp
     src/modules/ambient_mode/AmbientModeBackend.cpp
     src/modules/youtube/YouTubeBackend.cpp
     src/modules/playlists/PlaylistsBackend.cpp
+    src/modules/playlists/ServerDownload.cpp
     src/modules/nfc_reader/NfcReaderBackend.cpp
     src/modules/nfc_reader/PcscDriver.cpp
     src/modules/nfc_reader/Pn532SerialDriver.cpp
