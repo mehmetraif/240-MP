@@ -21,7 +21,9 @@ Window {
     visibility: Qt.platform.os === "osx" ? Window.AutomaticVisibility
                                          : Window.FullScreen
     visible: true
-    color: root.surfaceColor
+    // Under everything: what OSD BACKGROUND puts around its window (black
+    // but for FULL). OsdGround draws the ground itself, over it.
+    color: root.osdBackground === "Full" ? root.surfaceColor : "#000000"
 
     // --- Color Schemes ---
     readonly property var themes: ({
@@ -84,8 +86,18 @@ Window {
     })
     property var allThemes: themes  // may gain a "Custom" entry on startup
     property string currentTheme: "Video 1"
-    property string primaryColor:   (allThemes[currentTheme] || allThemes["Video 1"]).primary
-    property string surfaceColor:   (allThemes[currentTheme] || allThemes["Video 1"]).surface
+    readonly property var theme: allThemes[currentTheme] || allThemes["Video 1"]
+    // Settings' OSD BACKGROUND (app.osd_background), what the menus are drawn
+    // on (Components/OsdGround): "Full", the default, the scheme's background
+    // over the whole screen; "Window", a framed window of it behind what a
+    // view shows (osdWindow), black around it; "Off", none: black, the menus
+    // in whichever of the scheme's two colours is the lighter, as a deck's OSD
+    // with nothing playing. A scheme's dark text (T-120's) would vanish on
+    // black, so Off takes its background colour for the text instead.
+    property string osdBackground: "Full"
+    readonly property bool osdOff: osdBackground === "Off"
+    property string primaryColor:   osdOff ? lighterOf(theme.primary, theme.surface) : theme.primary
+    property string surfaceColor:   osdOff ? "#000000" : theme.surface
     // Two colours only, like a deck's on-screen display: everything is drawn in
     // the theme's primary colour on its surface colour. A selection is a solid
     // box with its text in the surface colour, and anything dimmed is dithered
@@ -101,6 +113,22 @@ Window {
     // pixel-drawn OSD elements (Components/Osd*, PixelIcon) are built on.
     readonly property int px: Math.max(1, Math.floor(sh / 240))
 
+    // OSD BACKGROUND's window: the area the views lay their content out in
+    // (74 to 566 across and 57 to 430 down, of 640×480: the title bar's logo
+    // to the hint bar), with 12 more on every side, on art pixels.
+    readonly property rect osdWindow: {
+        var left = snapPx(sw * 0.096875), right = snapPx(sw * 0.903125)
+        var top = snapPx(sh * 0.09375), bottom = snapPx(sh * 0.9208333)
+        return Qt.rect(left, top, right - left, bottom - top)
+    }
+    function snapPx(v) { return Math.round(v / px) * px }
+
+    // The lighter of two colours, by how bright the eye finds them.
+    function lighterOf(a, b) {
+        function luma(c) { var k = Qt.color(c); return 0.2126 * k.r + 0.7152 * k.g + 0.0722 * k.b }
+        return luma(a) >= luma(b) ? a : b
+    }
+
     Connections {
         target: appCore
         function onAppSettingChanged(key, value) {
@@ -110,6 +138,8 @@ Window {
                 root.backdropSolidity = root.solidityOf(value)
             } else if (key === "loading_effect") {
                 root.loadingEffect = value !== "Off"
+            } else if (key === "osd_background") {
+                root.osdBackground = root.osdBackgroundOf(value)
             } else if (key === "mouse_pointer") {
                 root.pointerSetting = String(value)
                 if (root.pointerShown)
@@ -157,6 +187,7 @@ Window {
         root.backdropSolidity = root.solidityOf(cfg.app && cfg.app.transparent_background)
         root.pointerSetting = String((cfg.app && cfg.app.mouse_pointer) || "5")
         root.loadingEffect = !(cfg.app && cfg.app.loading_effect === "Off")
+        root.osdBackground = root.osdBackgroundOf(cfg.app && cfg.app.osd_background)
 
         // Screensaver: the tracker starts disabled; this is the single place the
         // saved setting is applied (live changes land in onAppSettingChanged above,
@@ -332,6 +363,9 @@ Window {
         var s = String(raw === undefined || raw === null ? "" : raw).trim().toLowerCase()
         return s === "on" || s === "dim" || !isNaN(parseInt(s))
     }
+    function osdBackgroundOf(raw) {
+        return raw === "Window" || raw === "Off" ? raw : "Full"
+    }
     function solidityOf(raw) {
         var s = String(raw === undefined || raw === null ? "" : raw).toLowerCase()
         if (s === "on") return 0
@@ -346,12 +380,15 @@ Window {
         visible: root.videoActive
         z: root.videoBehind ? -2 : 5000
     }
-    Rectangle {
+    // What the menus are drawn on (OSD BACKGROUND), under every view. Over a
+    // video behind them, as solid as Transparent Background says, and in
+    // WINDOW only the window, the picture showing whole around it.
+    OsdGround {
         anchors.fill: parent
         z: -1
-        visible: root.videoBehind && root.backdropSolidity > 0
-        color: root.surfaceColor
-        opacity: root.backdropSolidity / 100
+        visible: !root.videoBehind || root.backdropSolidity > 0
+        opacity: root.videoBehind ? root.backdropSolidity / 100 : 1
+        surround: !root.videoBehind
     }
 
     // A running user script suppresses the screen saver too — a takeover script

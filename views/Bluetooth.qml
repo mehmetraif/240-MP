@@ -311,9 +311,8 @@ FocusScope {
                 detailsText.scrollBy(1)
         }
 
-        Rectangle {
+        OsdGround {
             anchors.fill: parent
-            color: root.surfaceColor
         }
 
         AppBar {

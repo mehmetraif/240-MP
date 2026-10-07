@@ -18,7 +18,7 @@ import QtQuick
 //         currentIndex: choiceIndex
 //         hint: root.hints.back + ":BACK " + root.hints.navigate + ":NAVIGATE " + root.hints.select + ":SELECT"
 //     }
-Rectangle {
+Item {
     id: prompt
 
     // The question, or for a notice what happened: in the title bar.
@@ -40,7 +40,11 @@ Rectangle {
     default property alias content: extra.data
 
     anchors.fill: parent
-    color: root.surfaceColor
+
+    // Over the view it asks in, on the ground every view has (OSD BACKGROUND).
+    OsdGround {
+        anchors.fill: parent
+    }
 
     // The first answer in the window.
     property int firstShown: 0

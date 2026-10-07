@@ -64,6 +64,19 @@ FocusScope {
             moduleId: ""
         })
 
+        // OSD Background — what the menus are drawn on (Components/OsdGround,
+        // read in Main.qml): the colour scheme's background over the whole
+        // screen, none (black), or a framed window of it behind the menus.
+        items.push({
+            type: "list_single",
+            key: "osd_background",
+            label: "OSD Background",
+            options: ["Full", "Off", "Window"],
+            value: root.osdBackgroundOf(appSettings["osd_background"]),
+            description: "What the menus are drawn on\n[FULL] The color scheme's background, all over  [OFF] None, the menus on black like a deck's on-screen display  [WINDOW] A framed window of it behind the menus, black around it",
+            moduleId: ""
+        })
+
         // Start on Module — pick a module to auto-launch into on startup.
         // Only present enabled modules as options so disabled ones won't display.
         // The setting is keyed by module id and the picker shows the display name
