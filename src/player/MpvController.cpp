@@ -397,13 +397,14 @@ void MpvController::loadAndPlay(const QString &url, float startSeconds,
         // follows Settings as it plays (followAudioOutput()), and its decoding
         // and drawing flags follow where it is drawn, which a GPU that failed
         // to take it changes since.
-        auto comparable = [](QStringList a) {
-            a.erase(std::remove_if(a.begin(), a.end(), [](const QString &x) {
+        QStringList drawing;
+        appendEmbeddedVideoArgs(drawing, true);
+        appendEmbeddedVideoArgs(drawing, false);
+        auto comparable = [&drawing](QStringList a) {
+            a.erase(std::remove_if(a.begin(), a.end(), [&drawing](const QString &x) {
                         return x.startsWith(QLatin1String("--start="))
                             || x.startsWith(QLatin1String("--audio-device="))
-                            || x.startsWith(QLatin1String("--hwdec="))
-                            || x.startsWith(QLatin1String("--fbo-format="))
-                            || x.startsWith(QLatin1String("--profile="));
+                            || drawing.contains(x);
                     }), a.end());
             return a;
         };
@@ -1041,7 +1042,10 @@ void MpvController::appendEmbeddedVideoArgs(QStringList &args, bool gpu) const {
     // a copy: its frames would need the window system's display, which mpv
     // isn't given. mpv's passes between render into 8-bit textures rather
     // than half floats: half the memory traffic for the Pi's GPU. On a Pi the
-    // GPU scales with mpv's fast profile (bilinear, no dithering).
+    // GPU enlarges with mpv's fast profile (bilinear), but shrinks a picture
+    // with hermite widened to the scale, as mpv does by default, so a 1080p
+    // or 4K one brought down to a CRT's lines doesn't shimmer, and dithers as
+    // the software renderer does, so gradients don't band.
     switch (m_videoProfile) {
     case VideoProfile::Pi4:
         args << (gpu ? QStringLiteral("--hwdec=drm,v4l2m2m,drm-copy,v4l2m2m-copy")
@@ -1070,7 +1074,8 @@ void MpvController::appendEmbeddedVideoArgs(QStringList &args, bool gpu) const {
     if (gpu)
         args << QStringLiteral("--fbo-format=rgba8");
     if (gpu && m_videoProfile != VideoProfile::Generic)
-        args << QStringLiteral("--profile=fast");
+        args << QStringLiteral("--profile=fast") << QStringLiteral("--dscale=hermite")
+             << QStringLiteral("--correct-downscaling=yes") << QStringLiteral("--dither=fruit");
 }
 
 EmbeddedMpv *MpvController::embeddedPlayer() {
