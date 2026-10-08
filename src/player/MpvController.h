@@ -8,10 +8,10 @@
 #include <QJsonArray>
 #include <QStringList>
 #include <QVariantMap>
+#include "EmbeddedMpv.h"
 
 class AppCore;
 class DisplayHandoff;
-class EmbeddedMpv;
 
 class MpvController : public QObject {
     Q_OBJECT
@@ -127,6 +127,10 @@ public:
     // The embedded session's newest picture, and the size to draw it at
     // (VideoSurface).
     QImage videoFrame() const;
+    // The embedded session is drawn on the GPU, and its newest picture
+    // there, taken as the scene graph shows it (VideoSurface).
+    bool videoOnGpu() const;
+    EmbeddedMpv::GpuFrame videoGpuFrame();
     void setVideoTargetSize(const QSize &size);
 
     // Which display fullscreen playback should open on, matching the UI's
@@ -191,9 +195,11 @@ private:
     void startProcess(QStringList args, const QStringList &media);
     // Transparent Background is on, and libmpv is there to play inside the app.
     bool transparentBackground() const;
-    // The decode flags for a session played inside the app: the hardware
-    // decoders' copy-back modes, which hand frames to the software renderer.
-    void appendEmbeddedVideoArgs(QStringList &args) const;
+    // The decode and drawing flags for a session played inside the app, as
+    // it is drawn: on the GPU (gpu), or by the software renderer.
+    void appendEmbeddedVideoArgs(QStringList &args, bool gpu) const;
+    // The player inside the app, made when first needed.
+    EmbeddedMpv *embeddedPlayer();
     void startEmbedded(QStringList args);
     // Ends an embedded session without a word to its module: as a process
     // replaced by the next is, or one left playing behind the menus.

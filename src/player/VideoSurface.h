@@ -8,7 +8,8 @@ class MpvController;
 // Transparent Background setting, see EmbeddedMpv), drawn as an item so that
 // the menus can lie over it. It fills its area, mpv having fitted the picture
 // to it (bars, Scaling), and tells the controller how many pixels that is:
-// the size mpv draws at.
+// the size mpv draws at. A picture drawn on the GPU is shown as the texture
+// it is, one drawn on the CPU uploaded into one.
 //
 //     VideoSurface { anchors.fill: parent; controller: mpvController }
 class VideoSurface : public QQuickItem {
@@ -32,5 +33,7 @@ private:
     void reportSize();
 
     QPointer<MpvController> m_controller;
+    // The picture shown: a QImage's cacheKey, or a GPU picture's serial.
     qint64 m_shownKey = 0;
+    bool m_shownOnGpu = false;
 };

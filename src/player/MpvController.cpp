@@ -389,16 +389,21 @@ void MpvController::loadAndPlay(const QString &url, float startSeconds,
     if (embedded) {
         args << QString("--input-conf=%1").arg(m_embeddedInputConfPath)
              << QStringLiteral("--video-sync=audio");
-        appendEmbeddedVideoArgs(args);
+        appendEmbeddedVideoArgs(args, embeddedPlayer()->gpuAvailable());
         args << QStringLiteral("--") << media;
         // Chosen again while it plays behind the menus: the same session goes
         // on, full screen again (as takeBack() has it). Its start is the
-        // module's resume point, which reattach() weighs, and its sound card
-        // follows Settings as it plays (followAudioOutput()).
+        // module's resume point, which reattach() weighs, its sound card
+        // follows Settings as it plays (followAudioOutput()), and its decoding
+        // and drawing flags follow where it is drawn, which a GPU that failed
+        // to take it changes since.
         auto comparable = [](QStringList a) {
             a.erase(std::remove_if(a.begin(), a.end(), [](const QString &x) {
                         return x.startsWith(QLatin1String("--start="))
-                            || x.startsWith(QLatin1String("--audio-device="));
+                            || x.startsWith(QLatin1String("--audio-device="))
+                            || x.startsWith(QLatin1String("--hwdec="))
+                            || x.startsWith(QLatin1String("--fbo-format="))
+                            || x.startsWith(QLatin1String("--profile="));
                     }), a.end());
             return a;
         };
@@ -1002,6 +1007,14 @@ QImage MpvController::videoFrame() const {
     return m_embedded ? m_embedded->frame() : QImage();
 }
 
+bool MpvController::videoOnGpu() const {
+    return m_embedded && m_embedded->gpuRendering();
+}
+
+EmbeddedMpv::GpuFrame MpvController::videoGpuFrame() {
+    return m_embedded ? m_embedded->gpuFrame() : EmbeddedMpv::GpuFrame();
+}
+
 void MpvController::setVideoTargetSize(const QSize &size) {
     m_videoTargetSize = size;
     if (m_embedded)
@@ -1019,16 +1032,29 @@ void MpvController::noteSession(const QVariantMap &note) {
     m_sessionNote = note;
 }
 
-void MpvController::appendEmbeddedVideoArgs(QStringList &args) const {
+void MpvController::appendEmbeddedVideoArgs(QStringList &args, bool gpu) const {
     // The mpv_video_args override is for mpv's own outputs, so not used here.
+    // Drawn on the GPU, the decoders' frames go to it as they are: drm (HEVC)
+    // and v4l2m2m (H.264) on a Pi 4 or 3, NVDEC on a PC, each ahead of its
+    // copy-back mode, which mpv falls back to where it can't hand frames over
+    // (and the software renderer, should the GPU fail, takes). VA-API only as
+    // a copy: its frames would need the window system's display, which mpv
+    // isn't given. mpv's passes between render into 8-bit textures rather
+    // than half floats: half the memory traffic for the Pi's GPU. On a Pi the
+    // GPU scales with mpv's fast profile (bilinear, no dithering).
     switch (m_videoProfile) {
     case VideoProfile::Pi4:
-        args << QStringLiteral("--hwdec=drm-copy,v4l2m2m-copy");
+        args << (gpu ? QStringLiteral("--hwdec=drm,v4l2m2m,drm-copy,v4l2m2m-copy")
+                     : QStringLiteral("--hwdec=drm-copy,v4l2m2m-copy"));
         break;
     case VideoProfile::Pi3:
-        args << QStringLiteral("--hwdec=v4l2m2m-copy");
+        args << (gpu ? QStringLiteral("--hwdec=v4l2m2m,v4l2m2m-copy")
+                     : QStringLiteral("--hwdec=v4l2m2m-copy"));
         break;
     case VideoProfile::PiFullKms:
+        // A Pi 5's working decoder for H.264 and HEVC is FFmpeg's Vulkan one
+        // (vulkan-copy, which auto-copy-safe picks there), whose frames
+        // reach mpv's OpenGL renderer only as copies.
         args << QStringLiteral("--hwdec=auto-copy-safe");
         break;
     case VideoProfile::Generic:
@@ -1036,19 +1062,28 @@ void MpvController::appendEmbeddedVideoArgs(QStringList &args) const {
         args << QStringLiteral("--hwdec=videotoolbox-copy")
              << QString("--osd-fonts-dir=%1").arg(m_appRoot + "/assets/fonts");
 #elif defined(Q_OS_LINUX)
-        args << QStringLiteral("--hwdec=vaapi-copy,nvdec-copy,no");
+        args << (gpu ? QStringLiteral("--hwdec=nvdec,vaapi-copy,nvdec-copy,no")
+                     : QStringLiteral("--hwdec=vaapi-copy,nvdec-copy,no"));
 #endif
         break;
     }
+    if (gpu)
+        args << QStringLiteral("--fbo-format=rgba8");
+    if (gpu && m_videoProfile != VideoProfile::Generic)
+        args << QStringLiteral("--profile=fast");
 }
 
-void MpvController::startEmbedded(QStringList args) {
+EmbeddedMpv *MpvController::embeddedPlayer() {
     if (!m_embedded) {
         m_embedded = new EmbeddedMpv(this);
         m_embedded->setTargetSize(m_videoTargetSize);
         connect(m_embedded, &EmbeddedMpv::frameReady, this, &MpvController::videoFrameReady);
         connect(m_embedded, &EmbeddedMpv::finished, this, &MpvController::onEmbeddedFinished);
     }
+    return m_embedded;
+}
+
+void MpvController::startEmbedded(QStringList args) {
 #ifdef Q_OS_LINUX
     // mpv draws its OSD (the deck's menu) in the app's VCR font: libass finds
     // it through fontconfig, set up as for an mpv process of its own. Only
@@ -1060,7 +1095,7 @@ void MpvController::startEmbedded(QStringList args) {
     // The screen stays the app's, even headless: nothing to hand over.
     m_headlessMode = false;
     qDebug("[MpvController] embedded launch: mpv %s", qPrintable(redactSecrets(args.join(QLatin1Char(' ')))));
-    if (!m_embedded->start(args)) {
+    if (!embeddedPlayer()->start(args)) {
         qWarning("[MpvController] Cannot start playback: libmpv could not be set up");
         QTimer::singleShot(0, this, [this]() {
             emit playbackEnded(0, 0, QStringLiteral("failed"));

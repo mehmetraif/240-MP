@@ -2,6 +2,7 @@
 #include "MpvController.h"
 #include <QQuickWindow>
 #include <QSGSimpleTextureNode>
+#include <QtQuick/qsgtexture_platform.h>
 
 VideoSurface::VideoSurface(QQuickItem *parent) : QQuickItem(parent) {
     setFlag(ItemHasContents, true);
@@ -28,8 +29,12 @@ void VideoSurface::setController(QObject *controller) {
 QSGNode *VideoSurface::updatePaintNode(QSGNode *old, UpdatePaintNodeData *) {
     // The GUI thread waits while this runs, so the controller can be asked.
     auto *node = static_cast<QSGSimpleTextureNode *>(old);
-    const QImage frame = m_controller ? m_controller->videoFrame() : QImage();
-    if (frame.isNull() || width() <= 0 || height() <= 0) {
+    const bool onGpu = m_controller && m_controller->videoOnGpu();
+    // A GPU picture is taken here, as it is shown: its texture stays as it is
+    // while the scene graph may draw it (EmbeddedMpv::gpuFrame()).
+    const EmbeddedMpv::GpuFrame gpu = onGpu ? m_controller->videoGpuFrame() : EmbeddedMpv::GpuFrame();
+    const QImage frame = !onGpu && m_controller ? m_controller->videoFrame() : QImage();
+    if ((onGpu ? !gpu.texture : frame.isNull()) || width() <= 0 || height() <= 0) {
         delete node;
         m_shownKey = 0;
         return nullptr;
@@ -39,9 +44,22 @@ QSGNode *VideoSurface::updatePaintNode(QSGNode *old, UpdatePaintNodeData *) {
         node->setOwnsTexture(true);
         node->setFiltering(QSGTexture::Linear);
     }
-    if (frame.cacheKey() != m_shownKey || !node->texture()) {
-        node->setTexture(window()->createTextureFromImage(frame, QQuickWindow::TextureIsOpaque));
-        m_shownKey = frame.cacheKey();
+    const qint64 key = onGpu ? qint64(gpu.serial) : frame.cacheKey();
+    if (key != m_shownKey || onGpu != m_shownOnGpu || !node->texture()) {
+        // The GPU's texture as it is, in the scene graph's context, which
+        // shares its objects; the wrapper doesn't own it.
+        QSGTexture *texture = onGpu
+            ? QNativeInterface::QSGOpenGLTexture::fromNative(gpu.texture, window(), gpu.size,
+                                                             QQuickWindow::TextureIsOpaque)
+            : window()->createTextureFromImage(frame, QQuickWindow::TextureIsOpaque);
+        if (!texture) {
+            delete node;
+            m_shownKey = 0;
+            return nullptr;
+        }
+        node->setTexture(texture);
+        m_shownKey = key;
+        m_shownOnGpu = onGpu;
     }
     node->setRect(boundingRect());
     return node;
