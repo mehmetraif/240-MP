@@ -109,12 +109,12 @@ A Pi 5 has no AV jack: its composite comes from the two pads by HDMI 1 (J7, the 
 | 10–15 (19, 23, 32, 33, 8, 10) | green, 6 bits, GPIO 15 the highest | 11 (green), ground 9 |
 | 4–9 (7, 29, 31, 26, 24, 21) | blue, 6 bits, GPIO 9 the highest | 7 (blue), ground 5 |
 | 1 (28), Pi 5 | composite sync | 20 (through 680 Ω), ground 17 |
-| 2 and 3 (3, 5), Pi 4 | vertical and horizontal sync, negative | joined into a composite sync: two diodes (cathodes to GPIO 2 and 3), their anodes pulled up to 3.3 V by 470 Ω, then 330 Ω to pin 20 |
-| 3.3 V (1) | RGB on | 16 (blanking) through 100 Ω, ground 18 |
+| 2 and 3 (3, 5), Pi 4 | vertical and horizontal sync, negative | joined into a composite sync, negative as SCART's: two diodes (cathodes to GPIO 2 and 3), their anodes pulled up to 3.3 V by 470 Ω, then 330 Ω to pin 20; or a 74HC86 powered from 3.3 V (at 5 V it can't read the GPIO's 3.3 V), as XNOR: GPIO 2 XOR GPIO 3, through a second gate with its other input at 3.3 V, then 680 Ω to pin 20 |
+| 3.3 V (1) | RGB on | 16 (blanking) through 100 Ω (or 5 V, pin 2, through 180 Ω), ground 18 |
 | GND (6, 9, …) | ground | 4, 5, 9, 13, 17, 18, 21 |
 
-- Each colour's six pins meet at its SCART pin through resistors of 510 Ω (the highest bit), 1 kΩ, 2 kΩ, 3.9 kΩ, 8.2 kΩ and 16 kΩ (the lowest), as on the VGA666: about 0.7 V into the TV's 75 Ω.
-- Sound: from the Pi 4's AV jack (tip, ring 1, ring 2 as above), or a Pi 5's USB sound card, to pins 6, 2 and 4.
+- Each colour's six pins meet at its SCART pin through resistors of 510 Ω (the highest bit), 1 kΩ, 2 kΩ, 3.9 kΩ, 8.2 kΩ and 16 kΩ (the lowest), as on the VGA666: about 0.7 V into the TV's 75 Ω. 549 Ω, 1.1 kΩ, 2.21 kΩ, 4.42 kΩ, 8.87 kΩ and 17.8 kΩ (E96) halve each step exactly; 1 % resistors are close enough for 6 bits.
+- Sound: from the Pi 4's AV jack (tip, ring 1, ring 2 as above), whose pins are inside the Pi, clear of the GPIO pins, or a Pi 5's USB sound card, to pins 6, 2 and 4.
 - Pin 8 at 9.5–12 V (from a 12 V supply through 1 kΩ) switches most TVs to the SCART input, in 4:3. Without it, choose the input with the TV's remote.
 - The picture rolls on a Pi 4: change the sync polarities in the preset's `dpi_timings` (its 2nd and 7th numbers) from 0 to 1.
 
