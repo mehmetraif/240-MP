@@ -1,0 +1,103 @@
+#!/bin/bash
+# OSD/OS image: a USB drive's file system, mounted read-only under /media/usb as
+# it is plugged in, in a folder named after its label, for Local Files to list;
+# its folder goes once it is pulled out. Read-only, so a drive can be pulled out
+# at any moment, nothing on it half written. Run by
+# osdos-usb-mount@<device>.service, which udev starts as a USB drive's partition
+# (or a drive without partitions) comes (99-osdos-usb-mount.rules), and systemd
+# stops as it goes.
+#
+#   usb-mount add sda1        usb-mount remove sda1
+
+set -u
+
+ACTION=${1:-}
+NAME=${2:-}
+DEV=/dev/${NAME}
+BASE=/media/usb
+STATE=/run/osdos-usb
+# The user the app runs as (written in as the image is built): FAT, exFAT,
+# NTFS and HFS+ keep no owners of their own.
+USER_ID=@USER_ID@
+GROUP_ID=@GROUP_ID@
+
+log() { echo "usb-mount: $*" >&2; }
+
+# A drive's own words as a folder's name: no slash or control character, no
+# leading dot or space (no "..").
+folder_name() {
+	printf '%s' "$1" | tr '/' '_' | tr -d '\000-\037' | sed -e 's/^[. ]*//' -e 's/ *$//'
+}
+
+case "${ACTION}" in
+add)
+	# The system's own, never: mounted already (what /etc/fstab mounts, the
+	# card's OSD-OS partition), or on the disk the system runs from (a USB
+	# disk it boots from).
+	if findmnt -rn -S "${DEV}" > /dev/null; then
+		exit 0
+	fi
+	root_disk=$(lsblk -no PKNAME "$(findmnt -no SOURCE /)" 2> /dev/null)
+	disk=$(lsblk -no PKNAME "${DEV}" 2> /dev/null)
+	if [ -n "${root_disk}" ] && [ "${disk:-${NAME}}" = "${root_disk}" ]; then
+		exit 0
+	fi
+
+	type=$(blkid -s TYPE -o value "${DEV}")
+	label=$(blkid -s LABEL -o value "${DEV}")
+	opts=ro,nosuid,nodev,noexec
+	owner=uid=${USER_ID},gid=${GROUP_ID}
+	case "${type}" in
+	vfat) opts=${opts},${owner},umask=0022,utf8 ;;
+	exfat) opts=${opts},${owner},umask=0022 ;;
+	ntfs) type=ntfs3; opts=${opts},${owner},umask=0022 ;;
+	hfsplus) opts=${opts},${owner} ;;
+	# Journalled: mounting would replay a journal left behind, writing to the
+	# drive, read-only or not, without these.
+	ext3|ext4) opts=${opts},noload ;;
+	xfs) opts=${opts},norecovery ;;
+	btrfs) opts=${opts},nologreplay ;;
+	ext2|f2fs|iso9660|udf) ;;
+	# Swap, RAID or LVM members, an encrypted volume: nothing to list.
+	*) exit 0 ;;
+	esac
+
+	# Named after its label (else its UUID), without what can't go in a
+	# folder's name or would lead out of /media/usb; two drives of one name,
+	# the second by its device too.
+	name=$(folder_name "${label}")
+	[ -n "${name}" ] || name=$(folder_name "$(blkid -s UUID -o value "${DEV}")")
+	[ -n "${name}" ] || name=${NAME}
+	dir=${BASE}/${name}
+	if mountpoint -q "${dir}"; then
+		dir="${BASE}/${name} (${NAME})"
+	fi
+
+	mkdir -p "${dir}"
+	if ! mount -t "${type}" -o "${opts}" "${DEV}" "${dir}"; then
+		# NTFS through ntfs-3g where the kernel's own driver is missing.
+		if ! { [ "${type}" = ntfs3 ] && command -v ntfs-3g > /dev/null \
+				&& ntfs-3g -o "${opts}" "${DEV}" "${dir}"; }; then
+			rmdir "${dir}"
+			log "${DEV} (${type}) could not be mounted"
+			exit 1
+		fi
+	fi
+	mkdir -p "${STATE}"
+	printf '%s\n' "${dir}" > "${STATE}/${NAME}"
+	log "${DEV} (${type}) mounted read-only at ${dir}"
+	;;
+remove)
+	[ -f "${STATE}/${NAME}" ] || exit 0
+	dir=$(cat "${STATE}/${NAME}")
+	# Lazily: a player may still hold a file open on the drive pulled out.
+	umount -l "${dir}" 2> /dev/null
+	rmdir "${dir}" 2> /dev/null
+	rm -f "${STATE}/${NAME}"
+	log "${DEV} gone from ${dir}"
+	;;
+*)
+	echo "usage: usb-mount add|remove <device>" >&2
+	exit 2
+	;;
+esac

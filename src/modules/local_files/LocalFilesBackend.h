@@ -8,6 +8,7 @@
 
 class AppCore;
 class QDirIterator;
+class RemovableDrives;
 
 class LocalFilesBackend : public QObject {
     Q_OBJECT
@@ -19,18 +20,20 @@ public:
     Q_INVOKABLE QVariantList getItems(const QString &path);
     // The tree's entries for a folder, as the module's browser shows them:
     // the media folder led by RECENTLY WATCHED, FAVORITES and SEARCH (the
-    // tree's own folders, whose paths aren't file paths), those two lists'
-    // files that are still there, a search's results (undefined while it
-    // runs, searchReady following), and any other folder's files and
-    // folders. The Playlists module browses with it too.
+    // tree's own folders, whose paths aren't file paths) and the USB drives
+    // plugged in (RemovableDrives), each a folder; those two lists' files
+    // that are still there, a search's results (undefined while it runs,
+    // searchReady following), and any other folder's files and folders. The
+    // Playlists module browses with it too.
     Q_INVOKABLE QVariant     entries(const QString &path);
     Q_INVOKABLE bool         isImage(const QString &path) const;
     Q_INVOKABLE bool         isPlaylist(const QString &path) const;
     Q_INVOKABLE bool         playlistContainsImages(const QString &path) const;
     Q_INVOKABLE QString      mediaRoot() const;
     Q_INVOKABLE void         setMediaRoot(const QString &path);
-    // The files and folders under the media folder whose names hold every one
-    // of the words, case aside (the first 200 by name), for the tree's folder
+    // The files and folders under the media folder, and on the drives plugged
+    // in, whose names hold every one of the words, case aside (the first 200
+    // by name), for the tree's folder
     // `path`: what the last search for it found, or null while it runs,
     // searchReady(path) following once it is done. The folder is walked a slice at a time, so a
     // big library never holds the screen still; a search for another path
@@ -52,6 +55,9 @@ public:
 signals:
     void dynamicOptionsReady(const QString &key, const QVariant &options);
     void searchReady(const QString &path);
+    // A USB drive was plugged in or taken out; `gone` are the folders of
+    // those taken out, which the tree closes.
+    void drivesChanged(const QStringList &gone);
 
 public slots:
     void onSettingChanged(const QString &moduleId, const QString &key, const QVariant &value);
@@ -66,6 +72,7 @@ private:
     QString m_dataRoot;
     AppCore *m_appCore = nullptr;
     QString m_mediaRoot;
+    RemovableDrives *m_drives = nullptr;
 
     struct SearchRun;
     std::unique_ptr<SearchRun> m_search;

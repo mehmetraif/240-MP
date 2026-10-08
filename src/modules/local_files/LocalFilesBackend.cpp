@@ -1,4 +1,5 @@
 #include "LocalFilesBackend.h"
+#include "RemovableDrives.h"
 #include "util/LegacyNames.h"
 #include "../../AppCore.h"
 #include <QDir>
@@ -24,12 +25,18 @@ static const QStringList kMediaExts =
     QStringList{ "mp4", "mkv", "avi", "mov", "m4v", "webm", "wmv", "flv", "f4v", "mpg", "mpeg", "vob" }
     + kImageExts
     + kPlaylistExts;
+// The file systems' own folders, never media: ext4's, and those Windows leaves
+// on a drive it has had.
+static const QStringList kSystemFolders = {
+    "lost+found", "System Volume Information", "$RECYCLE.BIN"
+};
 
-// A search under way (search()).
+// A search under way (search()): the folder it walks, then the others.
 struct LocalFilesBackend::SearchRun {
     QString path;
     QStringList words;
     std::unique_ptr<QDirIterator> it;
+    QStringList next;
     QVariantList found;
 };
 
@@ -44,7 +51,10 @@ LocalFilesBackend::LocalFilesBackend(const QString &appRoot, const QString &data
                                      QObject *parent)
     : QObject(parent), m_appRoot(appRoot), m_dataRoot(dataRoot), m_appCore(appCore)
 {
+    m_drives = new RemovableDrives(this);
+    connect(m_drives, &RemovableDrives::changed, this, &LocalFilesBackend::drivesChanged);
     m_mediaRoot = defaultMediaRoot();
+    m_drives->setMediaRoot(m_mediaRoot);
     // Resolve the configured media directory (falls back to the default above).
     QFile f(m_dataRoot + "/config.json");
     if (f.open(QIODevice::ReadOnly)) {
@@ -195,20 +205,30 @@ QVariant LocalFilesBackend::entries(const QString &path) {
     if (path.startsWith(QLatin1String("search/")))
         return search(path, path.mid(7));
     QVariantList items = getItems(path);
-    // An empty media folder has nothing to search either.
-    if (path == m_mediaRoot && !items.isEmpty()) {
-        auto folder = [](const char *name, const char *path) {
-            return QVariantMap{{QStringLiteral("name"), QString::fromLatin1(name)},
-                               {QStringLiteral("path"), QString::fromLatin1(path)},
-                               {QStringLiteral("isFolder"), true}};
-        };
-        items = QVariantList{folder("Recently Watched", "recent"), folder("Favorites", "favorites"),
-                             QVariantMap{{QStringLiteral("name"), QStringLiteral("Search")},
-                                         {QStringLiteral("path"), QStringLiteral("search")},
-                                         {QStringLiteral("isFolder"), false},
-                                         {QStringLiteral("kind"), QStringLiteral("search")}}} + items;
+    if (path != m_mediaRoot)
+        return items;
+    // The drives plugged in, under their labels, before the media folder's own.
+    QVariantList drives;
+    const QList<RemovableDrives::Drive> plugged = m_drives->drives();
+    for (const RemovableDrives::Drive &d : plugged) {
+        drives << QVariantMap{{QStringLiteral("name"), QStringLiteral("USB: ") + d.name},
+                              {QStringLiteral("path"), d.path},
+                              {QStringLiteral("isFolder"), true}};
     }
-    return items;
+    items = drives + items;
+    // Nothing in the media folder and no drive: nothing to search either.
+    if (items.isEmpty())
+        return items;
+    auto folder = [](const char *name, const char *path) {
+        return QVariantMap{{QStringLiteral("name"), QString::fromLatin1(name)},
+                           {QStringLiteral("path"), QString::fromLatin1(path)},
+                           {QStringLiteral("isFolder"), true}};
+    };
+    return QVariantList{folder("Recently Watched", "recent"), folder("Favorites", "favorites"),
+                        QVariantMap{{QStringLiteral("name"), QStringLiteral("Search")},
+                                    {QStringLiteral("path"), QStringLiteral("search")},
+                                    {QStringLiteral("isFolder"), false},
+                                    {QStringLiteral("kind"), QStringLiteral("search")}}} + items;
 }
 
 QString LocalFilesBackend::mediaRoot() const {
@@ -224,6 +244,7 @@ void LocalFilesBackend::setMediaRoot(const QString &path) {
     // An empty (reset) setting means back to the default.
     m_mediaRoot = path.isEmpty() ? defaultMediaRoot() : path;
     QDir().mkpath(m_mediaRoot);
+    m_drives->setMediaRoot(m_mediaRoot);
     // What was found was found in the old folder.
     m_search.reset();
     m_foundPath.clear();
@@ -246,16 +267,20 @@ QVariantList LocalFilesBackend::getItems(const QString &path) {
     // Validate against the media root lexically (absolutePath cleans "." / ".."
     // without resolving symlinks) so intentional symlinks placed inside the media
     // root are followed, while ".." traversal out of the root is still blocked.
+    // A drive plugged in is a root of its own.
     QString clean = QDir(path).absolutePath();
     QString root  = QDir(m_mediaRoot).absolutePath();
     bool inside = (clean == root) ||
-                  clean.startsWith(root.endsWith('/') ? root : root + '/');
+                  clean.startsWith(root.endsWith('/') ? root : root + '/') ||
+                  m_drives->holds(clean);
     if (!inside) {
         qWarning("[LocalFiles] path escapes media root: %s", qPrintable(path));
         return result;
     }
 
     for (const QString &name : dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name)) {
+        if (kSystemFolders.contains(name, Qt::CaseInsensitive))
+            continue;
         if (isPlaylist(name)) {
             QString innerPath = dir.absoluteFilePath(name) + "/" + name;
             if (QFileInfo::exists(innerPath)) {
@@ -329,6 +354,9 @@ QVariant LocalFilesBackend::search(const QString &path, const QString &words, bo
     // Not through symbolic links: one pointing back up would never end.
     m_search->it = std::make_unique<QDirIterator>(
         m_mediaRoot, QDir::Dirs | QDir::Files | QDir::NoDotAndDotDot, QDirIterator::Subdirectories);
+    const QList<RemovableDrives::Drive> plugged = m_drives->drives();
+    for (const RemovableDrives::Drive &d : plugged)
+        m_search->next << d.path;
     if (!running)
         QTimer::singleShot(0, this, &LocalFilesBackend::searchSlice);
     return QVariant();
@@ -347,7 +375,15 @@ void LocalFilesBackend::searchSlice() {
     if (!m_search)
         return;
     SearchRun &run = *m_search;
-    for (int n = 0; n < kSearchSlice && run.it->hasNext(); ++n) {
+    for (int n = 0; n < kSearchSlice; ++n) {
+        if (!run.it->hasNext()) {
+            if (run.next.isEmpty())
+                break;
+            run.it = std::make_unique<QDirIterator>(run.next.takeFirst(),
+                                                    QDir::Dirs | QDir::Files | QDir::NoDotAndDotDot,
+                                                    QDirIterator::Subdirectories);
+            continue;
+        }
         run.it->next();
         const QFileInfo info = run.it->fileInfo();
         const QString name = info.fileName().toLower();
@@ -358,7 +394,7 @@ void LocalFilesBackend::searchSlice() {
         if (!item.isEmpty())
             run.found.append(item);
     }
-    if (run.it->hasNext()) {
+    if (run.it->hasNext() || !run.next.isEmpty()) {
         QTimer::singleShot(0, this, &LocalFilesBackend::searchSlice);
         return;
     }

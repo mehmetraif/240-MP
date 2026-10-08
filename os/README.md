@@ -34,6 +34,7 @@ Compared with flashing Raspberry Pi OS Lite and running `scripts/install.sh` ([I
   - ffmpeg comes with them, for the Playlists module's offline playlists: above 360p YouTube sends a video's picture and sound apart, and ffmpeg puts a download back together.
   - They add about 90 MB; build with `OSDOS_YOUTUBE=0` to leave them out.
 - **Films go on the card.** On the first boot the system keeps 8 GiB of the card, and the rest becomes a partition of its own in exFAT, labelled **OSD-OS**, which Windows and macOS open too. Local Files opens it, and offline playlists download into it. See [Films on the card](#films-on-the-card).
+- **USB drives mount by themselves.** A USB stick or disk plugged in is mounted read-only and shows up in Local Files under its label. See [USB drives](#usb-drives).
 - **Stopping isn't powering off.** `systemctl stop` and `systemctl restart` leave the Pi on. Quit in the app still powers it off, Restart reboots it, and Exit to Terminal still drops to a login shell, as with `install.sh`.
 - **Bluetooth from the app.** The user the app runs as is in the `bluetooth` group, so Settings → Bluetooth can search for and pair a keyboard, gamepad or remote through BlueZ.
   - Bluetooth is unblocked (`rfkill unblock bluetooth`) as bluetoothd starts, so the app's switch is the only one.
@@ -59,6 +60,17 @@ The first boot splits the card: the system keeps 8 GiB (`OSDOS_ROOT_SIZE`), and 
 4. Put the card back in the Pi. Local Files opens **OSD-OS** (`/media/OSD-OS`) until its Media Directory setting names another folder.
 
 The Pi writes to it too: the Playlists module downloads its offline playlists' videos into a **Playlists** folder there (its Download Folder setting can name another), each video once, flushed to the card as it completes. Switching the Pi off at the wall in the middle of a download can still leave the partition untidy, so it is checked (`fsck.exfat`) at every boot before it is mounted. Nothing on it can run (it is mounted `noexec`): it only ever holds media, and anyone with the card can write it. A card flashed with an earlier image mounts it read-only (`ro` in `/etc/fstab`), where offline playlists' downloads fail with the folder named as the reason: flash the new image, or change `ro` to `rw,noexec,nosuid,nodev` (and the last `0` to `2`) on the film partition's line (`/media/240-MP`, as those images named it).
+
+### USB drives
+
+A USB stick or disk plugged into the Pi is mounted by itself, read-only, under `/media/usb`, in a folder named after its label, and Local Files lists it at the top of its tree as `USB: <label>`. Pulled out, its folder goes, and so does its row.
+
+- **Read-only**, so a drive can be pulled out at any moment, mid-film included, with nothing on it half written. A file system with a journal (ext4, XFS, btrfs) is mounted without replaying it, which would write to the drive.
+- **File systems:** FAT32, exFAT, NTFS (the kernel's `ntfs3`, or `ntfs-3g` where that is missing), ext2/3/4, HFS+ (a Mac's), XFS, btrfs, F2FS, and ISO 9660 and UDF (a disc in a USB drive). Their files belong to the user the app runs as, as the film partition's do. Nothing on a drive can run (`noexec`).
+- **Two drives with one label:** the second is named after its device too (`KINGSTON (sdb1)`).
+- **Never the system's own:** a partition already mounted (what `/etc/fstab` mounts, the card's OSD-OS partition) or on the disk the system boots from (a USB disk it boots from) is left alone.
+- **How:** a udev rule (`/etc/udev/rules.d/99-osdos-usb-mount.rules`) starts `osdos-usb-mount@<device>.service` as a drive's partition comes; it runs `/usr/lib/osdos/usb-mount`, and stops, unmounting the drive, as it goes. `journalctl -u 'osdos-usb-mount@*'` says what each drive was mounted as, or why it couldn't be.
+- A manual install (`scripts/install.sh`) doesn't do this: Raspberry Pi OS Lite mounts nothing by itself. Local Files still lists a drive mounted under `/media` some other way.
 
 A card with less than 2 GiB to spare past the system gets no film partition, and the system takes all of it, as Raspberry Pi OS does. The split replaces Raspberry Pi OS's first-boot resize (`raspberrypi-sys-mods`' `resize_early`, overridden in `/etc/initramfs-tools/scripts`), so it happens once, on a freshly flashed card.
 

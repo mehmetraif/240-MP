@@ -1,9 +1,14 @@
 #include "EmbeddedMpv.h"
+#include "../util/LegacyNames.h"
 #include <QCoreApplication>
 #include <QDebug>
 #include <QLibrary>
 #include <QMap>
 #include <QMutexLocker>
+#include <QOffscreenSurface>
+#include <QOpenGLContext>
+#include <QOpenGLFunctions>
+#include <QQuickWindow>
 #include <QThread>
 #include <cstdlib>
 #include <type_traits>
@@ -12,6 +17,12 @@
 #ifdef OSDOS_EMBEDDED_MPV
 #include <mpv/client.h>
 #include <mpv/render.h>
+#include <mpv/render_gl.h>
+
+// OpenGL ES 2's headers don't name it.
+#ifndef GL_RGBA8
+#define GL_RGBA8 0x8058
+#endif
 
 namespace {
 
@@ -111,6 +122,19 @@ void freePixels(void *pixels) {
     std::free(pixels);
 }
 
+// The copy-back modes in an --hwdec list (auto-copy and auto-copy-safe among
+// them), and "no": decoders that hand their frames over as pictures in
+// memory, never as the GPU's own.
+QString copyBackModes(const QString &hwdec) {
+    QStringList modes;
+    for (const QString &mode : hwdec.split(QLatin1Char(','), Qt::SkipEmptyParts)) {
+        if (mode.endsWith(QLatin1String("-copy")) || mode.startsWith(QLatin1String("auto-copy"))
+                || mode == QLatin1String("no"))
+            modes << mode;
+    }
+    return modes.join(QLatin1Char(','));
+}
+
 } // namespace
 
 // Draws the pictures, on a thread of its own: the software renderer converts
@@ -189,6 +213,203 @@ private:
     bool m_drawn = false;
 };
 
+// Draws the pictures on the GPU, on a thread of its own, where an OpenGL
+// context sharing its objects with the scene graph's is current from init()
+// to cleanup(). mpv draws each picture into one of kBuffers textures, never
+// one the scene graph may still be showing (gpuFrame()), and it is finished
+// (glFinish) before it is handed over, so the other context reads it whole.
+// The textures stay from one session to the next, so the scene graph is never
+// left with one that is gone; a free one is made again at a new size.
+class EmbeddedMpv::GpuRenderer : public QObject {
+public:
+    GpuRenderer(EmbeddedMpv *owner, QOpenGLContext *context, QOffscreenSurface *surface)
+        : m_owner(owner), m_context(context), m_surface(surface) {}
+
+    // These four on its thread, the GUI thread waiting for them.
+    bool init() {
+        if (!m_context->makeCurrent(m_surface)) {
+            qWarning("[EmbeddedMpv] mpv's OpenGL context can't be used: pictures drawn on the CPU");
+            return false;
+        }
+        m_gl = m_context->functions();
+        // A sized format where the context takes one (OpenGL ES 2 doesn't).
+        m_internalFormat = m_context->isOpenGLES() && m_context->format().majorVersion() < 3
+                           ? 0 : GL_RGBA8;
+        const QByteArray renderer(reinterpret_cast<const char *>(m_gl->glGetString(GL_RENDERER)));
+        // OpenGL drawn on the CPU (Mesa's llvmpipe, in a VM say) gains
+        // nothing over mpv's own software renderer, unless asked for (tests).
+        if ((renderer.contains("llvmpipe") || renderer.contains("softpipe")
+             || renderer.contains("Software Rasterizer"))
+                && legacy::env("EMBEDDED_RENDER") != QLatin1String("gpu")) {
+            qInfo("[EmbeddedMpv] OpenGL here is drawn on the CPU (%s): pictures drawn by mpv's software renderer",
+                  renderer.constData());
+            return false;
+        }
+        qInfo("[EmbeddedMpv] pictures drawn on the GPU: %s", renderer.constData());
+        return true;
+    }
+
+    // A session's core: mpv draws through this context.
+    bool attach(mpv_handle *mpv) {
+        mpv_opengl_init_params gl { &GpuRenderer::procAddress, m_context };
+        mpv_render_param params[] = {
+            { MPV_RENDER_PARAM_API_TYPE, const_cast<char *>(MPV_RENDER_API_TYPE_OPENGL) },
+            { MPV_RENDER_PARAM_OPENGL_INIT_PARAMS, &gl },
+            { MPV_RENDER_PARAM_INVALID, nullptr },
+        };
+        if (api().renderCreate(&m_render, mpv, params) < 0) {
+            m_render = nullptr;
+            return false;
+        }
+        m_drawn = false;
+        api().renderSetUpdateCallback(m_render, &GpuRenderer::onUpdate, this);
+        return true;
+    }
+
+    // Before the core goes (libmpv's order).
+    void detach() {
+        if (!m_render)
+            return;
+        api().renderSetUpdateCallback(m_render, nullptr, nullptr);
+        api().renderFree(m_render);
+        m_render = nullptr;
+    }
+
+    void cleanup() {
+        detach();
+        if (m_gl) {
+            for (Buffer &b : m_buffers)
+                release(b);
+        }
+        m_context->doneCurrent();
+        // Back to the GUI thread, which deletes it once this one has ended.
+        m_context->moveToThread(QCoreApplication::instance()->thread());
+    }
+
+    // As the software renderer's (Renderer above).
+    void schedule(bool redraw = false) {
+        if (redraw)
+            m_redraw = true;
+        if (!m_scheduled.exchange(true))
+            QMetaObject::invokeMethod(this, [this] { render(); }, Qt::QueuedConnection);
+    }
+
+    static void onUpdate(void *self) { static_cast<GpuRenderer *>(self)->schedule(); }
+
+private:
+    struct Buffer {
+        GLuint texture = 0;
+        GLuint fbo = 0;
+        QSize size;
+    };
+    // The newest picture and the two the scene graph took last are taken, so
+    // one is always free.
+    static constexpr int kBuffers = 4;
+
+    static void *procAddress(void *context, const char *name) {
+        return reinterpret_cast<void *>(static_cast<QOpenGLContext *>(context)->getProcAddress(name));
+    }
+
+    bool allocate(Buffer &b, const QSize &size) {
+        release(b);
+        m_gl->glGenTextures(1, &b.texture);
+        m_gl->glBindTexture(GL_TEXTURE_2D, b.texture);
+        m_gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        m_gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        m_gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        m_gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        m_gl->glTexImage2D(GL_TEXTURE_2D, 0, m_internalFormat ? GLint(m_internalFormat) : GL_RGBA,
+                           size.width(), size.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+        m_gl->glBindTexture(GL_TEXTURE_2D, 0);
+        m_gl->glGenFramebuffers(1, &b.fbo);
+        m_gl->glBindFramebuffer(GL_FRAMEBUFFER, b.fbo);
+        m_gl->glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, b.texture, 0);
+        const bool complete = m_gl->glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE;
+        m_gl->glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        if (!complete) {
+            release(b);
+            return false;
+        }
+        b.size = size;
+        return true;
+    }
+
+    void release(Buffer &b) {
+        if (b.fbo)
+            m_gl->glDeleteFramebuffers(1, &b.fbo);
+        if (b.texture)
+            m_gl->glDeleteTextures(1, &b.texture);
+        b = Buffer();
+    }
+
+    void render() {
+        m_scheduled = false;
+        if (!m_render)
+            return;
+        const bool newFrame = api().renderUpdate(m_render) & MPV_RENDER_UPDATE_FRAME;
+        const bool redraw = m_redraw.exchange(false) && m_drawn;
+        if (!newFrame && !redraw)
+            return;
+        QSize size;
+        int taken[3];
+        {
+            QMutexLocker lock(&m_owner->m_frameLock);
+            size = m_owner->m_targetSize;
+            taken[0] = m_owner->m_gpuPublishedIndex;
+            taken[1] = m_owner->m_gpuShownIndex;
+            taken[2] = m_owner->m_gpuPreviousIndex;
+        }
+        if (size.isEmpty())
+            return;
+        // A free texture, one of the right size if there is one.
+        int index = -1;
+        for (int i = 0; i < kBuffers; ++i) {
+            if (i == taken[0] || i == taken[1] || i == taken[2])
+                continue;
+            if (m_buffers[i].size == size) {
+                index = i;
+                break;
+            }
+            if (index < 0)
+                index = i;
+        }
+        Buffer &b = m_buffers[index];
+        if (b.size != size && !allocate(b, size)) {
+            qWarning("[EmbeddedMpv] no %dx%d texture to draw into", size.width(), size.height());
+            return;
+        }
+        mpv_opengl_fbo fbo { int(b.fbo), size.width(), size.height(), int(m_internalFormat) };
+        int flipY = 0;
+        mpv_render_param params[] = {
+            { MPV_RENDER_PARAM_OPENGL_FBO, &fbo },
+            { MPV_RENDER_PARAM_FLIP_Y, &flipY },
+            { MPV_RENDER_PARAM_INVALID, nullptr },
+        };
+        if (api().renderRender(m_render, params) < 0)
+            return;
+        m_gl->glFinish();
+        m_drawn = true;
+        {
+            QMutexLocker lock(&m_owner->m_frameLock);
+            m_owner->m_gpuPublishedIndex = index;
+            m_owner->m_gpuPublished = { b.texture, size, ++m_serial };
+        }
+        emit m_owner->frameReady();
+    }
+
+    EmbeddedMpv *m_owner;
+    QOpenGLContext *m_context;
+    QOffscreenSurface *m_surface;
+    QOpenGLFunctions *m_gl = nullptr;
+    GLenum m_internalFormat = 0;
+    mpv_render_context *m_render = nullptr;
+    Buffer m_buffers[kBuffers];
+    quint64 m_serial = 0;
+    std::atomic<bool> m_scheduled { false };
+    std::atomic<bool> m_redraw { false };
+    bool m_drawn = false;
+};
+
 bool EmbeddedMpv::available() {
     return api().ok;
 }
@@ -197,6 +418,74 @@ EmbeddedMpv::EmbeddedMpv(QObject *parent) : QObject(parent) {}
 
 EmbeddedMpv::~EmbeddedMpv() {
     teardown();
+    shutdownGpu();
+}
+
+bool EmbeddedMpv::gpuAvailable() {
+    if (!m_gpuOff && !m_gpuRenderer && !setUpGpu())
+        m_gpuOff = true;
+    return !m_gpuOff;
+}
+
+bool EmbeddedMpv::setUpGpu() {
+    if (legacy::env("EMBEDDED_RENDER") == QLatin1String("sw")) {
+        qInfo("[EmbeddedMpv] pictures drawn by mpv's software renderer (OSDOS_EMBEDDED_RENDER=sw)");
+        return false;
+    }
+    // Qt Quick's own renderer (no other backend, as QT_QUICK_BACKEND=software
+    // asks for) on OpenGL.
+    QOpenGLContext *share = QOpenGLContext::globalShareContext();
+    if (!QQuickWindow::sceneGraphBackend().isEmpty()
+            || QQuickWindow::graphicsApi() != QSGRendererInterface::OpenGL || !share) {
+        qInfo("[EmbeddedMpv] Qt Quick doesn't draw with OpenGL here: pictures drawn by mpv's software renderer");
+        return false;
+    }
+    // Both made here, on the GUI thread; the context is current on the GPU's.
+    auto *surface = new QOffscreenSurface;
+    surface->setFormat(share->format());
+    surface->create();
+    auto *context = new QOpenGLContext;
+    context->setFormat(share->format());
+    context->setShareContext(share);
+    if (!surface->isValid() || !context->create()) {
+        qWarning("[EmbeddedMpv] no OpenGL context for mpv: pictures drawn on the CPU");
+        delete context;
+        delete surface;
+        return false;
+    }
+    m_gpuSurface = surface;
+    m_gpuContext = context;
+    m_gpuThread = new QThread;
+    m_gpuThread->setObjectName(QStringLiteral("mpv-gpu"));
+    m_gpuRenderer = new GpuRenderer(this, context, surface);
+    context->moveToThread(m_gpuThread);
+    m_gpuRenderer->moveToThread(m_gpuThread);
+    m_gpuThread->start();
+    bool ok = false;
+    QMetaObject::invokeMethod(m_gpuRenderer, [this, &ok] { ok = m_gpuRenderer->init(); },
+                              Qt::BlockingQueuedConnection);
+    if (!ok) {
+        shutdownGpu();
+        return false;
+    }
+    return true;
+}
+
+void EmbeddedMpv::shutdownGpu() {
+    if (!m_gpuRenderer)
+        return;
+    QMetaObject::invokeMethod(m_gpuRenderer, [this] { m_gpuRenderer->cleanup(); },
+                              Qt::BlockingQueuedConnection);
+    m_gpuThread->quit();
+    m_gpuThread->wait();
+    delete m_gpuRenderer;
+    m_gpuRenderer = nullptr;
+    delete m_gpuThread;
+    m_gpuThread = nullptr;
+    delete m_gpuContext;
+    m_gpuContext = nullptr;
+    delete m_gpuSurface;
+    m_gpuSurface = nullptr;
 }
 
 bool EmbeddedMpv::start(const QStringList &args) {
@@ -249,6 +538,7 @@ bool EmbeddedMpv::start(const QStringList &args) {
     // The command line as options, its other words, and every word after a
     // "--", as the playlist.
     QStringList urls;
+    QString hwdec;
     int playlistStart = -1;
     bool shuffle = false;
     bool files = false;
@@ -287,10 +577,16 @@ bool EmbeddedMpv::start(const QStringList &args) {
             lists[name] << value;
             continue;
         }
-        if (name == QLatin1String("playlist-start"))
+        if (name == QLatin1String("playlist-start")) {
             playlistStart = value.toInt();
-        else if (name == QLatin1String("shuffle"))
+        } else if (name == QLatin1String("shuffle")) {
             shuffle = value == QLatin1String("yes");
+        } else if (name == QLatin1String("hwdec")) {
+            hwdec = value;
+            // The GPU didn't take a hardware decoder's frames before.
+            if (m_gpuCopyBack && !copyBackModes(value).isEmpty())
+                value = copyBackModes(value);
+        }
         set(name, value);
     }
     for (auto it = lists.cbegin(); it != lists.cend(); ++it)
@@ -303,27 +599,48 @@ bool EmbeddedMpv::start(const QStringList &args) {
     }
     a.requestLogMessages(mpv, "warn");
 
-    mpv_render_param params[] = {
-        { MPV_RENDER_PARAM_API_TYPE, const_cast<char *>(MPV_RENDER_API_TYPE_SW) },
-        { MPV_RENDER_PARAM_INVALID, nullptr },
-    };
-    mpv_render_context *render = nullptr;
-    if (a.renderCreate(&render, mpv, params) < 0) {
-        qWarning("[EmbeddedMpv] the software renderer could not be set up");
-        a.terminateDestroy(mpv);
-        return false;
+    // On the GPU where it can be; on the CPU otherwise, and from then on
+    // should the GPU fail.
+    m_gpu = false;
+    if (gpuAvailable()) {
+        bool attached = false;
+        QMetaObject::invokeMethod(m_gpuRenderer, [this, mpv, &attached] {
+            attached = m_gpuRenderer->attach(mpv);
+        }, Qt::BlockingQueuedConnection);
+        m_gpu = attached;
+        if (!attached) {
+            m_gpuOff = true;
+            qWarning("[EmbeddedMpv] mpv can't draw with OpenGL here: pictures drawn on the CPU");
+        }
+    }
+    if (!m_gpu) {
+        mpv_render_param params[] = {
+            { MPV_RENDER_PARAM_API_TYPE, const_cast<char *>(MPV_RENDER_API_TYPE_SW) },
+            { MPV_RENDER_PARAM_INVALID, nullptr },
+        };
+        mpv_render_context *render = nullptr;
+        if (a.renderCreate(&render, mpv, params) < 0) {
+            qWarning("[EmbeddedMpv] the software renderer could not be set up");
+            a.terminateDestroy(mpv);
+            return false;
+        }
+        m_render = render;
+        m_thread = new QThread;
+        m_thread->setObjectName(QStringLiteral("mpv-render"));
+        m_renderer = new Renderer(this);
+        m_renderer->context = render;
+        m_renderer->moveToThread(m_thread);
+        m_thread->start();
+        a.renderSetUpdateCallback(render, &Renderer::onUpdate, m_renderer);
     }
 
+    // Should the GPU not take a hardware decoder's frames, the session's
+    // copy-back modes take over (drainEvents()).
+    m_copyBackHwdec = m_gpu && !m_gpuCopyBack && copyBackModes(hwdec) != hwdec
+                      ? copyBackModes(hwdec) : QString();
+
     m_mpv = mpv;
-    m_render = render;
     m_lastEndReason.clear();
-    m_thread = new QThread;
-    m_thread->setObjectName(QStringLiteral("mpv-render"));
-    m_renderer = new Renderer(this);
-    m_renderer->context = render;
-    m_renderer->moveToThread(m_thread);
-    m_thread->start();
-    a.renderSetUpdateCallback(render, &Renderer::onUpdate, m_renderer);
     a.setWakeupCallback(mpv, &EmbeddedMpv::onWakeup, this);
 
     // The playlist, mixed (shuffle) and started (playlist-start) as the
@@ -368,11 +685,22 @@ void EmbeddedMpv::setTargetSize(const QSize &size) {
     }
     if (m_renderer)
         m_renderer->schedule(true);
+    if (m_gpu)
+        m_gpuRenderer->schedule(true);
 }
 
 QImage EmbeddedMpv::frame() const {
     QMutexLocker lock(&m_frameLock);
     return m_frame;
+}
+
+EmbeddedMpv::GpuFrame EmbeddedMpv::gpuFrame() {
+    QMutexLocker lock(&m_frameLock);
+    if (m_gpuPublishedIndex != m_gpuShownIndex) {
+        m_gpuPreviousIndex = m_gpuShownIndex;
+        m_gpuShownIndex = m_gpuPublishedIndex;
+    }
+    return m_gpuShownIndex >= 0 ? m_gpuPublished : GpuFrame();
 }
 
 void EmbeddedMpv::onWakeup(void *self) {
@@ -391,7 +719,22 @@ void EmbeddedMpv::drainEvents() {
             return;
         case MPV_EVENT_LOG_MESSAGE: {
             const auto *msg = static_cast<mpv_event_log_message *>(event->data);
-            qWarning("[mpv] %s: %s", msg->prefix, QByteArray(msg->text).trimmed().constData());
+            const QByteArray text = QByteArray(msg->text).trimmed();
+            qWarning("[mpv] %s: %s", msg->prefix, text.constData());
+            // mpv draws nothing where the GPU can't take a hardware decoder's
+            // frames, and doesn't fall back by itself: the copy-back modes
+            // hand them over in memory, for this session and the next.
+            if (!m_copyBackHwdec.isEmpty()
+                    && (text.startsWith("Mapping hardware decoded surface failed")
+                        || text.startsWith("Initializing texture for hardware decoding failed"))) {
+                qWarning("[EmbeddedMpv] the GPU can't take the decoder's frames: --hwdec=%s",
+                         qPrintable(m_copyBackHwdec));
+                const QByteArray modes = m_copyBackHwdec.toUtf8();
+                const char *cmd[] = { "set", "hwdec", modes.constData(), nullptr };
+                api().command(m_mpv, cmd);
+                m_copyBackHwdec.clear();
+                m_gpuCopyBack = true;
+            }
             break;
         }
         case MPV_EVENT_END_FILE:
@@ -414,26 +757,35 @@ void EmbeddedMpv::teardown() {
         return;
     const MpvApi &a = api();
     a.setWakeupCallback(m_mpv, nullptr, nullptr);
-    // The render thread finishes before its context goes, and the context
-    // before the core (libmpv's order).
-    m_thread->quit();
-    m_thread->wait();
-    a.renderSetUpdateCallback(m_render, nullptr, nullptr);
-    a.renderFree(m_render);
-    m_render = nullptr;
-    delete m_renderer;
-    m_renderer = nullptr;
-    delete m_thread;
-    m_thread = nullptr;
+    // The render context goes before the core (libmpv's order): the GPU's on
+    // its thread, the software renderer's once its thread has finished.
+    if (m_gpu) {
+        QMetaObject::invokeMethod(m_gpuRenderer, [this] { m_gpuRenderer->detach(); },
+                                  Qt::BlockingQueuedConnection);
+        m_gpu = false;
+    } else {
+        m_thread->quit();
+        m_thread->wait();
+        a.renderSetUpdateCallback(m_render, nullptr, nullptr);
+        a.renderFree(m_render);
+        m_render = nullptr;
+        delete m_renderer;
+        m_renderer = nullptr;
+        delete m_thread;
+        m_thread = nullptr;
+    }
     a.terminateDestroy(m_mpv);
     m_mpv = nullptr;
     QMutexLocker lock(&m_frameLock);
     m_frame = QImage();
+    m_gpuPublished = GpuFrame();
+    m_gpuPublishedIndex = -1;
 }
 
 #else // !OSDOS_EMBEDDED_MPV — built without libmpv's headers: never available.
 
 class EmbeddedMpv::Renderer {};
+class EmbeddedMpv::GpuRenderer {};
 
 bool EmbeddedMpv::available() { return false; }
 EmbeddedMpv::EmbeddedMpv(QObject *parent) : QObject(parent) {}
@@ -446,6 +798,10 @@ void EmbeddedMpv::setTargetSize(const QSize &size) {
     m_targetSize = size;
 }
 QImage EmbeddedMpv::frame() const { return {}; }
+EmbeddedMpv::GpuFrame EmbeddedMpv::gpuFrame() { return {}; }
+bool EmbeddedMpv::gpuAvailable() { return false; }
+bool EmbeddedMpv::setUpGpu() { return false; }
+void EmbeddedMpv::shutdownGpu() {}
 void EmbeddedMpv::onWakeup(void *) {}
 void EmbeddedMpv::drainEvents() {}
 void EmbeddedMpv::teardown() {}

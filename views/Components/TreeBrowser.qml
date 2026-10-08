@@ -60,22 +60,56 @@ FocusScope {
         relayout()
     }
 
-    // A folder's entries changed, or came in after fetch() returned null.
-    function refresh(path) {
+    // A folder's entries changed, or came in after fetch() returned null. Its
+    // cursor keeps its row, or with keepEntry the entry it was on, while that
+    // is still there (entries came or went above it: a drive plugged in).
+    function refresh(path, keepEntry) {
+        var before = listings[path]
         delete listings[path]
         revision++
         if (!ready) return
         for (var i = 0; i < trail.count; ++i) {
             if (trail.get(i).path === path) {
-                var n = listing(path).items.length
-                if (trail.get(i).sel >= n)
-                    trail.setProperty(i, "sel", Math.max(0, n - 1))
+                var items = listing(path).items
+                var sel = trail.get(i).sel
+                var was = keepEntry && before && !before.pending ? before.items[sel] : null
+                if (was) {
+                    for (var j = 0; j < items.length; ++j) {
+                        if (items[j].path === was.path) {
+                            sel = j
+                            break
+                        }
+                    }
+                }
+                sel = Math.max(0, Math.min(sel, items.length - 1))
+                trail.setProperty(i, "sel", sel)
+                remembered[path] = sel
                 relayout()
                 return
             }
         }
         if (branched)
             layoutBranches(true)
+    }
+
+    // A folder gone with all in it (a drive taken out): the open folders at it
+    // and in it close, back to the one that held it, and what they listed is
+    // forgotten.
+    function leave(prefix) {
+        var inside = function(p) { return p === prefix || p.indexOf(prefix + "/") === 0 }
+        for (var p in listings) {
+            if (inside(p))
+                delete listings[p]
+        }
+        for (var i = 1; i < trail.count; ++i) {
+            if (inside(trail.get(i).path)) {
+                trail.remove(i, trail.count - i)
+                revision++
+                if (ready)
+                    relayout()
+                return
+            }
+        }
     }
 
     // Under the cursor, or null.

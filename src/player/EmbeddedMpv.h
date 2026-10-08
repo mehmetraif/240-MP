@@ -6,6 +6,8 @@
 #include <QStringList>
 #include <atomic>
 
+class QOffscreenSurface;
+class QOpenGLContext;
 class QThread;
 struct mpv_handle;
 struct mpv_render_context;
@@ -15,10 +17,16 @@ struct mpv_render_context;
 // picture while it plays (MpvController, VideoSurface).
 //
 // libmpv is opened at run time (libmpv.so.2 / libmpv.2.dylib), so the app
-// still starts where it isn't installed; available() says whether it is. The
-// picture comes from libmpv's software renderer, on a thread of its own, at
-// the size the VideoSurface asks for: the same CPU colour conversion and
-// scaling --vo=drm does on a Pi 4, into memory rather than a KMS buffer.
+// still starts where it isn't installed; available() says whether it is.
+//
+// The picture is drawn on the GPU where Qt Quick draws with OpenGL: on a
+// thread of its own, with a context that shares its objects with the scene
+// graph's (Qt::AA_ShareOpenGLContexts), mpv converts and scales into one of a
+// few textures, which VideoSurface shows as they are, and the hardware decoder
+// hands it frames without a copy. Elsewhere (Metal on macOS, the software
+// scene graph, OpenGL drawn on the CPU), or should that fail, libmpv's
+// software renderer draws it on the CPU, on a thread of its own, at the size
+// the VideoSurface asks for.
 //
 // A session takes an mpv command line (start(args), the one MpvController
 // builds) and turns it into options and a playlist. It ends when mpv quits,
@@ -27,11 +35,27 @@ struct mpv_render_context;
 class EmbeddedMpv : public QObject {
     Q_OBJECT
 public:
+    // A picture drawn on the GPU: an OpenGL texture the scene graph's context
+    // can sample, its size, and its number, new for each picture.
+    struct GpuFrame {
+        unsigned texture = 0;
+        QSize size;
+        quint64 serial = 0;
+    };
+
     // libmpv can be loaded, with everything this needs from it.
     static bool available();
 
     explicit EmbeddedMpv(QObject *parent = nullptr);
     ~EmbeddedMpv() override;
+
+    // Sessions are drawn on the GPU: Qt Quick draws with OpenGL, its contexts
+    // share their objects, and a GPU draws them, not the CPU (Mesa's llvmpipe,
+    // unless OSDOS_EMBEDDED_RENDER=gpu; OSDOS_EMBEDDED_RENDER=sw says no to
+    // any). Decided when first asked, before the first session, so that its
+    // command line is made for where it is drawn; no from then on should
+    // drawing there fail.
+    bool gpuAvailable();
 
     // Starts playing what an mpv command line asks for. False if libmpv
     // could not be set up (finished() does not follow then).
@@ -41,11 +65,17 @@ public:
     // Asks mpv to quit, as its own quit command does: finished() follows.
     void quit();
     bool running() const { return m_mpv != nullptr; }
+    // This session is drawn on the GPU (gpuFrame()), not into frame().
+    bool gpuRendering() const { return m_gpu; }
 
     // The picture's size in device pixels; it is drawn again at a new size.
     void setTargetSize(const QSize &size);
     // The newest picture, or a null image before the first.
     QImage frame() const;
+    // The newest picture drawn on the GPU, none before the first. Asked on
+    // the scene graph's render thread as it is shown: the texture stays as it
+    // is while it may be on screen, until two more have been asked for.
+    GpuFrame gpuFrame();
 
 signals:
     void frameReady();
@@ -53,10 +83,15 @@ signals:
 
 private:
     class Renderer;
+    class GpuRenderer;
 
     static void onWakeup(void *self);
     void drainEvents();
     void teardown();
+    // The GPU's thread and context, made by the first gpuAvailable() and
+    // kept to the end: false, with none, where sessions aren't drawn there.
+    bool setUpGpu();
+    void shutdownGpu();
 
     mpv_handle         *m_mpv    = nullptr;
     mpv_render_context *m_render = nullptr;
@@ -65,7 +100,27 @@ private:
     std::atomic<bool>   m_drainQueued { false };
     QString             m_lastEndReason;
 
+    // The GPU's: kept from one session to the next.
+    QThread           *m_gpuThread   = nullptr;
+    GpuRenderer       *m_gpuRenderer = nullptr;
+    QOpenGLContext    *m_gpuContext  = nullptr;
+    QOffscreenSurface *m_gpuSurface  = nullptr;
+    // This session is drawn on the GPU; none are (declined, or it failed).
+    bool m_gpu = false;
+    bool m_gpuOff = false;
+    // The GPU didn't take a hardware decoder's frames, so sessions decode
+    // with the copy-back modes in their --hwdec; this session's, to turn to
+    // should it not.
+    bool m_gpuCopyBack = false;
+    QString m_copyBackHwdec;
+
     mutable QMutex m_frameLock;
     QImage         m_frame;
     QSize          m_targetSize { 640, 480 };
+    // Under m_frameLock: the GPU's newest picture and its texture's place,
+    // and the places of the two the scene graph took last, kept as they are.
+    GpuFrame m_gpuPublished;
+    int      m_gpuPublishedIndex = -1;
+    int      m_gpuShownIndex     = -1;
+    int      m_gpuPreviousIndex  = -1;
 };

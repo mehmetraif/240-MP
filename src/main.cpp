@@ -96,6 +96,10 @@ int main(int argc, char *argv[]) {
     // use for one.
     if (qEnvironmentVariableIsEmpty("QT_QPA_EGLFS_HIDECURSOR"))
         qputenv("QT_QPA_EGLFS_HIDECURSOR", "1");
+    // OpenGL contexts share their objects, the scene graph's among them, so a
+    // video played inside the window is drawn on the GPU into textures it
+    // shows as they are (EmbeddedMpv). Before the application exists.
+    QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
 
     QGuiApplication app(argc, argv);
     app.setApplicationName("OSD-OS");

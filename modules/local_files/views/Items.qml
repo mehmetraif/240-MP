@@ -3,7 +3,8 @@ import Components
 
 // Local Files browser: the media folder as a horizontal tree (see
 // TreeBrowser), led by RECENTLY WATCHED, FAVORITES and SEARCH (names under the
-// whole folder, typed on the on-screen keyboard). Select on a file plays it,
+// whole folder and the drives, typed on the on-screen keyboard) and the USB
+// drives plugged in, which come and go as they are. Select on a file plays it,
 // right on it offers its options (EntryOptions: its favourite, PLAY AT
 // STARTUP), and the whole tree is this one view: playing a file and coming
 // back restores it from the listState handed to navigateTo. Opened with the
@@ -133,6 +134,16 @@ FocusScope {
     Connections {
         target: localFilesBackend
         function onSearchReady(path) { tree.refresh(path) }
+        // A drive plugged in or taken out: the top of the tree lists it or
+        // not, folders open on one taken out close, and the two lists show
+        // its files again or leave them out.
+        function onDrivesChanged(gone) {
+            for (var i = 0; i < gone.length; ++i)
+                tree.leave(gone[i])
+            tree.refresh(itemsRoot.rootPath, true)
+            tree.refresh("recent", true)
+            tree.refresh("favorites", true)
+        }
     }
 
     // Footer
