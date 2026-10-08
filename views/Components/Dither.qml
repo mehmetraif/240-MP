@@ -9,6 +9,9 @@ Canvas {
 
     property color color: root.surfaceColor
     property int pixel: root.px
+    // 1 starts the checkerboard a pixel along: two pieces of one pattern that
+    // meet (the arms of a window's shadow) give theirs by where they lie.
+    property int phase: 0
 
     antialiasing: false
     smooth: false
@@ -20,11 +23,12 @@ Canvas {
         var cols = Math.ceil(width / pixel)
         var rows = Math.ceil(height / pixel)
         for (var y = 0; y < rows; ++y)
-            for (var x = y % 2; x < cols; x += 2)
+            for (var x = (y + phase) % 2; x < cols; x += 2)
                 ctx.fillRect(x * pixel, y * pixel, pixel, pixel)
     }
     onWidthChanged: requestPaint()
     onHeightChanged: requestPaint()
     onColorChanged: requestPaint()
     onPixelChanged: requestPaint()
+    onPhaseChanged: requestPaint()
 }

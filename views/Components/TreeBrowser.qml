@@ -675,14 +675,21 @@ FocusScope {
                 y: restY + col.slide * height
 
                 // The cursor: the row in a solid box, its name in the
-                // background colour, as a deck's menu marks what is selected.
+                // background colour, as a deck's menu marks what is selected
+                // (or the theme's picture of a selected line, Settings → Theme).
                 Rectangle {
                     visible: row.cursor
                     x: -tree.pad
                     width: Math.min(labelText.implicitWidth, row.width) + 2 * tree.pad
                     height: row.height
-                    color: root.primaryColor
+                    color: themedCursor.shown ? "transparent" : root.primaryColor
                     antialiasing: false
+
+                    ThemeImage {
+                        id: themedCursor
+                        anchors.fill: parent
+                        part: root.theme.selection
+                    }
                 }
 
                 Item {

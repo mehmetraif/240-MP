@@ -1,0 +1,7 @@
+{
+    "name": "Rounded",
+    "window": { "image": "window.png", "border": 4 },
+    "titleBar": { "image": "bar.png", "border": 3 },
+    "hintBar": { "image": "bar.png", "border": 3 },
+    "selection": { "image": "bar.png", "border": 3 }
+}

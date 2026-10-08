@@ -1,6 +1,7 @@
 #include "AppCore.h"
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QUrl>
@@ -10,6 +11,7 @@
 #include <QNetworkInterface>
 #include <QJSValue>
 #include <QQmlContext>
+#include <algorithm>
 
 AppCore::AppCore(const QString &appRoot, const QString &dataRoot, QObject *parent)
     : QObject(parent), m_appRoot(appRoot), m_dataRoot(dataRoot)
@@ -433,6 +435,142 @@ QVariantMap AppCore::getCustomColorSchemes() const {
         }
     }
     return result;
+}
+
+namespace {
+
+// Where themes are, the data folder's first: one there takes the place of the
+// app's of the same folder name.
+QStringList themeRoots(const QString &appRoot, const QString &dataRoot) {
+    return { dataRoot + QStringLiteral("/themes"), appRoot + QStringLiteral("/assets/themes") };
+}
+
+// A theme's theme.json, read as an object; false (and a line in the log for
+// one that is there but not JSON) when it can't be.
+bool readThemeJson(const QString &dir, QJsonObject *out) {
+    QFile f(dir + QStringLiteral("/theme.json"));
+    if (!f.open(QIODevice::ReadOnly))
+        return false;
+    QJsonParseError err;
+    const QJsonDocument doc = QJsonDocument::fromJson(f.readAll(), &err);
+    if (err.error != QJsonParseError::NoError || !doc.isObject()) {
+        qWarning("[AppCore] %s/theme.json: %s", qPrintable(dir),
+                 err.error != QJsonParseError::NoError ? qPrintable(err.errorString()) : "not an object");
+        return false;
+    }
+    *out = doc.object();
+    return true;
+}
+
+// The theme's name, or its folder's when it gives none, or one too long for a
+// line of Settings.
+QString themeName(const QJsonObject &obj, const QString &id) {
+    const QString name = obj.value(QStringLiteral("name")).toString().simplified();
+    return name.isEmpty() || name.size() > 28 ? id : name;
+}
+
+// A picture of the theme's own, as a URL: a path in its folder (none out of
+// it, through a link either), a PNG, GIF or BMP, whose pixels the colour
+// scheme's two colours take. Empty, with a line in the log for one named but
+// not found or not of these, when there is none.
+QString themeFile(const QDir &dir, const QJsonValue &value, const QString &id, const char *what) {
+    static const QStringList types = { "png", "gif", "bmp" };
+    if (!value.isString())
+        return {};
+    const QString path = QFileInfo(dir.filePath(value.toString())).canonicalFilePath();
+    const QFileInfo file(path);
+    if (path.isEmpty() || !path.startsWith(dir.canonicalPath() + QLatin1Char('/')) || !file.isFile()
+            || !types.contains(file.suffix().toLower())) {
+        qWarning("[AppCore] theme %s: its %s, \"%s\", is not a %s file in its folder", qPrintable(id), what,
+                 qPrintable(value.toString()), qPrintable(types.join(QLatin1Char('/'))));
+        return {};
+    }
+    return QUrl::fromLocalFile(path).toString();
+}
+
+// One of a theme's pictures, for QML: "file.png", or { "image": "file.png",
+// "border": 4 or [left, top, right, bottom], "tile": "stretch" | "repeat" |
+// "round" }, read as { source, border: [left, top, right, bottom], tile }.
+// Empty for none.
+QVariantMap themeImage(const QDir &dir, const QJsonValue &value, const QString &id, const char *what) {
+    const QJsonObject obj = value.isObject() ? value.toObject()
+                                             : QJsonObject{{QStringLiteral("image"), value}};
+    const QString source = themeFile(dir, obj.value(QStringLiteral("image")), id, what);
+    if (source.isEmpty())
+        return {};
+    // In the picture's own pixels, the art pixels it is drawn on.
+    auto side = [](const QJsonValue &v) { return qBound(0, v.toInt(), 512); };
+    QVariantList border = { 0, 0, 0, 0 };
+    const QJsonValue b = obj.value(QStringLiteral("border"));
+    const QJsonArray sides = b.toArray();
+    if (b.isDouble()) {
+        border = { side(b), side(b), side(b), side(b) };
+    } else if (sides.size() == 4 && std::all_of(sides.begin(), sides.end(),
+                                                [](const QJsonValue &v) { return v.isDouble(); })) {
+        border = { side(sides[0]), side(sides[1]), side(sides[2]), side(sides[3]) };
+    } else if (!b.isUndefined()) {
+        qWarning("[AppCore] theme %s: its %s's border is not a number or four: drawn whole, stretched",
+                 qPrintable(id), what);
+    }
+    static const QStringList tiles = { "stretch", "repeat", "round" };
+    const QString tile = obj.value(QStringLiteral("tile")).toString();
+    return { { "source", source }, { "border", border },
+             { "tile", tiles.contains(tile) ? tile : QStringLiteral("stretch") } };
+}
+
+} // namespace
+
+QString AppCore::themeDir(const QString &id, QJsonObject *json) const {
+    // A folder's name, no way up or across.
+    if (id.isEmpty() || id == QLatin1String(".") || id == QLatin1String("..")
+            || id.contains(QLatin1Char('/')) || id.contains(QLatin1Char('\\')))
+        return {};
+    for (const QString &root : themeRoots(m_appRoot, m_dataRoot)) {
+        const QString dir = root + QLatin1Char('/') + id;
+        if (readThemeJson(dir, json))
+            return dir;
+    }
+    return {};
+}
+
+QVariantList AppCore::themes() const {
+    QMap<QString, QString> names;   // id → name, the first found of each id
+    for (const QString &root : themeRoots(m_appRoot, m_dataRoot)) {
+        const QStringList ids = QDir(root).entryList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
+        for (const QString &id : ids) {
+            QJsonObject obj;
+            if (!names.contains(id) && readThemeJson(root + QLatin1Char('/') + id, &obj))
+                names.insert(id, themeName(obj, id));
+        }
+    }
+    QVariantList list;
+    for (auto it = names.cbegin(); it != names.cend(); ++it)
+        list.append(QVariantMap{ { "id", it.key() }, { "name", it.value() } });
+    std::sort(list.begin(), list.end(), [](const QVariant &a, const QVariant &b) {
+        return QString::compare(a.toMap().value("name").toString(), b.toMap().value("name").toString(),
+                                Qt::CaseInsensitive) < 0;
+    });
+    return list;
+}
+
+QVariantMap AppCore::theme(const QString &id) const {
+    QJsonObject obj;
+    const QString path = themeDir(id, &obj);
+    if (path.isEmpty()) {
+        if (!id.isEmpty())
+            qWarning("[AppCore] theme %s: not found, none used", qPrintable(id));
+        return {};
+    }
+    // The window's parts it has a picture of: the colours stay the scheme's.
+    const QDir dir(path);
+    QVariantMap theme = { { "id", id }, { "name", themeName(obj, id) } };
+    for (const char *key : { "window", "titleBar", "hintBar", "selection" }) {
+        const QVariantMap part = themeImage(dir, obj.value(QLatin1String(key)), id, key);
+        if (!part.isEmpty())
+            theme[key] = part;
+    }
+    qInfo("[AppCore] theme %s: %s", qPrintable(id), qPrintable(path));
+    return theme;
 }
 
 QVariantList AppCore::listDirectories(const QString &path) {

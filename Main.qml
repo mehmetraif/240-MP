@@ -27,7 +27,7 @@ Window {
     color: root.osdBackground === "Full" ? root.surfaceColor : "#000000"
 
     // --- Color Schemes ---
-    readonly property var themes: ({
+    readonly property var schemes: ({
         "Video 1": {
             "primary": "#FFFFFF",
             "secondary": "#C2BFE4",
@@ -85,9 +85,15 @@ Window {
             "accent": "#BF6666"
         }
     })
-    property var allThemes: themes  // may gain a "Custom" entry on startup
-    property string currentTheme: "Video 1"
-    readonly property var theme: allThemes[currentTheme] || allThemes["Video 1"]
+    property var allSchemes: schemes  // may gain a "Custom" entry on startup
+    property string currentScheme: "Video 1"
+    readonly property var scheme: allSchemes[currentScheme] || allSchemes["Video 1"]
+    // Settings' THEME (app.theme, a theme's folder name; none when unset),
+    // apart from the colour scheme: AppCore::theme()'s reading of it, {} for
+    // none. Pictures of the window's parts (its frame, the title and hint
+    // bars, the selected line) that the shared components draw in the
+    // scheme's two colours (ThemeImage), each in place of its own drawing.
+    property var theme: ({})
     // Settings' OSD BACKGROUND (app.osd_background), what the menus are drawn
     // on (Components/OsdGround): "Full", the default, the scheme's background
     // over the whole screen; "Window", a framed window of it behind what a
@@ -97,12 +103,16 @@ Window {
     // black, so Off takes its background colour for the text instead.
     property string osdBackground: "Full"
     readonly property bool osdOff: osdBackground === "Off"
-    property string primaryColor:   osdOff ? lighterOf(theme.primary, theme.surface) : theme.primary
-    property string surfaceColor:   osdOff ? "#000000" : theme.surface
+    // Settings' WINDOW FRAME (app.osd_frame), offered with Window: "On", the
+    // default, a line in the scheme's colour (or the theme's window image);
+    // "Off", none; "Shadow", the line and a DOS window's shadow.
+    property string osdFrame: "On"
+    property string primaryColor:   osdOff ? lighterOf(scheme.primary, scheme.surface) : scheme.primary
+    property string surfaceColor:   osdOff ? "#000000" : scheme.surface
     // Two colours only, like a deck's on-screen display: everything is drawn in
-    // the theme's primary colour on its surface colour. A selection is a solid
+    // the scheme's primary colour on its surface colour. A selection is a solid
     // box with its text in the surface colour, and anything dimmed is dithered
-    // (Components/Dither) rather than faded. The themes' other three colours
+    // (Components/Dither) rather than faded. The schemes' other three colours
     // stay in their definitions, unused.
     property string secondaryColor: primaryColor
     property string tertiaryColor:  primaryColor
@@ -147,7 +157,11 @@ Window {
         target: appCore
         function onAppSettingChanged(key, value) {
             if (key === "color_scheme") {
-                root.currentTheme = value
+                root.currentScheme = value
+            } else if (key === "theme") {
+                root.theme = appCore.theme(String(value || ""))
+            } else if (key === "osd_frame") {
+                root.osdFrame = root.osdFrameOf(value)
             } else if (key === "transparent_background") {
                 root.backdropSolidity = root.solidityOf(value)
             } else if (key === "loading_effect") {
@@ -178,30 +192,33 @@ Window {
     Component.onCompleted: {
         var cfg = appCore.get_settings()
 
-        var cThemes = appCore.getCustomColorSchemes()
-        if (Object.keys(cThemes).length > 0) {
-            var t = Object.assign({}, themes, root.allThemes)
-            for (var cTheme in cThemes) {
-                if (Object.keys(cThemes[cTheme]).length === 5) {
-                    t[cTheme] = cThemes[cTheme]
+        var cSchemes = appCore.getCustomColorSchemes()
+        if (Object.keys(cSchemes).length > 0) {
+            var s = Object.assign({}, schemes, root.allSchemes)
+            for (var cScheme in cSchemes) {
+                if (Object.keys(cSchemes[cScheme]).length === 5) {
+                    s[cScheme] = cSchemes[cScheme]
                 }
             }
-            root.allThemes = t
+            root.allSchemes = s
         }
 
         var custom = appCore.getCustomColorScheme()
         if (Object.keys(custom).length === 5) {
-            var t = Object.assign({}, themes, root.allThemes)
-            t["Custom"] = custom
-            root.allThemes = t
+            var s = Object.assign({}, schemes, root.allSchemes)
+            s["Custom"] = custom
+            root.allSchemes = s
         }
 
-        var savedTheme = (cfg.app && cfg.app.color_scheme) || "Video 1"
-        if (savedTheme === "Custom" && !root.allThemes["Custom"]) {
+        var savedScheme = (cfg.app && cfg.app.color_scheme) || "Video 1"
+        if (savedScheme === "Custom" && !root.allSchemes["Custom"]) {
             appCore.save_setting("", "color_scheme", "Video 1")
-            savedTheme = "Video 1"
+            savedScheme = "Video 1"
         }
-        root.currentTheme = savedTheme
+        root.currentScheme = savedScheme
+        // A theme gone from its folder reads as none.
+        root.theme = appCore.theme(String((cfg.app && cfg.app.theme) || ""))
+        root.osdFrame = root.osdFrameOf(cfg.app && cfg.app.osd_frame)
         root.backdropSolidity = root.solidityOf(cfg.app && cfg.app.transparent_background)
         root.pointerSetting = String((cfg.app && cfg.app.mouse_pointer) || "5")
         root.loadingEffect = !(cfg.app && cfg.app.loading_effect === "Off")
@@ -407,6 +424,9 @@ Window {
     }
     function osdBackgroundOf(raw) {
         return raw === "Window" || raw === "Off" ? raw : "Full"
+    }
+    function osdFrameOf(raw) {
+        return raw === "Off" || raw === "Shadow" ? raw : "On"
     }
     function solidityOf(raw) {
         var s = String(raw === undefined || raw === null ? "" : raw).toLowerCase()

@@ -122,10 +122,18 @@ Item {
                     width: answers.width
                     height: answers.rowHeight
 
+                    // The answer under the cursor, boxed, or in the theme's
+                    // picture of a selected line (Settings → Theme).
                     Rectangle {
                         anchors.fill: label
-                        color: root.accentColor
+                        color: themedAnswer.shown ? "transparent" : root.accentColor
                         visible: parent.current
+
+                        ThemeImage {
+                            id: themedAnswer
+                            anchors.fill: parent
+                            part: root.theme.selection
+                        }
                     }
 
                     Text {

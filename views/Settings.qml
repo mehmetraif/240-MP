@@ -73,6 +73,34 @@ FocusScope {
             moduleId: ""
         })
 
+        // Theme — how the window is dressed, apart from the colour scheme: the
+        // shapes of its frame, bars and selected line, in the scheme's colours
+        // (AppCore::themes(), the app's own and the data folder's themes
+        // folder; read in Main.qml as root.theme). Saved by folder name, shown
+        // by the theme's name.
+        var themeList = appCore.themes()
+        var themeOpts = ["None"], themeVals = [""], themeValue = "None"
+        for (var ti = 0; ti < themeList.length; ti++) {
+            var themeName = themeList[ti].name
+            // Two of one name apart by their folders.
+            if (themeOpts.indexOf(themeName) >= 0)
+                themeName += " (" + themeList[ti].id + ")"
+            themeOpts.push(themeName)
+            themeVals.push(themeList[ti].id)
+            if (themeList[ti].id === appSettings["theme"])
+                themeValue = themeName
+        }
+        items.push({
+            type: "list_single",
+            key: "theme",
+            label: "Theme",
+            options: themeOpts,
+            values: themeVals,
+            value: themeValue,
+            description: "How the window is dressed: its frame, the title and hint bars and the selected line, in the color scheme's colors\n[NONE] OSD/OS's own  A new one is a folder in the data folder's themes, see the README",
+            moduleId: ""
+        })
+
         // OSD Background — what the menus are drawn on (Components/OsdGround,
         // read in Main.qml): the colour scheme's background over the whole
         // screen, none (black), or a framed window of it behind the menus.
@@ -83,6 +111,20 @@ FocusScope {
             options: ["Full", "Off", "Window"],
             value: root.osdBackgroundOf(appSettings["osd_background"]),
             description: "What the menus are drawn on\n[FULL] The color scheme's background, all over  [OFF] None, the menus on black like a deck's on-screen display  [WINDOW] A framed window of it behind the menus, black around it",
+            moduleId: ""
+        })
+
+        // Window Frame — the frame of OSD Background's window, offered only
+        // while it is Window (shownWith): the row comes and goes as that
+        // changes. Read in Main.qml, drawn by OsdGround.
+        items.push({
+            type: "list_single",
+            key: "osd_frame",
+            label: "Window Frame",
+            options: ["On", "Off", "Shadow"],
+            value: root.osdFrameOf(appSettings["osd_frame"]),
+            description: "The frame of the OSD Background's window\n[ON] A line in the color scheme's color  [OFF] None  [SHADOW] The line and a shadow below and to the right, like a DOS window's",
+            shownWith: { key: "osd_background", value: "Window" },
             moduleId: ""
         })
 
@@ -405,18 +447,35 @@ FocusScope {
         settingsItems = items
 
         // Restore saved position, or default to first selectable row
-        if (navListState.currentIndex !== undefined) {
-            settingsList.currentIndex = Math.min(navListState.currentIndex, items.length - 1)
-        } else {
-            for (var k = 0; k < items.length; k++) {
-                if (items[k].type !== "section") {
-                    settingsList.currentIndex = k
-                    break
-                }
+        var start = navListState.currentIndex !== undefined ? Math.min(navListState.currentIndex, items.length - 1) : 0
+        for (var k = 0; k < items.length; k++) {
+            if (selectable((start + k) % items.length)) {
+                settingsList.currentIndex = (start + k) % items.length
+                break
             }
         }
         settingsList.positionViewAtIndex(settingsList.currentIndex, ListView.Contain)
         settingsList.showWholeRows()
+    }
+
+    // A row offered only while another row has a value (its shownWith,
+    // { key, value }): Window Frame, while OSD Background is Window. It is in
+    // the model all the time, so the list stays where it is as it comes and
+    // goes.
+    function rowShown(idx) {
+        var row = settingsItems[idx]
+        if (!row || !row.shownWith)
+            return true
+        for (var i = 0; i < settingsItems.length; i++) {
+            if (settingsItems[i].key === row.shownWith.key)
+                return settingsItems[i].value === row.shownWith.value
+        }
+        return false
+    }
+
+    // The cursor stops on rows, not on headings or rows not offered now.
+    function selectable(idx) {
+        return settingsItems[idx].type !== "section" && rowShown(idx)
     }
 
     // The outputs, the cursor on the one in force.
@@ -428,18 +487,15 @@ FocusScope {
         }
     }
 
-    function firstSelectableAfter(idx) {
-        for (var i = idx + 1; i < settingsItems.length; i++) {
-            if (settingsItems[i].type !== "section") return i
+    // The next row the cursor stops on, up (-1) or down (1), round from one
+    // end of the list to the other.
+    function nextSelectable(idx, direction) {
+        var n = settingsItems.length
+        for (var step = 1; step < n; step++) {
+            var i = ((idx + direction * step) % n + n) % n
+            if (selectable(i)) return i
         }
-        return settingsList.currentIndex
-    }
-
-    function firstSelectableBefore(idx) {
-        for (var i = idx - 1; i >= 0; i--) {
-            if (settingsItems[i].type !== "section") return i
-        }
-        return settingsList.currentIndex
+        return idx
     }
 
     Component.onCompleted: buildModel()
@@ -494,22 +550,12 @@ FocusScope {
         focus: true
 
         Keys.onUpPressed: {
-            if (currentIndex > 0) currentIndex-- 
-            else {
-                currentIndex = settingsItems.length-1
-            }
-            while (settingsItems[currentIndex].type == "section") {
-                currentIndex--
-            }
+            currentIndex = settingsRoot.nextSelectable(currentIndex, -1)
             settingsList.positionViewAtIndex(currentIndex, ListView.Contain)
             showWholeRows()
         }
         Keys.onDownPressed: {
-            if (currentIndex < count - 1) currentIndex++
-            else currentIndex = 0
-            while (settingsItems[currentIndex].type == "section") {
-                currentIndex++
-            }
+            currentIndex = settingsRoot.nextSelectable(currentIndex, 1)
             settingsList.positionViewAtIndex(currentIndex, ListView.Contain)
             showWholeRows()
         }
@@ -623,13 +669,16 @@ FocusScope {
             id: rowItem
             // The row as it is now, read again as one changes.
             readonly property var row: (settingsRoot.revision, settingsRoot.settingsItems[index])
+            // Not offered now (shownWith): no line at all.
+            readonly property bool shown: (settingsRoot.revision, settingsRoot.rowShown(index))
             readonly property bool slider: row.type === "slider"
             readonly property real lineHeight: root.sh * 0.0583333 //28
             // A slider's bar takes whole lines under its own, so every line
             // keeps to the list's rule as it scrolls.
             readonly property int barLines: slider ? Math.ceil((tape.height + 2 * root.px) / lineHeight) : 0
             width: settingsList.width
-            height: lineHeight * (1 + barLines)
+            height: shown ? lineHeight * (1 + barLines) : 0
+            visible: shown
 
             // A line laid out like a camcorder's menu, "DISPLAY······ON", or a
             // section's heading, as large as the lines under it: "MODULES ─────".

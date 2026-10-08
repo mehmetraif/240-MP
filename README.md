@@ -38,8 +38,9 @@ As an app ([Install](#install)), OSD/OS is the same on screen, on top of whateve
 - **Display Output** in Settings, on the OSD/OS image: HDMI, composite, or RGB for SCART through a cable on the GPIO pins, among the outputs the Pi has (it reads which Pi it is: a Pi 4's AV jack, a Pi 5's TV pads). A new output stays only when you keep it on its screen; in 15 seconds without an answer the old one comes back.
 - **Audio Output** in Settings: the Pi's AV jack, HDMI or a USB sound card, for a Pi 5's sound on a CRT too, as it has no jack. It changes at once, for a video playing behind the menus too, and a card unplugged is passed over until it is back.
 - **A mouse pointer** (a mouse, or a keyboard's touchpad) that shows while the mouse moves and hides again after 5 seconds (Settings → Mouse Pointer).
-- **OSD Background** in Settings: the color scheme's background all over (Full), none, the menus on black like a deck's on-screen display (Off), or a framed window of it behind the menus, black around it (Window). Over a video behind the menus, a window lies over the picture, which shows whole around it.
-- **A tape loading** while a video starts: VHS noise in the theme's colours and a dubbing deck's display, with where the video is and, once known, how long it is. Settings → Loading Effect turns the noise off.
+- **OSD Background** in Settings: the color scheme's background all over (Full), none, the menus on black like a deck's on-screen display (Off), or a framed window of it behind the menus, black around it (Window). Over a video behind the menus, a window lies over the picture, which shows whole around it. Settings → Window Frame, offered with Window, frames it with a line, with nothing, or with a line and a DOS window's shadow.
+- **Themes** in Settings, apart from the color scheme: the shapes of the window's frame, the title and hint bars and the selected line, drawn in the color scheme's colors. Two come with it, DOS and Rounded, and a new one is a folder of pictures ([Themes](#themes)).
+- **A tape loading** while a video starts: VHS noise in the color scheme's colours and a dubbing deck's display, with where the video is and, once known, how long it is. Settings → Loading Effect turns the noise off.
 - **Hint Bar** and **Help Line** in Settings: the key hints at the foot of every screen and the line about the selected row under a menu, each on or off once the keys are second nature.
 - **About** in Settings: what OSD/OS is, who makes it, what it is made of and under which license, with the license's text to read on the device.
 - **The logo** in a corner of the picture while a video plays, like a channel's: Settings → Channel Logo picks the corner, all four, or none. It is on the About page and on the boot screen's cassette too.
@@ -270,6 +271,27 @@ YouTube without the YouTube app: your subscriptions, channels and playlists, sea
     - YouTube can block an account used through yt-dlp, as [yt-dlp's wiki](https://github.com/yt-dlp/yt-dlp/wiki/Extractors#youtube) warns, so sign in with a spare one
     - Needs Chromium, with `cage` and `wtype` without a desktop (see Netflix and Prime Video), or Google Chrome on a Mac
 - Needs yt-dlp, and Deno for full YouTube support ([BUILDING.md](BUILDING.md)). The [OSD/OS](os/README.md) image comes with both and keeps yt-dlp up to date
+
+## Themes
+
+Settings → **Theme** dresses the window, apart from the color scheme: the shapes of OSD Background's window frame, the title and hint bars, and the selected line. A theme gives only shapes. They are drawn in the color scheme's two colors, so every theme goes with every scheme. Two come with OSD/OS: **DOS**, a double line round the window, and **Rounded**, round corners on the window, the bars and the selected line.
+
+A theme is a folder in the data folder's `themes` (`~/.local/share/OSD-OS/themes/` on Linux and the OSD/OS image, `~/Library/Application Support/OSD-OS/themes/` on macOS), holding a `theme.json` and its pictures:
+
+```json
+{
+    "name": "Rounded",
+    "window":    { "image": "window.png", "border": 4 },
+    "titleBar":  { "image": "bar.png", "border": 3 },
+    "hintBar":   { "image": "bar.png", "border": 3 },
+    "selection": { "image": "bar.png", "border": 3 }
+}
+```
+
+- **Every part is optional**: one left out is drawn as OSD/OS draws it. `window` is the frame of OSD Background's window (Window, with Window Frame On or Shadow).
+- **A picture has two colors**, a PNG (or GIF, BMP): white where the color scheme's color goes, black where its background goes, transparent where nothing is drawn. Each of its pixels is an art pixel, a pixel of a 240-line picture, scaled up to the screen without blurring.
+- **`border`** is how many of the picture's pixels at each edge are its frame: one number, or `[left, top, right, bottom]`. The corners stay as drawn, the edges stretch along the part, and the middle fills the rest. `"tile": "repeat"` repeats the edges instead of stretching them (for a dotted line).
+- **One of OSD/OS's own** is replaced by a folder of the same name in the data folder. The log says which theme was read, and what in it could not be used.
 
 ## Install
 - **The OSD/OS image**, the whole system for a Raspberry Pi: download `OSD-OS-<version>-raspberry-pi.img.xz` from the [latest release](https://github.com/mehmetraif/OSD-OS/releases/latest) and flash it ([how](os/README.md#flashing))

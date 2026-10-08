@@ -38,6 +38,7 @@
 #include "util/ExecPath.h"
 #include "util/DisplayHandoff.h"
 #include "util/OsdIconProvider.h"
+#include "util/OsdSkinProvider.h"
 #include "util/LegacyNames.h"
 #ifdef Q_OS_MAC
 #include "util/MacosUtils.h"
@@ -281,6 +282,7 @@ int main(int argc, char *argv[]) {
     // The title bar's logos, in the theme's colour on the art-pixel grid
     // (image://osdicon/…). The engine owns it.
     engine.addImageProvider(QStringLiteral("osdicon"), new OsdIconProvider);
+    engine.addImageProvider(QStringLiteral("osdskin"), new OsdSkinProvider);
     // The picture of a video played inside this window (Transparent Background),
     // and a tape's noise, for the screen a video loads behind (LoadingScreen).
     qmlRegisterType<VideoSurface>("OSDOS.Video", 1, 0, "VideoSurface");

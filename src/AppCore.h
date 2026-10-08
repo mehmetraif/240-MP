@@ -55,6 +55,16 @@ public:
     Q_INVOKABLE QVariant get_installed_modules();
     Q_INVOKABLE QVariantMap getCustomColorScheme() const;
     Q_INVOKABLE QVariantMap getCustomColorSchemes() const;
+    // Settings → Theme, apart from the colour scheme: the themes there are,
+    // [{ id, name }] by name. A theme is a folder with a theme.json, the app's
+    // own (assets/themes) or the data folder's (themes), one there in place of
+    // the app's of the same name; its id is the folder's name.
+    Q_INVOKABLE QVariantList themes() const;
+    // One theme read for QML (Main.qml's root.theme): { id, name, window,
+    // titleBar, hintBar, selection }, a picture of each of the window's parts
+    // it dresses ({ source URL, border, tile }), only those it has that can
+    // be used; empty for none, or for one gone or unreadable.
+    Q_INVOKABLE QVariantMap theme(const QString &id) const;
     Q_INVOKABLE QVariantList listDirectories(const QString &path);
     Q_INVOKABLE QString parentDirectory(const QString &path);
     Q_INVOKABLE QString homePath();
@@ -127,6 +137,10 @@ private:
     // manifest default (an "enabled" setting whose default is "OFF"), else true.
     bool isModuleEnabled(const ModuleEntry &m, const QJsonObject &modulesConfig) const;
     QVariantMap importColorScheme(QJsonObject &obj) const;
+    // The folder of the theme with this id whose theme.json reads, the data
+    // folder's before the app's, and that theme.json; empty when there is
+    // none (or the id isn't a folder's name).
+    QString themeDir(const QString &id, QJsonObject *json) const;
 
     QString m_appRoot;
     QString m_dataRoot;

@@ -131,6 +131,12 @@ Once signed in, each opens on the server's Continue Watching and its libraries. 
 </table>
 
 <table>
+<tr><th width="50%">Theme: DOS, Window Frame: Shadow</th><th width="50%">Theme: Rounded</th></tr>
+<tr><td><img src="screenshots/theme-dos.png" width="100%" alt="Theme: DOS, Window Frame: Shadow" /></td><td><img src="screenshots/theme-rounded.png" width="100%" alt="Theme: Rounded" /></td></tr>
+<tr><td>Theme dresses the window, apart from the color scheme: DOS gives it a double line. Window Frame, offered with OSD Background's Window, adds a DOS window's shadow, a half tone of the window's color (over a video, it darkens the picture), or takes the frame away.</td><td>Rounded rounds the window's corners and the ends of its bars and of the selected line. A theme gives the shapes; the color scheme still gives the colors.</td></tr>
+</table>
+
+<table>
 <tr><th width="50%">A module's settings</th><th width="50%">Picking a folder</th></tr>
 <tr><td><img src="screenshots/module-settings.png" width="100%" alt="A module's settings" /></td><td><img src="screenshots/folder-picker.png" width="100%" alt="Picking a folder" /></td></tr>
 <tr><td>Local Files: its folder, looping, shuffle, resume, subtitles, and its own Scaling.</td><td>Folders are picked by browsing to them.</td></tr>
