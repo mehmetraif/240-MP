@@ -1,4 +1,5 @@
 #pragma once
+#include <QElapsedTimer>
 #include <QImage>
 #include <QObject>
 #include <QProcess>
@@ -9,6 +10,7 @@
 #include <QJsonArray>
 #include <QStringList>
 #include <QVariantMap>
+#include <functional>
 #include "EmbeddedMpv.h"
 
 class AppCore;
@@ -194,9 +196,21 @@ private:
                             const QStringList &extraArgs, const QString &jellyfinToken, bool embedded);
     // An mpv process for a session: args its options, media what plays.
     void startProcess(QStringList args, const QStringList &media);
+    // The session loadAndPlay() asked for (serial), started once the screen
+    // is free (screenBusy()).
     void launchAfterRetirement(int serial, const QStringList &args,
                                const QStringList &media, bool embedded);
+    // stop() before that session started: its player is told it stopped once
+    // the screen is free, and back with the app.
     void stopAfterRetirement(int serial, int positionMs);
+    // True while the next session must wait: the process loadAndPlay()
+    // retired for it is still on its way out, or the screen is being handed
+    // back to the app (handBackScreen()). A retired process that outlives its
+    // kill is given up on after a few seconds, so that the menus come back.
+    bool screenBusy();
+    // The screen back from the mpv process that had it, then `then`. Headless,
+    // after DisplayHandoff's settle delay, as when a process ends; else at once.
+    void handBackScreen(std::function<void()> then);
     // Transparent Background is on, and libmpv is there to play inside the app.
     bool transparentBackground() const;
     // The decode and drawing flags for a session played inside the app, as
@@ -264,6 +278,8 @@ private:
     VideoProfile  m_videoProfile  = VideoProfile::Generic;
     QProcess     *m_process        = nullptr;
     QPointer<QProcess> m_retiringProcess;
+    QElapsedTimer m_retireClock;           // since m_retiringProcess was told to quit
+    bool          m_handingBack    = false; // handBackScreen() under way
     QLocalSocket *m_ipc            = nullptr;
     QTimer       *m_connectTimer   = nullptr;
     QTimer       *m_watchdogTimer  = nullptr;

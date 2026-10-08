@@ -6,6 +6,7 @@
 #include "../util/MpvLocator.h"
 #include "../util/DisplayHandoff.h"
 #include "../util/FontconfigOverride.h"
+#include "../util/AtomicFile.h"
 #include "../util/Board.h"
 #include "../util/LegacyNames.h"
 #include <QCoreApplication>
@@ -26,6 +27,12 @@
 #include <cmath>
 
 namespace {
+
+// A process retired for the next session (loadAndPlay) is told to quit, is
+// killed if it is still there a second later, and is given up on
+// (screenBusy) if even that hasn't ended it a few seconds on.
+constexpr int kRetireKillMs   = 1000;
+constexpr int kRetireGiveUpMs = 5000;
 
 // A channel logo of the user's own (Settings → Logo Image), read for
 // mpv-logo.lua to lay over the picture with mpv's overlay-add: at the height
@@ -50,11 +57,14 @@ bool writeLogoOverlay(const QString &image, const QString &out, int *width, int 
     if (picture.height() != h)
         picture = picture.scaledToHeight(h, Qt::SmoothTransformation);
     picture = picture.convertToFormat(QImage::Format_ARGB32_Premultiplied);
-    QFile f(out);
-    if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate))
-        return false;
+    QByteArray raw;
+    raw.reserve(picture.width() * picture.height() * 4);
     for (int y = 0; y < picture.height(); ++y)
-        f.write(reinterpret_cast<const char *>(picture.constScanLine(y)), picture.width() * 4);
+        raw.append(reinterpret_cast<const char *>(picture.constScanLine(y)), picture.width() * 4);
+    // Replaced whole, not rewritten in place: an mpv started just before (one
+    // being retired, or libmpv inside the app) may still be reading the last.
+    if (!writeFileAtomically(out, raw))
+        return false;
     *width = picture.width();
     *height = picture.height();
     return true;
@@ -475,6 +485,7 @@ void MpvController::loadAndPlay(const QString &url, float startSeconds,
         old->disconnect();
         if (old->state() != QProcess::NotRunning) {
             m_retiringProcess = old;
+            m_retireClock.start();
             connect(old, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
                     old, &QObject::deleteLater);
             connect(old, &QProcess::errorOccurred, old, [old](QProcess::ProcessError error) {
@@ -483,7 +494,7 @@ void MpvController::loadAndPlay(const QString &url, float startSeconds,
             });
             connect(old, &QProcess::started, old, [old]() { old->terminate(); });
             old->terminate();
-            QTimer::singleShot(1000, old, [old]() {
+            QTimer::singleShot(kRetireKillMs, old, [old]() {
                 if (old->state() != QProcess::NotRunning)
                     old->kill();
             });
@@ -535,38 +546,78 @@ void MpvController::launchAfterRetirement(int serial, const QStringList &args,
                                          const QStringList &media, bool embedded) {
     if (serial != m_launchSerial)
         return;
-    if (m_retiringProcess && m_retiringProcess->state() != QProcess::NotRunning) {
+    if (screenBusy()) {
         QTimer::singleShot(25, this, [this, serial, args, media, embedded]() {
             launchAfterRetirement(serial, args, media, embedded);
         });
         return;
     }
+    // Played inside the app, the picture needs the screen back first, from
+    // the process retired for it.
+    if (embedded && m_headlessMode) {
+        handBackScreen([this, serial, args, media]() {
+            launchAfterRetirement(serial, args, media, true);
+        });
+        return;
+    }
     QFile::remove(m_socketPath);
     m_launchPending = false;
-    if (embedded) {
-        if (m_handoff)
-            m_handoff->releaseNow(QLatin1String(kHandoffOwner));
-        m_headlessMode = false;
+    if (embedded)
         startEmbedded(args);
-    } else {
+    else
         startProcess(args, media);
-    }
 }
 
 void MpvController::stopAfterRetirement(int serial, int positionMs) {
     if (serial != m_launchSerial)
         return;
-    if (m_retiringProcess && m_retiringProcess->state() != QProcess::NotRunning) {
+    if (screenBusy()) {
         QTimer::singleShot(25, this, [this, serial, positionMs]() {
             stopAfterRetirement(serial, positionMs);
         });
         return;
     }
     QFile::remove(m_socketPath);
-    if (m_handoff)
-        m_handoff->releaseNow(QLatin1String(kHandoffOwner));
-    m_headlessMode = false;
-    emit playbackEnded(positionMs, 0, QStringLiteral("stopped"));
+    // Unless another session was asked for meanwhile: it is that one's now.
+    handBackScreen([this, serial, positionMs]() {
+        if (serial == m_launchSerial)
+            emit playbackEnded(positionMs, 0, QStringLiteral("stopped"));
+    });
+}
+
+bool MpvController::screenBusy() {
+    if (m_handingBack)
+        return true;
+    if (!m_retiringProcess || m_retiringProcess->state() == QProcess::NotRunning)
+        return false;
+    if (m_retireClock.elapsed() < kRetireGiveUpMs)
+        return true;
+    // Stuck where even a kill can't reach it (in a driver, or on a network
+    // mount gone away). It still deletes itself if it ever ends; unparented,
+    // so that the app quitting doesn't wait on it either.
+    qWarning("[MpvController] mpv (pid %lld) is still there %d s after it was told to quit; "
+             "going on without it", qint64(m_retiringProcess->processId()), kRetireGiveUpMs / 1000);
+    m_retiringProcess->setParent(nullptr);
+    m_retiringProcess = nullptr;
+    return false;
+}
+
+void MpvController::handBackScreen(std::function<void()> then) {
+    if (!m_headlessMode || !m_handoff) {
+        m_headlessMode = false;
+        then();
+        return;
+    }
+    // DisplayHandoff defers the DRM restore and VT switch (200 ms by default)
+    // because mpv's last KMS atomic commit may still be pending in the vc4
+    // driver at the moment the process exits. The next session waits for it
+    // (screenBusy), so that the restore can't take the screen from it.
+    m_handingBack = true;
+    m_handoff->releaseDeferred(QLatin1String(kHandoffOwner), [this, then]() {
+        m_handingBack = false;
+        m_headlessMode = false;
+        then();
+    });
 }
 
 void MpvController::startProcess(QStringList args, const QStringList &media) {
@@ -576,8 +627,13 @@ void MpvController::startProcess(QStringList args, const QStringList &media) {
     const QString bin = mpvbin::locate();
     if (bin.isEmpty()) {
         qWarning("[MpvController] mpv not found (no bundled sibling, none on PATH)");
-        QTimer::singleShot(0, this, [this]() {
-            emit playbackEnded(0, 0, QStringLiteral("stopped"));
+        // With the screen back, if the process retired for this one had it.
+        const int serial = m_launchSerial;
+        QTimer::singleShot(0, this, [this, serial]() {
+            handBackScreen([this, serial]() {
+                if (serial == m_launchSerial)
+                    emit playbackEnded(0, 0, QStringLiteral("stopped"));
+            });
         });
         return;
     }
@@ -883,21 +939,13 @@ void MpvController::onProcessFinished() {
     else                                   reason = QStringLiteral("stopped");
     m_menuOnExit = false;
 
-    auto finish = [this, pos, dur, reason]() {
-        emit playbackEnded(pos, dur, reason);
-    };
-    if (m_headlessMode && m_handoff) {
-        // DisplayHandoff defers the DRM restore and VT switch (200 ms by
-        // default) because mpv's last KMS atomic commit may still be pending in
-        // the vc4 driver at the moment the process exits.
-        m_handoff->releaseDeferred(QLatin1String(kHandoffOwner),
-                                   [this, finish]() {
-            m_headlessMode = false;
-            finish();
-        });
-    } else {
-        finish();
-    }
+    // Told with the screen back, unless another session was asked for
+    // meanwhile: the end isn't its.
+    const int serial = m_launchSerial;
+    handBackScreen([this, serial, pos, dur, reason]() {
+        if (serial == m_launchSerial)
+            emit playbackEnded(pos, dur, reason);
+    });
 }
 
 void MpvController::sendCommand(const QJsonArray &args) {
