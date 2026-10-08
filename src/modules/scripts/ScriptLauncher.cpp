@@ -1,5 +1,6 @@
 #include "ScriptLauncher.h"
 #include "../../util/DisplayHandoff.h"
+#include "../../audio/AudioOutput.h"
 #include <QFileInfo>
 #include <QFile>
 #include <QDir>
@@ -248,6 +249,9 @@ bool ScriptLauncher::start(const ScriptEntry &entry, QString *errorOut) {
         env.insert(QStringLiteral("OSDOS_VT"), QString::number(vt));
         env.insert(QStringLiteral("MP240_VT"), QString::number(vt));
     }
+    // Settings → Audio Output's card, for what plays sound through ALSA (a
+    // web player's browser among them).
+    AudioOutput::applyTo(env);
 #ifdef Q_OS_LINUX
     // Strip the wrong-word-size Steam overlay hook the Gaming Mode session hands
     // down, so ld.so's "wrong ELF class ... ignored" warning stops appearing in

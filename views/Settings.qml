@@ -353,6 +353,23 @@ FocusScope {
                 moduleId: ""
             })
         }
+        // AUDIO OUTPUT — the sound card the players play through, among those
+        // ALSA has now (audioOutput): ◄ ► change it at once, for a video
+        // playing behind the menus too. One chosen but unplugged stays
+        // chosen, passed over until it is back.
+        if (audioOutput && audioOutput.available) {
+            var audio = audioOutput.settingRow()
+            items.push({
+                type: "list_single",
+                key: "audio_output",
+                label: "Audio Output",
+                options: audio.options,
+                values: audio.values,
+                value: audio.value,
+                description: "Which sound card plays: the AV jack, HDMI or a USB sound card, from the moment it is chosen\n[AUTO] The Pi's own default  [UNPLUGGED] Chosen but not plugged in: sound goes as on Auto until it is back",
+                moduleId: ""
+            })
+        }
         items.push({
             type: "submenu",
             key: "remap_controls",

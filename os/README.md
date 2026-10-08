@@ -99,7 +99,7 @@ GPIO pins carry 3.3 V and take nothing more: SCART's 5 V and 12 V must never rea
 | Ring 2: ground | 4 (audio ground), 17 (video ground), 21 (shield) |
 | Sleeve: composite video | 20 (video in) |
 
-A Pi 5 has no AV jack: its composite comes from the two pads by HDMI 1 (J7, the picture and ground) and needs wires or a pin header soldered on, to SCART pin 20 and 17. It has no analog audio either: a USB sound card gives SCART pins 6 and 2 their sound. The **GPIO composite** of a Pi 5 is an 8-bit code on GPIO 4 (lowest bit) to 11, for a DAC to turn into the picture: the pads are the simpler way.
+A Pi 5 has no AV jack: its composite comes from the two pads by HDMI 1 (J7, the picture and ground) and needs wires or a pin header soldered on, to SCART pin 20 and 17. It has no analog audio either: a USB sound card gives SCART pins 6 and 2 their sound, chosen in **Settings → Audio Output**. The **GPIO composite** of a Pi 5 is an 8-bit code on GPIO 4 (lowest bit) to 11, for a DAC to turn into the picture: the pads are the simpler way.
 
 **SCART RGB on the GPIO pins** (Pi 4, Pi 5), in the layout of the VGA666 board, which the presets use:
 
@@ -114,7 +114,7 @@ A Pi 5 has no AV jack: its composite comes from the two pads by HDMI 1 (J7, the 
 | GND (6, 9, …) | ground | 4, 5, 9, 13, 17, 18, 21 |
 
 - Each colour's six pins meet at its SCART pin through resistors of 510 Ω (the highest bit), 1 kΩ, 2 kΩ, 3.9 kΩ, 8.2 kΩ and 16 kΩ (the lowest), as on the VGA666: about 0.7 V into the TV's 75 Ω. 549 Ω, 1.1 kΩ, 2.21 kΩ, 4.42 kΩ, 8.87 kΩ and 17.8 kΩ (E96) halve each step exactly; 1 % resistors are close enough for 6 bits.
-- Sound: from the Pi 4's AV jack (tip, ring 1, ring 2 as above), whose pins are inside the Pi, clear of the GPIO pins, or a Pi 5's USB sound card, to pins 6, 2 and 4.
+- Sound: from the Pi 4's AV jack (tip, ring 1, ring 2 as above), whose pins are inside the Pi, clear of the GPIO pins, or a USB sound card (a Pi 5 has no jack), to pins 6, 2 and 4. **Settings → Audio Output** picks which plays.
 - Pin 8 at 9.5–12 V (from a 12 V supply through 1 kΩ) switches most TVs to the SCART input, in 4:3. Without it, choose the input with the TV's remote.
 - The picture rolls on a Pi 4: change the sync polarities in the preset's `dpi_timings` (its 2nd and 7th numbers) from 0 to 1.
 

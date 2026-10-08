@@ -1,0 +1,55 @@
+#pragma once
+#include <QObject>
+#include <QString>
+#include <QStringList>
+#include <QVariantMap>
+
+class AppCore;
+class QProcessEnvironment;
+
+// Settings → Audio Output: the sound card OSD/OS plays through, among those
+// ALSA has (/proc/asound): the Pi's AV jack, its HDMI, a USB sound card.
+// ALSA's own default is left as it is; each player is told the card as it
+// starts: mpv (a video, Ambient Mode's and Weather's music) with
+// --audio-device, any other program (a web player's browser, a script) with
+// ALSA_CARD in its environment, and a video playing behind the menus moves to
+// a new one at once (MpvController::followAudioOutput). A card chosen but
+// unplugged is passed over until it is back: sound goes where it would
+// without the setting.
+//
+// Offered on Linux where nothing between the players and ALSA picks the card
+// itself, no PipeWire or PulseAudio server: the OS image. OSDOS_ASOUND_DIR
+// stands in for /proc/asound, for tests.
+class AudioOutput : public QObject {
+    Q_OBJECT
+    Q_PROPERTY(bool available READ available CONSTANT)
+
+public:
+    explicit AudioOutput(AppCore *appCore, QObject *parent = nullptr);
+
+    bool available() const;
+
+    // Settings' row, { options, values, value }: Auto, then each card that
+    // can play now by its name, and the chosen one marked when it is
+    // unplugged. A value is the setting as saved (app.audio_output): "" for
+    // Auto, else { card, name }, the card's ALSA id and its name then.
+    Q_INVOKABLE QVariantMap settingRow() const;
+
+    // The chosen card's ALSA id while it is plugged in, else "".
+    static QString card();
+    // mpv's --audio-device for it ("alsa/default:CARD=<id>"), else "".
+    static QString mpvDevice();
+    // The options an mpv about to start takes for it: none without one.
+    static QStringList mpvArgs();
+    // For another program about to start: ALSA_CARD names the card.
+    static void applyTo(QProcessEnvironment &env);
+
+signals:
+    // Another card was chosen.
+    void cardChanged();
+
+private:
+    void load();
+
+    AppCore *m_appCore;
+};

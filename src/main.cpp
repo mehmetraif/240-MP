@@ -33,6 +33,7 @@
 #include "update/UpdateManager.h"
 #include "boot/BootProgress.h"
 #include "display/DisplayOutput.h"
+#include "audio/AudioOutput.h"
 #include "bluetooth/BluetoothManager.h"
 #include "util/ExecPath.h"
 #include "util/DisplayHandoff.h"
@@ -218,6 +219,7 @@ int main(int argc, char *argv[]) {
     UpdateManager       updateManager(appRoot, dataRoot);
     BootProgress        bootProgress;      // inert outside the OSD/OS image (os/)
     DisplayOutput       displayOutput(dataRoot); // Settings → Display Output, on the image
+    AudioOutput         audioOutput(&appCore);   // Settings → Audio Output (ALSA)
     BluetoothManager    bluetoothManager;  // Settings → Bluetooth (BlueZ on Linux)
 
     // Playback follows the UI's display: mpv gets a --fs-screen* arg derived
@@ -228,6 +230,8 @@ int main(int argc, char *argv[]) {
     // gamepad actions bypass QML and drive mpv directly over IPC.
     QObject::connect(&inputManager, &InputManager::mpvKeyRequested,
                      &mpvController, &MpvController::sendKey);
+    QObject::connect(&audioOutput, &AudioOutput::cardChanged,
+                     &mpvController, &MpvController::followAudioOutput);
 
     // Each module backend is wired in one call: stored for action routing, exposed to QML
     // under its context-property name, and its optional signals/slots connected by
@@ -253,6 +257,7 @@ int main(int argc, char *argv[]) {
     ctx->setContextProperty("updateManager", &updateManager);
     ctx->setContextProperty("bootProgress",  &bootProgress);
     ctx->setContextProperty("displayOutput", &displayOutput);
+    ctx->setContextProperty("audioOutput",   &audioOutput);
     ctx->setContextProperty("bluetoothManager", &bluetoothManager);
     // Whether a child has the screen (Main.qml: root.screenHandedOff).
     ctx->setContextProperty("displayHandoff", &displayHandoff);

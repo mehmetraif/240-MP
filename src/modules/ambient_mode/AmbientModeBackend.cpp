@@ -1,5 +1,6 @@
 #include "AmbientModeBackend.h"
 #include "../../util/MpvLocator.h"
+#include "../../audio/AudioOutput.h"
 #include <QDir>
 #include <QFile>
 #include <QJsonDocument>
@@ -101,6 +102,8 @@ void AmbientModeBackend::startAudio(const QStringList &paths, bool shuffle)
     // replays on every wrap rather than being reshuffled each cycle.
     if (shuffle)
         args << QStringLiteral("--shuffle");
+    // Settings → Audio Output's card, while it is plugged in.
+    args << AudioOutput::mpvArgs();
 
     m_audioProcess = new QProcess(this);
     m_audioProcess->start(bin, args);

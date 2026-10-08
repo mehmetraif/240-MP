@@ -1,5 +1,6 @@
 #include "WeatherBackend.h"
 #include "../../util/MpvLocator.h"
+#include "../../audio/AudioOutput.h"
 
 #include <QDir>
 #include <QFile>
@@ -594,6 +595,8 @@ void WeatherBackend::startMusic() {
          << QStringLiteral("--no-terminal")
          << QStringLiteral("--really-quiet")
          << QStringLiteral("--input-ipc-server=%1").arg(m_musicSocketPath)
+         // Settings → Audio Output's card, while it is plugged in.
+         << AudioOutput::mpvArgs()
          // Everything after this is a file, so an entry starting with '-'
          // cannot be mistaken for an option.
          << QStringLiteral("--")
