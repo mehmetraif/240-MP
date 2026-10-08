@@ -1,0 +1,12 @@
+[Unit]
+Description=USB drive %I, read-only for OSD/OS's Local Files
+# Started by udev as the drive comes (99-osdos-usb-mount.rules); stopped, which
+# takes its folder away, as the drive goes.
+BindsTo=dev-%i.device
+After=dev-%i.device
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/lib/osdos/usb-mount add %i
+ExecStop=/usr/lib/osdos/usb-mount remove %i

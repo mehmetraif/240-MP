@@ -158,6 +158,12 @@ FocusScope {
         target: typeof localFilesBackend !== "undefined" ? localFilesBackend : null
         ignoreUnknownSignals: true
         function onSearchReady(path) { tree.refresh("local:" + path) }
+        // A USB drive plugged in or taken out, as in Local Files' own tree.
+        function onDrivesChanged(gone) {
+            for (var i = 0; i < gone.length; ++i)
+                tree.leave("local:" + gone[i])
+            tree.refresh("local:" + localFilesBackend.mediaRoot(), true)
+        }
     }
     Connections {
         target: playlistsBackend

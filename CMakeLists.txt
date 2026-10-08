@@ -66,6 +66,7 @@ add_executable(osdos
     src/util/Board.cpp
     src/AppCore.cpp
     src/modules/local_files/LocalFilesBackend.cpp
+    src/modules/local_files/RemovableDrives.cpp
     src/modules/plex/PlexBackend.cpp
     src/modules/jellyfin/JellyfinBackend.cpp
     src/modules/emby/EmbyBackend.cpp

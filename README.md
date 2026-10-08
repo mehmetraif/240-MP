@@ -21,6 +21,7 @@ It's built to work in conjunction with [MPV](https://github.com/anthonycaccese/2
 - **Every screen is OSD/OS's own.** The boot screen, the menus, the file browser (Local Files' tree), the on-screen keyboard, the info screens, Settings, Bluetooth pairing, updates, and quitting, restarting or switching off: all of it is drawn by OSD/OS, in its own letters, and worked with a remote. It hands the screen over only to what plays: mpv for a video, and Chromium, full screen with nothing around it, for Netflix and Prime Video, whose players only run in a browser (and to sign in to YouTube), or a script of yours that asks for the screen.
 - **No needless background jobs.** The services Raspberry Pi OS keeps, Wi-Fi, Bluetooth, the local network and SSH (when enabled), wait until OSD/OS is on screen and then start one after another. The apt, man-db, e2scrub and dpkg-backup timers that wake the SD card at random times, mid-film included, are gone, as are cron and the Raspberry Pi Connect agent, and cloud-init runs on the first boot only.
 - **Films on the card.** The card's free space is a partition of its own, in exFAT, which Windows and macOS open too: copy films onto it from a computer and Local Files plays them.
+- **USB drives as they are plugged in.** A USB stick or disk shows up in Local Files, under its label, and goes again when it is pulled out. It is mounted read-only, so it can be pulled out at any moment.
 - **Linux underneath.** The image is Raspberry Pi OS Lite (64-bit), which is based on Debian 13 "trixie", built with Raspberry Pi's own image builder, pi-gen. The kernel, the firmware and the drivers are Raspberry Pi OS's, and OSD/OS adds one stage on top. What the image is made of, and under which licences, is in [os/NOTICE](os/NOTICE).
 
 As an app ([Install](#install)), OSD/OS is the same on screen, on top of whatever the system around it runs.
@@ -151,7 +152,8 @@ The films, videos and photos you keep yourself, in a folder on the device, a USB
 - On the OSD/OS image, films go on the SD card itself: its **OSD-OS** partition opens on Windows and macOS like a USB stick, and Local Files opens it ([os/README.md](os/README.md#films-on-the-card))
 - Playlist support using `m3u` and `m3u8` files
 - Folder browsing as a horizontal tree: the open folders run along a line across the screen, every folder in the current one branches off to a few of its own entries, and the folder under the cursor branches once more
-- **Recently Watched**, **Favorites** and **Search** lead the tree: what you played last, what you marked (right on a file, then **Add to Favorites**), and file and folder names anywhere in the media folder, typed on an on-screen keyboard
+- **Recently Watched**, **Favorites** and **Search** lead the tree: what you played last, what you marked (right on a file, then **Add to Favorites**), and file and folder names anywhere in the media folder and on the USB drives plugged in, typed on an on-screen keyboard
+- **USB drives** plugged in come next, each under its label (`USB: KINGSTON`), and go when they are pulled out, the tree closing back from one that was open. On the OSD/OS image they are mounted read-only by themselves ([os/README.md](os/README.md#usb-drives)); on a desktop or a Mac, whatever the system mounts as it comes is there too
 - Loop playback
 - Shuffle playback
 - Playback history

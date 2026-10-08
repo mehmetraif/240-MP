@@ -1,0 +1,3 @@
+# NTFS through ntfs-3g where the kernel's own driver (ntfs3) is missing, for a
+# disk formatted on Windows (see files/usb-mount).
+ntfs-3g

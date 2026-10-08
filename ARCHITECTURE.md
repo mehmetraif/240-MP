@@ -26,6 +26,7 @@ osd-os/
     modules/                        # per-module C++ backends
       local_files/
         LocalFilesBackend.h/.cpp
+        RemovableDrives.h/.cpp      # the USB drives plugged in, from the mount table
       plex/
         PlexBackend.h/.cpp          # good reference backend implementation
       playlists/
@@ -745,7 +746,7 @@ Anything shaped like folders, browsed as a horizontal tree, the way Local Files,
 | `optionsRequested(item)` | Right on an entry that isn't a folder, with `preview` off: offer its options (an `EntryOptions`) |
 | `leaveRequested()` | Back with no folder left to close |
 
-`openItem({ name, path })` opens a folder that isn't an entry of the current one, like a search's results; `folderName` is the open folder's name, for the `AppBar` subtitle, and `currentEntry` the entry under the cursor, for a footer that says what select will do (`[ENTER]:OPEN` on a folder, `:PLAY` on a film). A key already held as the tree appears (Back held to close a player) does not repeat into it.
+`openItem({ name, path })` opens a folder that isn't an entry of the current one, like a search's results; `refresh(path, keepEntry)` fetches a folder again (its entries changed, or came in after `fetch` returned `null`), the cursor keeping its row, or with `keepEntry` the entry it was on (not for a list that grows under the cursor, like YouTube's MORE); `leave(prefix)` closes the open folders at `prefix` and in it, a drive pulled out; `folderName` is the open folder's name, for the `AppBar` subtitle, and `currentEntry` the entry under the cursor, for a footer that says what select will do (`[ENTER]:OPEN` on a folder, `:PLAY` on a film). A key already held as the tree appears (Back held to close a player) does not repeat into it.
 
 ### InfoPanel (`views/Components/InfoPanel.qml`)
 
@@ -755,9 +756,19 @@ When it comes up is the app's **INFO SCREEN** setting (`app.info_screen`): `off`
 
 ### Recently Watched and Favorites
 
-The tree modules (Local Files, Netflix, Prime Video, YouTube) begin with **RECENTLY WATCHED** and **FAVORITES**, then **SEARCH** and their own folders. Both are the module's lists in AppCore (`get_list(moduleId, "recent" | "favorites")`, kept in `lists.json` in the data folder), holding entries as the tree had them, so one plays from there as it would from anywhere else: a view puts an entry on `recent` as it plays it (the newest 30), and on `favorites` from its options (`EntryOptions`). YouTube's RECENTLY WATCHED is its own watch history (`history`), which keeps the resume positions too. Local Files leaves out the entries whose file has gone (`existing()`, a drive taken out, say), and its SEARCH walks the whole media folder a slice at a time, so a big library never holds the screen still: `search(path, words)` gives what the last search for that folder found, or starts it and `searchReady(path)` follows, keeping the first 200 names that hold every word.
+The tree modules (Local Files, Netflix, Prime Video, YouTube) begin with **RECENTLY WATCHED** and **FAVORITES**, then **SEARCH** and their own folders. Both are the module's lists in AppCore (`get_list(moduleId, "recent" | "favorites")`, kept in `lists.json` in the data folder), holding entries as the tree had them, so one plays from there as it would from anywhere else: a view puts an entry on `recent` as it plays it (the newest 30), and on `favorites` from its options (`EntryOptions`). YouTube's RECENTLY WATCHED is its own watch history (`history`), which keeps the resume positions too. Local Files leaves out the entries whose file has gone (`existing()`, a drive taken out, say), and its SEARCH walks the whole media folder, then the USB drives plugged in, a slice at a time, so a big library never holds the screen still: `search(path, words)` gives what the last search for that folder found, or starts it and `searchReady(path)` follows, keeping the first 200 names that hold every word.
 
 One favourite can **PLAY AT STARTUP**: chosen in its options (`EntryOptions`, which puts it on FAVORITES too), it is the app setting `startup_favorite` (`{ module, path, name }`). After the boot screen `Main.qml`'s `openStartupModule()` opens its module, ahead of Start on Module, with `navParams.startupPlay` set to the entry, as long as it is still one of that module's favourites; the module's router passes it on to its tree view, which plays it as if chosen in FAVORITES (a trail into that folder, so back from it lands there). Only as the view first opens: a view coming back gets `navListState` instead. Settings → Play at Startup can only turn it off. `AppCore::save_setting` takes a JS object for this (QML hands it over as a `QJSValue`). The tree tells the player it plays at startup (`navParams.startup`), and the player then never asks where to start: it resumes where the video was stopped, or starts it from the beginning, as the app setting `startup_from` (Settings → Startup From, `Resume` or `Beginning`, offered while there is a startup favourite) says. A resume prompt is no question to put to a player switched on to play.
+
+### USB drives in Local Files
+
+Local Files lists the USB drives plugged in (sticks, disks, a card in a reader) at the top of its tree, after RECENTLY WATCHED, FAVORITES and SEARCH, as folders named `USB: <label>`, and they come and go as they are plugged in and pulled out.
+
+- **`RemovableDrives`** (`src/modules/local_files/RemovableDrives.h/.cpp`) finds them in the mount table: on Linux, `/proc/self/mountinfo` (`OSDOS_MOUNTINFO` names another file, for tests), read again whenever the kernel flags it (`POLLPRI`, at every mount and unmount, through a `QSocketNotifier`); on macOS, the mounted volumes, read again as `/Volumes` changes. A drive is a block device (`/dev/…`) mounted under `/media/` or `/run/media/` (the OSD/OS image's `/media/usb/<label>`, udisks' `/media/<user>/<label>`), or under `/Volumes/`, named after its mount point's folder, which is its label. Not one that `/etc/fstab` mounts (the image's own OSD-OS partition), nor one holding the media folder or held in it, which the tree shows already.
+- **The backend** puts them into `entries()` for the media folder, ahead of its own folders (the three lists come whenever there is anything at all, a drive alone included), lets `getItems()` into them as roots of their own beside the media folder, walks them in a search after the media folder, and emits `drivesChanged(gone)`, `gone` being the mount points of those pulled out.
+- **The tree** (`Items.qml`, and Playlists' ADD VIDEOS) closes the folders open on a drive pulled out (`TreeBrowser.leave(prefix)`) and refreshes the top of the tree and the two lists with `keepEntry`, so the cursor stays on the entry it was on as rows come and go above it. A file of a drive pulled out drops out of RECENTLY WATCHED and FAVORITES (`existing()`) until it is plugged in again.
+- **The file systems' own folders** (`lost+found`, Windows' `System Volume Information` and `$RECYCLE.BIN`) are never listed, on a drive or in the media folder.
+- **On the OSD/OS image** a drive is mounted read-only as it comes (`os/stage-osdos/07-usb`, see [os/README.md](os/README.md#usb-drives)), so it can be pulled out at any moment; a player still reading one gets mpv's read errors and ends as a video that fails does. An offline playlist plays a drive's video as it is, as it does the media folder's, so only while the drive is in.
 
 ### OnScreenKeyboard (`views/Components/OnScreenKeyboard.qml`)
 

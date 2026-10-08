@@ -1,0 +1,4 @@
+# OSD/OS image: a USB drive's file systems are mounted read-only under
+# /media/usb as they come, for Local Files, and taken away as they go
+# (osdos-usb-mount@.service, /usr/lib/osdos/usb-mount).
+ACTION=="add", SUBSYSTEM=="block", ENV{ID_BUS}=="usb", ENV{ID_FS_USAGE}=="filesystem", TAG+="systemd", ENV{SYSTEMD_WANTS}+="osdos-usb-mount@%k.service"
