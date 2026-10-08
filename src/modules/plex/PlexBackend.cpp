@@ -1,4 +1,5 @@
 #include "PlexBackend.h"
+#include "../../util/AtomicFile.h"
 
 #include <QFile>
 #include <QJsonDocument>
@@ -80,14 +81,8 @@ QJsonObject PlexBackend::loadAuth() const {
 }
 
 void PlexBackend::saveAuth(const QJsonObject &auth) const {
-    QFile f(m_dataRoot + "/plex_auth.json");
-    if (!f.open(QIODevice::WriteOnly)) {
-        qWarning("[PlexBackend] Could not write plex_auth.json: %s", qPrintable(f.errorString()));
-        return;
-    }
-    f.setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner);
-    f.write(QJsonDocument(auth).toJson(QJsonDocument::Indented));
-    f.close();
+    writeFileAtomically(m_dataRoot + "/plex_auth.json", QJsonDocument(auth).toJson(QJsonDocument::Indented),
+                        QFileDevice::ReadOwner | QFileDevice::WriteOwner);
 }
 
 QJsonObject PlexBackend::loadConfig() const {
@@ -102,9 +97,7 @@ QJsonObject PlexBackend::loadConfig() const {
 }
 
 void PlexBackend::saveConfig(const QJsonObject &cfg) const {
-    QFile f(m_dataRoot + "/config.json");
-    if (!f.open(QIODevice::WriteOnly)) return;
-    f.write(QJsonDocument(cfg).toJson(QJsonDocument::Indented));
+    writeFileAtomically(m_dataRoot + "/config.json", QJsonDocument(cfg).toJson(QJsonDocument::Indented));
 }
 
 // ---------------------------------------------------------------------------
@@ -213,15 +206,8 @@ QByteArray PlexBackend::generateAndSaveKeyPair(const QString &keyId) {
     QByteArray pemData(bptr->data, static_cast<int>(bptr->length));
     BIO_free(bio);
 
-    QFile keyFile(m_dataRoot + "/plex_key.pem");
-    if (keyFile.open(QIODevice::WriteOnly)) {
-        keyFile.setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner);
-        keyFile.write(pemData);
-        keyFile.close();
-    } else {
-        qWarning("[PlexBackend] Could not write plex_key.pem: %s",
-                 qPrintable(keyFile.errorString()));
-    }
+    writeFileAtomically(m_dataRoot + "/plex_key.pem", pemData,
+                        QFileDevice::ReadOwner | QFileDevice::WriteOwner);
 
     // Export 32-byte raw public key for JWK
     size_t pubLen = 32;

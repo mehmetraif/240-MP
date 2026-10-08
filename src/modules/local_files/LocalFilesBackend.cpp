@@ -1,11 +1,11 @@
 #include "LocalFilesBackend.h"
 #include "RemovableDrives.h"
+#include "util/AtomicFile.h"
 #include "util/LegacyNames.h"
 #include "../../AppCore.h"
 #include <QDir>
 #include <QDirIterator>
 #include <QFile>
-#include <QSaveFile>
 #include <QFutureWatcher>
 #include <QtConcurrent/QtConcurrentRun>
 #include <atomic>
@@ -13,7 +13,6 @@
 #include <QVariantMap>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QTimer>
 #include <algorithm>
 
 // supported image types
@@ -106,19 +105,8 @@ QVariantMap LocalFilesBackend::loadHistory() const {
 }
 
 void LocalFilesBackend::saveHistory(const QVariantMap &history) {
-    QSaveFile file(historyFilePath());
-    if (!file.open(QIODevice::WriteOnly)) {
-        qWarning("[LocalFiles] Could not open history: %s", qPrintable(file.errorString()));
-        return;
-    }
-    const QByteArray data = QJsonDocument(QJsonObject::fromVariantMap(history)).toJson(QJsonDocument::Compact);
-    if (file.write(data) != data.size()) {
-        qWarning("[LocalFiles] Could not write history: %s", qPrintable(file.errorString()));
-        file.cancelWriting();
-        return;
-    }
-    if (!file.commit())
-        qWarning("[LocalFiles] Could not commit history: %s", qPrintable(file.errorString()));
+    writeFileAtomically(historyFilePath(),
+                        QJsonDocument(QJsonObject::fromVariantMap(history)).toJson(QJsonDocument::Compact));
 }
 
 QVariantMap LocalFilesBackend::getSavedPosition(const QString &filePath) {
@@ -392,6 +380,7 @@ QVariant LocalFilesBackend::search(const QString &path, const QString &words, bo
         for (const QString &root : roots) {
             if (run->cancelled)
                 return QVariantList();
+            // Not through symbolic links: one pointing back up would never end.
             QDirIterator it(root, QDir::Dirs | QDir::Files | QDir::NoDotAndDotDot,
                             QDirIterator::Subdirectories);
             while (!run->cancelled && it.hasNext()) {

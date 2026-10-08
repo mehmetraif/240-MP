@@ -7,6 +7,7 @@
 #include <QNetworkReply>
 #include <QUrlQuery>
 
+#include "../../util/AtomicFile.h"
 #include "../../util/EmbyApi.h"
 #include "../../util/SslErrors.h"
 #include <QVariantList>
@@ -95,14 +96,8 @@ void JellyfinBackend::saveAuthState() {
     auth["serverName"]  = m_serverName;
     auth["deviceId"]    = m_deviceId;
 
-    QFile f(m_dataRoot + "/jellyfin_auth.json");
-    if (!f.open(QIODevice::WriteOnly)) {
-        qWarning("[JellyfinBackend] Could not write jellyfin_auth.json: %s", qPrintable(f.errorString()));
-        return;
-    }
-    f.setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner);
-    f.write(QJsonDocument(auth).toJson(QJsonDocument::Indented));
-    f.close();
+    writeFileAtomically(m_dataRoot + "/jellyfin_auth.json", QJsonDocument(auth).toJson(QJsonDocument::Indented),
+                        QFileDevice::ReadOwner | QFileDevice::WriteOwner);
 }
 
 void JellyfinBackend::clearAuthState() {
@@ -138,12 +133,7 @@ QJsonObject JellyfinBackend::loadConfig() const {
 }
 
 void JellyfinBackend::saveConfig(const QJsonObject &cfg) const {
-    QFile f(m_dataRoot + "/config.json");
-    if (!f.open(QIODevice::WriteOnly)) {
-        qWarning("[JellyfinBackend] Could not write config.json: %s", qPrintable(f.errorString()));
-        return;
-    }
-    f.write(QJsonDocument(cfg).toJson(QJsonDocument::Indented));
+    writeFileAtomically(m_dataRoot + "/config.json", QJsonDocument(cfg).toJson(QJsonDocument::Indented));
 }
 
 QJsonObject JellyfinBackend::moduleConfig() const {

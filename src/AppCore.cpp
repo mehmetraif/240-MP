@@ -1,8 +1,8 @@
 #include "AppCore.h"
+#include "util/AtomicFile.h"
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
-#include <QSaveFile>
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QUrl>
@@ -69,20 +69,9 @@ QJsonObject AppCore::loadConfig() const {
     };
 }
 
-void AppCore::saveConfig(const QJsonObject &config) const {
-    QSaveFile f(m_dataRoot + "/config.json");
-    if (!f.open(QIODevice::WriteOnly)) {
-        qWarning("[AppCore] Could not write config.json: %s", qPrintable(f.errorString()));
-        return;
-    }
-    const QByteArray data = QJsonDocument(config).toJson(QJsonDocument::Indented);
-    if (f.write(data) != data.size()) {
-        qWarning("[AppCore] Could not write config.json: %s", qPrintable(f.errorString()));
-        f.cancelWriting();
-        return;
-    }
-    if (!f.commit())
-        qWarning("[AppCore] Could not commit config.json: %s", qPrintable(f.errorString()));
+bool AppCore::saveConfig(const QJsonObject &config) const {
+    return writeFileAtomically(m_dataRoot + "/config.json",
+                               QJsonDocument(config).toJson(QJsonDocument::Indented));
 }
 
 bool AppCore::isModuleEnabled(const ModuleEntry &m, const QJsonObject &modulesConfig) const {
@@ -227,11 +216,13 @@ void AppCore::save_setting(const QString &moduleId, const QString &key, const QV
     }
 
     setTarget(target);
-    saveConfig(config);
-
-    qDebug("[AppCore] Setting saved: %s.%s = %s",
-           qPrintable(moduleId.isEmpty() ? "app" : moduleId),
-           qPrintable(key), qPrintable(value.toString()));
+    if (saveConfig(config))
+        qDebug("[AppCore] Setting saved: %s.%s = %s",
+               qPrintable(moduleId.isEmpty() ? "app" : moduleId),
+               qPrintable(key), qPrintable(value.toString()));
+    else
+        qWarning("[AppCore] Setting not saved: %s.%s",
+                 qPrintable(moduleId.isEmpty() ? "app" : moduleId), qPrintable(key));
 
     if (moduleId.isEmpty())
         emit appSettingChanged(key, value.toString());
@@ -723,12 +714,8 @@ QJsonObject AppCore::loadLists() const {
 }
 
 void AppCore::saveLists(const QJsonObject &lists) const {
-    QFile f(m_dataRoot + QStringLiteral("/lists.json"));
-    if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-        qWarning("[AppCore] Could not write lists.json: %s", qPrintable(f.errorString()));
-        return;
-    }
-    f.write(QJsonDocument(lists).toJson(QJsonDocument::Compact));
+    writeFileAtomically(m_dataRoot + QStringLiteral("/lists.json"),
+                        QJsonDocument(lists).toJson(QJsonDocument::Compact));
 }
 
 QVariantList AppCore::get_list(const QString &moduleId, const QString &name) const {

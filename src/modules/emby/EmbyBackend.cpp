@@ -7,6 +7,7 @@
 #include <QNetworkReply>
 #include <QUrlQuery>
 
+#include "../../util/AtomicFile.h"
 #include "../../util/EmbyApi.h"
 #include "../../util/SslErrors.h"
 #include <QVariantList>
@@ -119,14 +120,8 @@ void EmbyBackend::saveAuthState() {
     auth["serverName"]  = m_serverName;
     auth["deviceId"]    = m_deviceId;
 
-    QFile f(m_dataRoot + "/emby_auth.json");
-    if (!f.open(QIODevice::WriteOnly)) {
-        qWarning("[EmbyBackend] Could not write emby_auth.json: %s", qPrintable(f.errorString()));
-        return;
-    }
-    f.setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner);
-    f.write(QJsonDocument(auth).toJson(QJsonDocument::Indented));
-    f.close();
+    writeFileAtomically(m_dataRoot + "/emby_auth.json", QJsonDocument(auth).toJson(QJsonDocument::Indented),
+                        QFileDevice::ReadOwner | QFileDevice::WriteOwner);
 }
 
 void EmbyBackend::clearAuthState() {

@@ -1,6 +1,7 @@
 #include "NfcReaderBackend.h"
 
 #include "../../AppCore.h"
+#include "../../util/AtomicFile.h"
 #include "../../util/FileNames.h"
 #include "NfcDriver.h"
 #include "PcscDriver.h"
@@ -478,11 +479,11 @@ bool NfcReaderBackend::writeCardFile(const QString &uid, const QString &title,
     QDir().mkpath(tagsDirPath());
 
     // The file this UID is mapped to today, if any. It is the one existing file
-    // this write is allowed to truncate.
+    // this write is allowed to replace.
     const auto prev = m_mapping.constFind(normalizedUid);
     const QString prevName = (prev != m_mapping.constEnd()) ? prev->title : QString();
 
-    // Two cards must never land on one filename: the second write would truncate
+    // Two cards must never land on one filename: the second write would replace
     // the first card's file and silently break that card. Titles alone are not
     // unique — the same film in two libraries, two editions, or a hand-made file
     // all collide — so suffix until the name is free.
@@ -509,20 +510,10 @@ bool NfcReaderBackend::writeCardFile(const QString &uid, const QString &title,
         }
     }
 
-    QFile file(path);
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-        qWarning("[NfcReader] Could not write tag file %s: %s",
-                 qPrintable(path), qPrintable(file.errorString()));
-        return false;
-    }
     QString body = normalizedUid + "\n" + ref + "\n";
     if (!mode.isEmpty()) body += mode + "\n";
-    if (file.write(body.toUtf8()) < 0) {
-        qWarning("[NfcReader] Could not write tag file %s: %s",
-                 qPrintable(path), qPrintable(file.errorString()));
+    if (!writeFileAtomically(path, body.toUtf8()))
         return false;
-    }
-    file.close();
 
     qDebug("[NfcReader] Wrote tag file: %s -> %s%s", qPrintable(path), qPrintable(ref),
            mode.isEmpty() ? "" : qPrintable(" (" + mode + ")"));
@@ -555,10 +546,8 @@ QVariantMap NfcReaderBackend::loadHistory() const {
 }
 
 void NfcReaderBackend::saveHistory(const QVariantMap &history) {
-    QFile file(historyFilePath());
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate))
-        return;
-    file.write(QJsonDocument(QJsonObject::fromVariantMap(history)).toJson(QJsonDocument::Compact));
+    writeFileAtomically(historyFilePath(),
+                        QJsonDocument(QJsonObject::fromVariantMap(history)).toJson(QJsonDocument::Compact));
 }
 
 QVariantMap NfcReaderBackend::getSavedPosition(const QString &videoPath) {

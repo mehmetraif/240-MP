@@ -2,6 +2,7 @@
 
 #include "../../AppCore.h"
 #include "../web_player/WebPlayerBackend.h"
+#include "../../util/AtomicFile.h"
 #include "../../util/YtDlpLocator.h"
 
 #include <QDateTime>
@@ -804,10 +805,8 @@ QVariantMap YouTubeBackend::loadHistory() const {
 }
 
 void YouTubeBackend::saveHistory(const QVariantMap &history) {
-    QFile file(historyFilePath());
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate))
-        return;
-    file.write(QJsonDocument(QJsonObject::fromVariantMap(history)).toJson(QJsonDocument::Compact));
+    writeFileAtomically(historyFilePath(),
+                        QJsonDocument(QJsonObject::fromVariantMap(history)).toJson(QJsonDocument::Compact));
 }
 
 QVariantMap YouTubeBackend::getSavedPosition(const QString &videoId) {
@@ -883,10 +882,8 @@ QVariantList YouTubeBackend::loadWatchLater() const {
 }
 
 void YouTubeBackend::saveWatchLater(const QVariantList &list) {
-    QFile file(watchLaterFilePath());
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate))
-        return;
-    file.write(QJsonDocument(QJsonArray::fromVariantList(list)).toJson(QJsonDocument::Compact));
+    writeFileAtomically(watchLaterFilePath(),
+                        QJsonDocument(QJsonArray::fromVariantList(list)).toJson(QJsonDocument::Compact));
 }
 
 QVariantList YouTubeBackend::getWatchLater() const {
