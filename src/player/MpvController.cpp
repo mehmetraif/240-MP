@@ -10,6 +10,8 @@
 #include "../util/LegacyNames.h"
 #include <QCoreApplication>
 #include <QGuiApplication>
+#include <QImageReader>
+#include <QScreen>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -24,6 +26,39 @@
 #include <cmath>
 
 namespace {
+
+// A channel logo of the user's own (Settings → Logo Image), read for
+// mpv-logo.lua to lay over the picture with mpv's overlay-add: at the height
+// OSD/OS's logo stands (7% of the screen's), its shape kept, as raw
+// premultiplied BGRA, mpv's overlay format, in `out`. mpv before 0.38 can't
+// scale an overlay, so it is made at the size it is shown. False, and a line
+// in the log, for a picture that can't be read.
+bool writeLogoOverlay(const QString &image, const QString &out, int *width, int *height) {
+    QImageReader reader(image);
+    reader.setAutoTransform(true);
+    const QSize natural = reader.size();
+    const QScreen *screen = QGuiApplication::primaryScreen();
+    const int screenHeight = screen ? qRound(screen->size().height() * screen->devicePixelRatio()) : 480;
+    const int h = qMax(8, qRound(screenHeight * 0.07));
+    if (natural.isValid() && !natural.isEmpty())
+        reader.setScaledSize(QSize(qMax(1, qRound(double(natural.width()) * h / natural.height())), h));
+    QImage picture = reader.read();
+    if (picture.isNull()) {
+        qWarning("[MpvController] logo image %s: %s", qPrintable(image), qPrintable(reader.errorString()));
+        return false;
+    }
+    if (picture.height() != h)
+        picture = picture.scaledToHeight(h, Qt::SmoothTransformation);
+    picture = picture.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    QFile f(out);
+    if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate))
+        return false;
+    for (int y = 0; y < picture.height(); ++y)
+        f.write(reinterpret_cast<const char *>(picture.constScanLine(y)), picture.width() * 4);
+    *width = picture.width();
+    *height = picture.height();
+    return true;
+}
 
 // Text for the log with every token the modules hand mpv blanked out: a
 // server's in a URL's query (Jellyfin's ApiKey, Emby's api_key), Plex's in
@@ -53,6 +88,7 @@ MpvController::MpvController(const QString &appRoot, const QString &dataRoot,
     , m_inputConfPath(QDir::tempPath() + "/osdos-input.conf")
     , m_logFilePath(QDir::tempPath() + "/osdos-mpv.log")
     , m_subInfoPath(QDir::tempPath() + "/osdos-mpv-subinfo.json")
+    , m_logoOverlayPath(QDir::tempPath() + "/osdos-logo.bgra")
 {
     m_videoProfile = detectVideoProfile();
     qInfo("[MpvController] video profile: %s",
@@ -197,7 +233,10 @@ QStringList MpvController::sessionArgs(const QString &url, float startSeconds,
     // by mpv itself (scripts/mpv-logo.lua), so it is in the picture in both
     // modes and under whatever the app draws over it. The corner reaches the
     // script with the script options below; unset is the top right.
+    // Settings → Logo Image puts a picture of the user's own there instead,
+    // made for the script as an overlay of the size it is shown at.
     QString logoCorner;
+    int logoWidth = 0, logoHeight = 0;
     if (m_appCore) {
         const QString corner = m_appCore->get_setting(QString(), "video_logo").toString();
         const QString logoScript = m_appRoot + "/scripts/mpv-logo.lua";
@@ -206,6 +245,9 @@ QStringList MpvController::sessionArgs(const QString &url, float startSeconds,
                           || corner == QLatin1String("br") || corner == QLatin1String("all"))
                          ? corner : QStringLiteral("tr");
             args << QString("--script=%1").arg(logoScript);
+            const QString image = m_appCore->get_setting(QString(), "video_logo_image").toString();
+            if (!image.isEmpty() && !writeLogoOverlay(image, m_logoOverlayPath, &logoWidth, &logoHeight))
+                logoWidth = logoHeight = 0;
         }
     }
 
@@ -263,6 +305,9 @@ QStringList MpvController::sessionArgs(const QString &url, float startSeconds,
         scriptOpts << QString("screensaver_timeout=%1").arg(screensaverTimeout);
     if (!logoCorner.isEmpty())
         scriptOpts << QString("logo-corner=%1").arg(logoCorner);
+    if (logoWidth > 0)
+        scriptOpts << QString("logo-image=%1").arg(m_logoOverlayPath)
+                   << QString("logo-width=%1").arg(logoWidth) << QString("logo-height=%1").arg(logoHeight);
     // Tell the OSC scripts to hide their CROP button on decode paths where
     // --panscan would blank the video (Pi 3 overlay path, 1080p Playback ON).
     if (noCrop)

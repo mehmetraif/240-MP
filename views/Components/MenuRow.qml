@@ -52,9 +52,16 @@ Item {
         text: "M"
     }
 
-    Rectangle {
+    // The selected line's bar, or the theme's picture of it.
+    ThemeImage {
+        id: themedBar
         anchors.fill: parent
         visible: menuRow.selected
+        part: root.theme.selection
+    }
+    Rectangle {
+        anchors.fill: parent
+        visible: menuRow.selected && !themedBar.shown
         color: root.primaryColor
         antialiasing: false
     }

@@ -38,6 +38,7 @@ osd-os/
       FileNames.h                   # safeFileName(): a name every filesystem takes (exFAT's rules)
       SslErrors.h                   # expectedLanSslErrors(): a LAN server's own certificate
       EmbyApi.h                     # the Emby API's URLs that Jellyfin shares (browse, download, stream)
+      OsdSkinProvider.h/.cpp        # a theme's pictures in the colour scheme's two colours (image://osdskin)
       ...
     player/
       MpvController.h/.cpp          # mpv subprocess controller: QProcess launch + IPC socket
@@ -66,9 +67,12 @@ osd-os/
     ModuleList.qml
     Settings.qml
     About.qml                       # Settings → About: the credits, and the licence's text
+    FilePicker.qml                  # the folder or file a setting names, picked on a TreeBrowser
     ...
-    Components/                     # shared QML components (AppBar, HintBar, MenuRow, MenuList, HelpLine, ScrollMarks, TreeBrowser, InfoPanel, EntryOptions, PlaylistAdder, PlayerMenu, LoadingScreen, PromptScreen, OsdGround, MousePointer, OnScreenKeyboard, WebPlayerBrowse, WebPlayerLaunch, the Osd* elements, ChoiceOverlay, qmldir)
+    Components/                     # shared QML components (AppBar, HintBar, MenuRow, MenuList, HelpLine, ScrollMarks, TreeBrowser, InfoPanel, EntryOptions, PlaylistAdder, PlayerMenu, LoadingScreen, PromptScreen, OsdGround, ThemeImage, MousePointer, OnScreenKeyboard, WebPlayerBrowse, WebPlayerLaunch, the Osd* elements, ChoiceOverlay, qmldir)
     BootScreen.qml                  # boot screen of the OSD/OS image (see os/README.md)
+  assets/
+    themes/                         # Settings → Theme's own themes (DOS, Rounded): theme.json and two-colour pictures
   Main.qml                          # app root
   CMakeLists.txt
   os/                               # OSD/OS image: a pi-gen stage on Raspberry Pi OS Lite
@@ -122,7 +126,7 @@ Loaded at startup by `AppCore` — the single source of truth for a module's ide
 | `multiselect_submenu` | Multi-select list via submenu | `options_source`, `options_slot` |
 | `submenu` | A page of its own for a group of settings, like YouTube's ADVANCED | `settings`: its rows, in this same format (a submenu may hold another) |
 | `module_view` | Opens the module itself on one of its own views, like Netflix's SIGN IN | `params`: the `navParams` its `Root.qml` routes on |
-| `directory_browser` | Keyboard-navigable directory picker | `default` (path string, may be empty) |
+| `directory_browser` | A folder, picked on the file picker's tree ([FilePicker](#filepicker-viewsfilepickerqml)); `""` is the module's own | `default` (path string, may be empty) |
 | `action` | Button that calls a backend slot | `action_slot` |
 
 Additional fields any setting may carry:
@@ -177,7 +181,8 @@ A real example (Plex) — note `requires_auth`, dynamic options, and apply slots
 | `invoke_module_action(moduleId, slotName)` | Routes to the registered backend via `QMetaObject::invokeMethod` |
 | `get_module_auth_state(moduleId)` | Returns the module's auth state (for `requires_auth` settings) |
 | `getCustomColorScheme()` | Returns the user's custom color scheme |
-| `listDirectories(path)` / `parentDirectory(path)` / `homePath()` | Helpers for `directory_browser` |
+| `themes()` / `theme(id)` | Settings → Theme: the themes there are (`[{ id, name }]`: the app's own in `assets/themes` and the data folder's `themes`, one there in place of the app's of the same folder name), and one read for QML (`root.theme`), a picture of each of the window's parts it dresses (see [Themes](#themes-settings--theme)) |
+| `filePlaces()` / `folderEntries(path, types)` | The file picker's places (home, `/media`, `/run/media/<user>`, `/Volumes`, the root, those there are) and a folder's entries: its folders, then its files of those types, hidden ones left out |
 | `licenseText()` | The licence's text (`LICENSE` next to the app), its paragraphs each on one line, for Settings → About |
 
 ### Signals
@@ -295,6 +300,8 @@ The on-screen controls mpv shows during playback are custom Lua scripts in `scri
 ### The channel logo (`scripts/mpv-logo.lua`)
 
 Settings → **Channel Logo** (`app.video_logo`: `"tl"`, `"tr"` (the default, when unset), `"bl"`, `"br"`, `"all"` for one in each corner, or `"off"`) puts OSD/OS's logo in a corner of the picture while a video plays, the way a channel's sits in a broadcast. mpv draws it itself: `sessionArgs()` loads `scripts/mpv-logo.lua` with `logo-corner=<corner>` among the script options, so it is there in both modes (the embedded session takes the same `--script`), and it is in the picture, under whatever the app draws over it (the menus over a video behind them, with Transparent Background). The script redraws `assets/images/logo-bug.svg` as ASS vector shapes (`mp.assdraw`, one event per colour) on `mp.set_osd_ass` at the output's size: 7% of the output's height tall, 10% of the picture's width and height in from the picture's corner (`osd-dimensions`, its margins taken off, so a letterboxed picture's bars stay clear of it), and again whenever the output's size changes. Like every setting mpv is launched with, it applies from the next video.
+
+Settings → **Logo Image** (`app.video_logo_image`, a picture's path; OSD/OS's logo when unset), offered while Channel Logo isn't Off, puts a picture of the user's own there instead, picked on the [FilePicker](#filepicker-viewsfilepickerqml) (PNG, JPEG, SVG, GIF, BMP or WebP). `sessionArgs()` reads it at the logo's height (7% of the screen's) into raw premultiplied BGRA (`osdos-logo.bgra` in the temp folder), mpv's overlay format, and hands the script `logo-image`, `logo-width` and `logo-height`; the script lays it in each corner with `overlay-add` (ids 0 to 3), placed as the drawn logo is. It is made at the size it is shown because mpv before 0.38 can't scale an overlay. A picture that can't be read leaves OSD/OS's logo, with a line in the log.
 
 ### Transparent Background: video inside the app
 
@@ -680,7 +687,7 @@ Shared QML components live in `views/Components/` (registered via `qmldir`, impo
 | `title` | `string` | Module name — use `moduleRoot.moduleName` |
 | `subtitle` | `string` | Optional context label (hidden when empty) |
 
-The module's logo stands at its left end, in the theme's text colour, a fifth taller than the bar so it stands out of it above and below, an art pixel clear of it on each side. Then comes a solid bar in the same colour with the title and subtitle in the background colour, the way a deck's on-screen menu starts. The logo is drawn by `OsdIconProvider` (`src/util/`, `image://osdicon/<rrggbb>/<url>`): trimmed to its shape and drawn from the original at the bar's size (a vector is rendered at that height, not scaled from a bitmap), in one colour with its own smooth edges. A width asked for as well as a height (`sourceSize` both) stretches the drawing to it, for a picture that must keep its shape on a screen whose pixels are not square (the boot screen's cassette at 720×480 on a 4:3 tube). It does not use a shader effect, which the software scene graph draws as nothing.
+The module's logo stands at its left end, in the colour scheme's text colour, a fifth taller than the bar so it stands out of it above and below, an art pixel clear of it on each side. Then comes a solid bar in the same colour with the title and subtitle in the background colour, the way a deck's on-screen menu starts; a theme's `titleBar` picture takes the bar's place (Settings → Theme). The logo is drawn by `OsdIconProvider` (`src/util/`, `image://osdicon/<rrggbb>/<url>`): trimmed to its shape and drawn from the original at the bar's size (a vector is rendered at that height, not scaled from a bitmap), in one colour with its own smooth edges. A width asked for as well as a height (`sourceSize` both) stretches the drawing to it, for a picture that must keep its shape on a screen whose pixels are not square (the boot screen's cassette at 720×480 on a 4:3 tube). It does not use a shader effect, which the software scene graph draws as nothing.
 
 ### PromptScreen (`views/Components/PromptScreen.qml`)
 
@@ -700,13 +707,23 @@ It only draws: the host keeps its keys, its cursor and its visibility, so a dial
 
 ### OsdGround (`views/Components/OsdGround.qml`)
 
-What the OSD is drawn on, as Settings → **OSD Background** (`app.osd_background`, `root.osdBackground`) has it: **Full** (the default), the colour scheme's background all over; **Window**, a window of it behind what a view shows, framed in the scheme's colour, black around it; **Off**, none, black (with the colours above). The window (`root.osdWindow`) is the area the views lay their content out in (`root.contentBox`: the title bar's logo to the hint bar, 74 to 566 across and 57 to 430 down at 640×480), with a margin (`root.osdMargin`, 12) on every side, on art pixels.
+What the OSD is drawn on, as Settings → **OSD Background** (`app.osd_background`, `root.osdBackground`) has it: **Full** (the default), the colour scheme's background all over; **Window**, a window of it behind what a view shows, black around it, framed as Settings → **Window Frame** (`app.osd_frame`, `root.osdFrame`) has it: **On** (the default), a line in the scheme's colour, or the theme's `window` picture; **Off**, none; **Shadow**, the frame and a DOS window's shadow, its two arms down the window's right side and along its foot, six art pixels deep and dithered (`Dither`, whose `phase` keeps one checkerboard across both arms): a half tone of the window's colour on the black around it, every other art pixel black over a video; **Off**, none, black (with the colours above). The window (`root.osdWindow`) is the area the views lay their content out in (`root.contentBox`: the title bar's logo to the hint bar, 74 to 566 across and 57 to 430 down at 640×480), with a margin (`root.osdMargin`, 12) on every side, on art pixels.
 
 `Main.qml` lays one under every view (`z: -1`, over the window's own colour, black but for Full). Over a video behind the menus it is as solid as Transparent Background says, and in Window only the window is drawn (`surround: false`), the picture showing whole around it. A layer that hides the whole view under it lays its own (`PromptScreen`, the `OnScreenKeyboard` and `InfoPanel` below the title bar, `NfcCardWriter`, Bluetooth's DETAILS), never a `Rectangle` of `root.surfaceColor`, so the window goes on under it just as it was: it works in screen coordinates, the window placed where it lies on the screen whatever part of it the ground covers. `LoadingScreen` and the boot screen keep their own full-screen ground: the tape's picture, not the OSD's.
 
+Settings offers Window Frame only while OSD Background is Window: the row's `shownWith: { key, value }` (or `{ key, not }`, Logo Image's while Channel Logo isn't Off) keeps it in the model, with no line and passed over by the cursor, while the row with that key has another value, so the list stays where it is as the row comes and goes.
+
+### Themes (Settings → Theme)
+
+Settings → **Theme** (`app.theme`, a theme's folder name; none when unset) dresses the window, apart from the colour scheme: a theme gives the shapes of the window's parts, and the scheme still gives every colour, so any theme goes with any scheme. A theme is a folder with a `theme.json` (its `name`, and a picture for any of `window`, `titleBar`, `hintBar` and `selection`: `{ "image", "border", "tile" }`, or just the file's name), the app's own in `assets/themes` (DOS, Rounded) or the data folder's `themes`, one there in place of the app's of the same folder name. The format, for a theme's author, is in the README's [Themes](README.md#themes).
+
+- `AppCore::themes()` lists them for the Settings row, by name (the value saved is the folder's name), and `theme(id)` reads one for `Main.qml`'s `root.theme`: the parts it has that can be used, their files as URLs. A picture must be a PNG, GIF or BMP in the theme's own folder (a path out of it, or a link out of it, is refused) and a `border` one number or four; the log names what was left out, and a `theme.json` that isn't JSON leaves the theme out of the list.
+- `ThemeImage` draws a part where the window's own drawing goes, which stays as the fallback: `OsdGround`'s window frame (`window`, with Window Frame On or Shadow), the `AppBar`'s bar (`titleBar`), the `HintBar` (`hintBar`), and the selected line (`selection`) in `MenuRow`, the main menu, the `TreeBrowser`'s cursor and a `PromptScreen`'s answers.
+- `OsdSkinProvider` (`src/util/`, `image://osdskin/<primary>/<surface>/<file URL>`) maps the picture to the two colours a pixel at a time: clear (alpha under half) stays clear, light (grey from half up) takes the scheme's colour, dark its background. It reads only local files. A change of scheme, or OSD Background's Off, asks for the picture again in the new colours.
+
 ### VCR OSD elements
 
-The UI keeps to two colours, like a deck's on-screen display: the theme's `primary` on its `surface`. `Main.qml` maps `secondaryColor`, `tertiaryColor` and `accentColor` to `primaryColor`, so existing views follow without change. Settings → **OSD Background** Off makes the two the theme's lighter colour and black (`surfaceColor` black, `primaryColor` whichever of `primary` and `surface` is lighter, so a theme with dark text, T-120, doesn't vanish), and every view follows that too. Within that:
+The UI keeps to two colours, like a deck's on-screen display: the colour scheme's `primary` on its `surface`. `Main.qml` maps `secondaryColor`, `tertiaryColor` and `accentColor` to `primaryColor`, so existing views follow without change. Settings → **OSD Background** Off makes the two the scheme's lighter colour and black (`surfaceColor` black, `primaryColor` whichever of `primary` and `surface` is lighter, so a scheme with dark text, T-120, doesn't vanish), and every view follows that too. Within that:
 
 - a selection is a solid box with its text in `surfaceColor`;
 - anything dimmed is dithered with `Dither` instead of given a lower opacity;
@@ -716,12 +733,13 @@ Pixel-drawn pieces of a deck's on-screen menu, built on `root.px` (one pixel of 
 
 | Component | What it draws |
 |---|---|
-| `HintBar` | The footer hint line on a solid bar. It is a `Text`, so a view sets `text` and anchors exactly as on one. It owns its font size, steps it down only as far as a long hint needs to fit the safe width. Every view's footer and every dialog's hint line uses it, always in the same place: anchored to the bottom, `bottomMargin: root.sh * 0.1041667`, `leftMargin: root.sw * 0.125`, never under a dialog's last line (a `PromptScreen` does this for a dialog). Settings → **Hint Bar** (`app.hint_bar`, `"On"` when unset, or `"Off"`; `root.hintBar`) hides every one at once, by the bar's `opacity`, so a view's own `visible` binding holds and the window keeps its shape. |
-| `MenuRow` | A settings line the way a camcorder's menu lays one out, `DISPLAY······ON`: `label`, a dot per character cell, then `value` against the line's right end (none for a submenu), with `selected` as a solid bar. With `heading` it heads a group instead: the label and a rule to the line's end (`MODULES ─────`). A value too long for the line is cut short, and scrolls through while the line is selected (with `alwaysScroll`, all the time: About's lines, which are read rather than chosen); with `keepValue` the label is cut instead, two dots before a value that always shows whole (a playlist's videos, `TEEN TITANS GO!… ··READY`). Settings, every module's settings, Controls and the Playlists module use it. |
+| `HintBar` | The footer hint line on a solid bar (or the theme's `hintBar` picture). It is a `Text`, so a view sets `text` and anchors exactly as on one. It owns its font size, steps it down only as far as a long hint needs to fit the safe width. Every view's footer and every dialog's hint line uses it, always in the same place: anchored to the bottom, `bottomMargin: root.sh * 0.1041667`, `leftMargin: root.sw * 0.125`, never under a dialog's last line (a `PromptScreen` does this for a dialog). Settings → **Hint Bar** (`app.hint_bar`, `"On"` when unset, or `"Off"`; `root.hintBar`) hides every one at once, by the bar's `opacity`, so a view's own `visible` binding holds and the window keeps its shape. |
+| `MenuRow` | A settings line the way a camcorder's menu lays one out, `DISPLAY······ON`: `label`, a dot per character cell, then `value` against the line's right end (none for a submenu), with `selected` as a solid bar (or the theme's `selection` picture). With `heading` it heads a group instead: the label and a rule to the line's end (`MODULES ─────`). A value too long for the line is cut short, and scrolls through while the line is selected (with `alwaysScroll`, all the time: About's lines, which are read rather than chosen); with `keepValue` the label is cut instead, two dots before a value that always shows whole (a playlist's videos, `TEEN TITANS GO!… ··READY`). Settings, every module's settings, Controls and the Playlists module use it. |
 | `ScrollMarks` | The ▲ above a list while lines are hidden above it and the ▼ below while lines are hidden below. Laid over a list (`anchors.fill` and `list`); the main menu and the settings menus use it. |
 | `MenuList` | A view's menu of `MenuRow`s in the place every view's list has (under the title bar, one row short of the help line), with `ScrollMarks` and a cursor (`step(delta)`, Up and Down) that steps over section headings (rows whose `type` is `"section"`), round the ends. The host gives it `model` (a list) and `delegate`, and keys it; `currentIndex`, `count` and `contentY` are the list's. The Playlists module's pages use it. |
 | `HelpLine` | The help line under a settings menu: the focused line's description in an outlined box, on one line. A description too long for the box scrolls through it like a ticker; one written as several lines reads as one, joined with `•`. Settings → **Help Line** (`app.help_line`, `"On"` when unset, or `"Off"`; `root.helpLine`) hides every one at once, by its `opacity`, so a host's own `visible` binding holds and its menu keeps its shape; one whose lines are the page itself sets `always` (About's). |
-| `Dither` | A checkerboard of background-colour art pixels laid over an area: the two-colour way to dim it. |
+| `Dither` | A checkerboard of background-colour art pixels laid over an area: the two-colour way to dim it. `phase` 1 starts it a pixel along, so two pieces of one pattern meet (the arms of the window's shadow). |
+| `ThemeImage` | One of the theme's pictures over an area (`part`: `root.theme.window`, `.titleBar`, `.hintBar` or `.selection`): nine slices as its `border` has them, drawn on art pixels and scaled up by `root.px` without smoothing, in the colour scheme's two colours (`OsdSkinProvider`). `shown` is false while there is none, and the caller draws its own then (see [Themes](#themes-settings--theme)). |
 | `PixelIcon` | A symbol from a small bitmap: `play`, `left`, `up`, `down`, `ff`, `rew`, `pause`, `stop`, `rec`, `eject`, plus the `ok` key and `tape` badges. |
 | `OsdTicks` | The segment bar, `||||----`: a tick per filled step and a dash per empty one. The boot screen's progress bar. |
 | `OsdBar` | The VOLUME bar: an outline with a solid fill inside. |
@@ -747,6 +765,21 @@ Anything shaped like folders, browsed as a horizontal tree, the way Local Files,
 | `leaveRequested()` | Back with no folder left to close |
 
 `openItem({ name, path })` opens a folder that isn't an entry of the current one, like a search's results; `refresh(path, keepEntry)` fetches a folder again (its entries changed, or came in after `fetch` returned `null`), the cursor keeping its row, or with `keepEntry` the entry it was on (not for a list that grows under the cursor, like YouTube's MORE); `leave(prefix)` closes the open folders at `prefix` and in it, a drive pulled out; `folderName` is the open folder's name, for the `AppBar` subtitle, and `currentEntry` the entry under the cursor, for a footer that says what select will do (`[ENTER]:OPEN` on a folder, `:PLAY` on a film). A key already held as the tree appears (Back held to close a player) does not repeat into it.
+
+### FilePicker (`views/FilePicker.qml`)
+
+The picker every setting that names a folder or a file opens: the same horizontal tree Local Files is browsed with, from its places (`AppCore::filePlaces()`: home, where drives and partitions are mounted, the root) down, each folder's entries from `folderEntries()`. A module's `directory_browser` setting opens it (`ModuleSettings`), and so does Settings → Logo Image (a row of `type: "file"`, its `picker` the navParams below). It opens down to the folder or file chosen now, the cursor on it; the choice is saved with `save_setting` and back comes back, and back at the top leaves the setting as it was.
+
+| navParams | Description |
+|---|---|
+| `moduleId`, `settingKey` | The setting it saves to (`moduleId` `""` for an app one) |
+| `currentPath` | The folder or file chosen now; `""` for the default |
+| `mode` | `"folder"` (when unset): each folder's first entry is **USE THIS FOLDER**, which picks it; `"file"`: the folders, then the files of `types`, select on one picking it |
+| `types` | With `"file"`: the file types offered, lower case (`["png", "jpg", …]`) |
+| `defaultLabel` | An entry before the places that saves `""`: the module's own folder (**Default Folder**), OSD/OS's logo |
+| `label` | What is picked, for the title bar |
+
+USE THIS FOLDER carries `branchHidden`, which the `TreeBrowser` leaves out of a branch's glance at a folder, where it would be every folder's first line.
 
 ### InfoPanel (`views/Components/InfoPanel.qml`)
 
@@ -811,7 +844,7 @@ A video's own menu, over the picture while it plays on (Transparent Background, 
 
 ### LoadingScreen (`views/Components/LoadingScreen.qml`)
 
-What a player shows while its video starts, in place of a black screen: a VCR's screen as a tape loads, after a dubbing deck's on-screen display. The theme's background, in a tape's noise. Its corners:
+What a player shows while its video starts, in place of a black screen: a VCR's screen as a tape loads, after a dubbing deck's on-screen display. The colour scheme's background, in a tape's noise. Its corners:
 
 - top left: TAPE A, PLAY, and where the video is (while it loads, the point it starts from);
 - top middle: TV, the deck's output;

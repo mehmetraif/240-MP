@@ -92,6 +92,7 @@ add_executable(osdos
     src/util/ExecPath.cpp
     src/util/DisplayHandoff.cpp
     src/util/OsdIconProvider.cpp
+    src/util/OsdSkinProvider.cpp
     src/util/FontconfigOverride.cpp
     src/input/InputManager.cpp
     src/input/IdleTracker.cpp

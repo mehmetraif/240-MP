@@ -56,8 +56,15 @@ Item {
         x: appBar.hasLogo ? logo.x + logo.width + root.px : 0
         width: appBar.width - x
         height: appBar.height
-        color: root.primaryColor
+        // The theme's picture of the bar, when it has one (Settings → Theme).
+        color: themedBar.shown ? "transparent" : root.primaryColor
         antialiasing: false
+
+        ThemeImage {
+            id: themedBar
+            anchors.fill: parent
+            part: root.theme.titleBar
+        }
 
         Row {
             id: content

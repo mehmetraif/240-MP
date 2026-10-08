@@ -55,9 +55,25 @@ public:
     Q_INVOKABLE QVariant get_installed_modules();
     Q_INVOKABLE QVariantMap getCustomColorScheme() const;
     Q_INVOKABLE QVariantMap getCustomColorSchemes() const;
-    Q_INVOKABLE QVariantList listDirectories(const QString &path);
-    Q_INVOKABLE QString parentDirectory(const QString &path);
-    Q_INVOKABLE QString homePath();
+    // Settings → Theme, apart from the colour scheme: the themes there are,
+    // [{ id, name }] by name. A theme is a folder with a theme.json, the app's
+    // own (assets/themes) or the data folder's (themes), one there in place of
+    // the app's of the same name; its id is the folder's name.
+    Q_INVOKABLE QVariantList themes() const;
+    // One theme read for QML (Main.qml's root.theme): { id, name, window,
+    // titleBar, hintBar, selection }, a picture of each of the window's parts
+    // it dresses ({ source URL, border, tile }), only those it has that can
+    // be used; empty for none, or for one gone or unreadable.
+    Q_INVOKABLE QVariantMap theme(const QString &id) const;
+    // The file picker's (views/FilePicker.qml) places, the folders its tree
+    // starts from: home, where drives and partitions are mounted (/media,
+    // /run/media/<user>, /Volumes) and the root, those there are, as
+    // [{ name, path }].
+    Q_INVOKABLE QVariantList filePlaces() const;
+    // A folder's entries for the file picker, [{ name, path, isFolder }]: its
+    // folders, then its files of these types (lower case; none, no files),
+    // each by name, hidden ones left out.
+    Q_INVOKABLE QVariantList folderEntries(const QString &path, const QStringList &fileTypes) const;
     Q_INVOKABLE QString localIpAddress() const;
     // The licence's text (LICENSE next to the app, the GNU GPL v3), its
     // paragraphs each on one line so a view wraps them to its width; "" when
@@ -127,6 +143,10 @@ private:
     // manifest default (an "enabled" setting whose default is "OFF"), else true.
     bool isModuleEnabled(const ModuleEntry &m, const QJsonObject &modulesConfig) const;
     QVariantMap importColorScheme(QJsonObject &obj) const;
+    // The folder of the theme with this id whose theme.json reads, the data
+    // folder's before the app's, and that theme.json; empty when there is
+    // none (or the id isn't a folder's name).
+    QString themeDir(const QString &id, QJsonObject *json) const;
 
     QString m_appRoot;
     QString m_dataRoot;

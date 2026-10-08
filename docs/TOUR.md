@@ -131,9 +131,15 @@ Once signed in, each opens on the server's Continue Watching and its libraries. 
 </table>
 
 <table>
+<tr><th width="50%">Theme: DOS, Window Frame: Shadow</th><th width="50%">Theme: Rounded</th></tr>
+<tr><td><img src="screenshots/theme-dos.png" width="100%" alt="Theme: DOS, Window Frame: Shadow" /></td><td><img src="screenshots/theme-rounded.png" width="100%" alt="Theme: Rounded" /></td></tr>
+<tr><td>Theme dresses the window, apart from the color scheme: DOS gives it a double line. Window Frame, offered with OSD Background's Window, adds a DOS window's shadow, a half tone of the window's color (over a video, it darkens the picture), or takes the frame away.</td><td>Rounded rounds the window's corners and the ends of its bars and of the selected line. A theme gives the shapes; the color scheme still gives the colors.</td></tr>
+</table>
+
+<table>
 <tr><th width="50%">A module's settings</th><th width="50%">Picking a folder</th></tr>
 <tr><td><img src="screenshots/module-settings.png" width="100%" alt="A module's settings" /></td><td><img src="screenshots/folder-picker.png" width="100%" alt="Picking a folder" /></td></tr>
-<tr><td>Local Files: its folder, looping, shuffle, resume, subtitles, and its own Scaling.</td><td>Folders are picked by browsing to them.</td></tr>
+<tr><td>Local Files: its folder, looping, shuffle, resume, subtitles, and its own Scaling.</td><td>Folders are picked on the same tree Local Files is browsed with, from home, the drives and the root down: USE THIS FOLDER picks the one open, Default Folder the module's own.</td></tr>
 </table>
 
 <table>
@@ -158,4 +164,10 @@ Once signed in, each opens on the server's Continue Watching and its libraries. 
 <tr><th width="50%">Channel Logo</th><th width="50%">Under the menus</th></tr>
 <tr><td><img src="screenshots/channel-logo.png" width="100%" alt="Channel Logo" /></td><td><img src="screenshots/channel-logo-menu.png" width="100%" alt="The logo under the menus" /></td></tr>
 <tr><td>OSD/OS's logo in a corner of the picture while a video plays, the way a channel's sits in a broadcast. Settings → Channel Logo picks the corner, all four, or none.</td><td>It is in the picture itself, so with Transparent Background the menus lie over it.</td></tr>
+</table>
+
+<table>
+<tr><th width="50%">Logo Image</th><th width="50%">Picking the picture</th></tr>
+<tr><td><img src="screenshots/channel-logo-custom.png" width="100%" alt="Logo Image" /></td><td><img src="screenshots/logo-picker.png" width="100%" alt="Picking the picture" /></td></tr>
+<tr><td>Settings → Logo Image puts a picture of your own there instead, as tall as OSD/OS's logo.</td><td>Picked on the same file browser: select on a picture, or OSD/OS Logo at the top to go back to it.</td></tr>
 </table>

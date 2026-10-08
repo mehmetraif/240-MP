@@ -35,9 +35,17 @@ Text {
         text: hint.text
     }
 
+    // The bar, or the theme's picture of it (Settings → Theme).
+    ThemeImage {
+        id: themedBar
+        z: -1
+        anchors.fill: parent
+        part: root.theme.hintBar
+    }
     Rectangle {
         z: -1
         anchors.fill: parent
+        visible: !themedBar.shown
         color: root.primaryColor
         antialiasing: false
     }
