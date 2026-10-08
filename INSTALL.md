@@ -226,6 +226,7 @@ At this point you can type `osdos` at any time to start up the app.  And if you 
     - Run `amixer sset PCM 100%`
     - If that solves it and you want to keep the level across reboots, run `sudo alsactl store`
 - If there is no audio at all:** 
+    - **Settings → Audio Output** picks the card from the app, where plain ALSA plays (Raspberry Pi OS Lite, the OSD/OS image): it lists the cards there are, the AV jack, HDMI or a USB sound card, and plays through the one chosen from then on. The two options below choose outside the app, for every program or for mpv; a card chosen in Settings wins over both, and on **Auto** they apply.
     - ALSA's `default` device resolves to whichever sound card enumerated first and sometimes that may not be the one your audio is actually plugged into, which will result in missing audio.
     - To see the cards your Pi enumerated run `cat /proc/asound/cards` (or `aplay -l`).  The short name in brackets is the card id you'll in one of the options below.  The ids you see will also depend on which config.txt from step 2 you used. (the Pi 3 / Pi 4 run fake KMS where analog / composite audio shows up as `Headphones`, while the Pi 5 blocks run Full KMS where HDMI audio shows up as `vc4hdmi0` and `vc4hdmi1`).  Any USB audio devices you've attached will have their own entries too, so please read the ids off your own Pi vs copying from here.
     - Once you have the ID for your audio device there are two options to fix it, please pick whichever fits your setup best:
@@ -240,10 +241,10 @@ At this point you can type `osdos` at any time to start up the app.  And if you 
         - **Option 2: change it for mpv only**
             - Create (or add to your existing) `~/.config/mpv/mpv.conf` and add a single line naming the device:
                 ```
-                audio-device=alsa/plughw:CARD=your-card-id,DEV=0
+                audio-device=alsa/default:CARD=your-card-id
                 ```
-            - Run `mpv --audio-device=help` to see the exact device strings mpv will accept and copy the one that matches your audio output device.
-    - In both options the change applies the next time playback starts and will cover every mpv instance that OSD/OS launches.  Please see [ARCHITECTURE.md → How mpv flags are layered](ARCHITECTURE.md#how-mpv-flags-are-layered-the-precedence-cascade) for why audio output is left to your ALSA / mpv config rather than being set by OSD/OS.
+            - Run `mpv --audio-device=help` to see the exact device strings mpv will accept and copy the one that matches your audio output device. `default:CARD=` is ALSA's own way to the card: `plughw:` can't feed the Pi's HDMI under full KMS, which takes its samples framed as IEC958.
+    - In both options the change applies the next time playback starts and will cover every mpv instance that OSD/OS launches, as long as Settings → Audio Output is on Auto.  Please see [ARCHITECTURE.md → How mpv flags are layered](ARCHITECTURE.md#how-mpv-flags-are-layered-the-precedence-cascade) for how the two layer.
 
 **Exit to Terminal and Restart**
 

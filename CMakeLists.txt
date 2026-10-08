@@ -97,6 +97,7 @@ add_executable(osdos
     src/update/UpdateManager.cpp
     src/boot/BootProgress.cpp
     src/display/DisplayOutput.cpp
+    src/audio/AudioOutput.cpp
     src/bluetooth/BluetoothManager.cpp
     $<$<BOOL:${APPLE}>:src/util/MacosUtils.mm>
 )

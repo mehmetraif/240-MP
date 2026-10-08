@@ -1,6 +1,7 @@
 #include "MpvController.h"
 #include "EmbeddedMpv.h"
 #include "../AppCore.h"
+#include "../audio/AudioOutput.h"
 #include "../util/YtDlpLocator.h"
 #include "../util/MpvLocator.h"
 #include "../util/DisplayHandoff.h"
@@ -312,6 +313,8 @@ QStringList MpvController::sessionArgs(const QString &url, float startSeconds,
         args << QString("--image-display-duration=%1").arg(double(imageDurationSec), 0, 'f', 1);
     if (muteAudio)
         args << QStringLiteral("--no-audio");
+    // Settings → Audio Output: the sound card chosen, while it is plugged in.
+    args << AudioOutput::mpvArgs();
     // See ytdlEnabled above: default the hook off unless the caller opted in.
     if (!ytdlEnabled)
         args << QStringLiteral("--ytdl=no");
@@ -390,15 +393,17 @@ void MpvController::loadAndPlay(const QString &url, float startSeconds,
         args << QStringLiteral("--") << media;
         // Chosen again while it plays behind the menus: the same session goes
         // on, full screen again (as takeBack() has it). Its start is the
-        // module's resume point, which reattach() weighs.
-        auto withoutStart = [](QStringList a) {
+        // module's resume point, which reattach() weighs, and its sound card
+        // follows Settings as it plays (followAudioOutput()).
+        auto comparable = [](QStringList a) {
             a.erase(std::remove_if(a.begin(), a.end(), [](const QString &x) {
-                        return x.startsWith(QLatin1String("--start="));
+                        return x.startsWith(QLatin1String("--start="))
+                            || x.startsWith(QLatin1String("--audio-device="));
                     }), a.end());
             return a;
         };
         if (m_background && m_embedded && m_embedded->running()
-                && withoutStart(args) == withoutStart(m_sessionArgs)) {
+                && comparable(args) == comparable(m_sessionArgs)) {
             reattach(startSeconds);
             return;
         }
@@ -1167,6 +1172,16 @@ void MpvController::leavePlayerMenu() {
     // behind them. Chosen again from there, it carries on (takeBack()).
     m_detachPositionMs = m_position;
     emit playbackEnded(m_position, m_duration, QStringLiteral("stopped"));
+}
+
+void MpvController::followAudioOutput() {
+    // A video playing inside the app, behind the menus, goes on through the
+    // card chosen. An mpv process can't be playing while Settings is up; the
+    // next one is started with it.
+    if (!m_embedded || !m_embedded->running())
+        return;
+    const QString device = AudioOutput::mpvDevice();
+    setVideoProperty(QStringLiteral("audio-device"), device.isEmpty() ? QStringLiteral("auto") : device);
 }
 
 void MpvController::setVideoProperty(const QString &name, const QVariant &value) {
