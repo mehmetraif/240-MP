@@ -464,4 +464,4 @@ Go to **Actions** → select the workflow run → each build job has an **Artifa
 
 **After the workflow completes:**
 
-Go to the repository on GitHub → **Releases** → select the release for the tag you set. All build artifacts (the OSD/OS image and its `.info`, the `.dmg`, both Linux packages, `SHA256SUMS` and `install.sh`) are listed under Assets.
+Go to the repository on GitHub → **Releases** → select the release for the tag you set. All build artifacts (the OSD/OS image and its `.info`, the `.dmg`, both Linux packages, `SHA256SUMS`, `install.sh` and `setup-nfc-reader.sh`) are listed under Assets.

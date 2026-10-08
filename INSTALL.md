@@ -305,7 +305,7 @@ If you don't have a Raspberry Pi and would like to try OSD/OS, I also provide a 
 1. Download the DMG archive from the latest release
 2. Mount it and move the osdos.app into your Applications folder
 3. Make sure you have mpv installed (OSD/OS requires MPV for playback): `brew install mpv`
-4. Double click the app (`osdos.app`) and it should open full screen
+4. Double click the app (`osdos.app`) and it should open full screen. If macOS refuses to open it because it can't check it (a release that isn't notarized; its notes say so), go to System Settings → Privacy & Security and choose **Open Anyway**, or run `xattr -dr com.apple.quarantine /Applications/osdos.app` and open it again. You need to do this only the first time you open it.
 
 ### Post Install
 
@@ -321,6 +321,7 @@ If you don't have a Raspberry Pi and would like to try OSD/OS, I also provide a 
 Or manually:
 1. Download the DMG archive from the latest release
 2. Mount it and move the osdos.app into your Applications folder to overwrite your existing version. *Your existing settings will be retained and it's safe to overwrite*
+3. If macOS refuses to open the new version, allow it as in step 4 of the steps above.
 
 ### Uninstall
 
