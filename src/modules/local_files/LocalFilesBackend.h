@@ -35,8 +35,8 @@ public:
     // in, whose names hold every one of the words, case aside (the first 200
     // by name), for the tree's folder
     // `path`: what the last search for it found, or null while it runs,
-    // searchReady(path) following once it is done. The folder is walked a slice at a time, so a
-    // big library never holds the screen still; a search for another path
+    // searchReady(path) following once it is done. A worker walks the folders
+    // and retains only the first 200 matches; a search for another path
     // replaces one still running, and `fresh` starts this one over.
     Q_INVOKABLE QVariant     search(const QString &path, const QString &words, bool fresh = false);
     // The entries whose files are still there (a list kept by AppCore can
@@ -75,12 +75,11 @@ private:
     RemovableDrives *m_drives = nullptr;
 
     struct SearchRun;
-    std::unique_ptr<SearchRun> m_search;
+    std::shared_ptr<SearchRun> m_search;
     // The last search to finish.
     QString      m_foundPath;
     QVariantList m_found;
-    void         searchSlice();
-    QVariantMap  entryFor(const QString &dirPath, const QString &name, bool isDir) const;
+    static QVariantMap entryFor(const QString &dirPath, const QString &name, bool isDir);
 
     QString      historyFilePath() const;
     QVariantMap  loadHistory() const;
