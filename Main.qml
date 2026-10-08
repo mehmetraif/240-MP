@@ -265,7 +265,28 @@ Window {
     // The startup module waits for the boot screen: most modules need the
     // network the boot screen is waiting on.
     onBootActiveChanged: {
-        if (bootActive) return
+        if (bootActive || displayHolding) return
+        if (moduleLoader.item) moduleLoader.item.forceActiveFocus()
+        openStartupModule()
+    }
+
+    // --- DISPLAY OUTPUT (Settings → Display Output) ---
+    // displayOutput mirrored, as bootProgress is, for the same teardown-safety.
+    readonly property bool   displayConfirmPending: displayOutput ? displayOutput.confirmPending : false
+    readonly property string displayNotice:         displayOutput ? displayOutput.notice : ""
+    readonly property string displayNoticeDetail:   displayOutput ? displayOutput.noticeDetail : ""
+    readonly property string displayCurrentLabel:   displayOutput ? displayOutput.currentLabel : ""
+    readonly property string displayPreviousLabel:  displayOutput ? displayOutput.previousLabel : ""
+    // On a new output, the window asking to keep it (views/DisplayKeep.qml)
+    // comes first, over the boot screen; the startup module waits for it, a
+    // favourite played at startup with it.
+    readonly property bool   displayHolding: displayConfirmPending || displayNotice !== ""
+    onDisplayHoldingChanged: {
+        if (displayHolding) return
+        if (bootActive) {
+            if (bootScreenLoader.item) bootScreenLoader.item.forceActiveFocus()
+            return
+        }
         if (moduleLoader.item) moduleLoader.item.forceActiveFocus()
         openStartupModule()
     }
@@ -293,7 +314,7 @@ Window {
     // it straight away (navParams.startupPlay), as long as it is still one of
     // that module's favourites.
     function openStartupModule() {
-        if (root._startupNavigated) return
+        if (root._startupNavigated || root.displayHolding) return
         root._startupNavigated = true
         var params = { fromAppStartup: true }
         var entryPoint = ""
@@ -445,8 +466,9 @@ Window {
 
         onLoaded: {
             // While the boot screen is up it keeps the focus; QML gives no
-            // order between this and its own onLoaded, so don't race it.
-            if (root.bootActive)
+            // order between this and its own onLoaded, so don't race it. Nor
+            // the window asking to keep a new display output.
+            if (root.bootActive || root.displayHolding)
                 return
             item.forceActiveFocus()
             root.openStartupModule()
@@ -503,6 +525,16 @@ Window {
         z: 9000
         active: root.bootActive
         source: "views/BootScreen.qml"
+        onLoaded: if (!root.displayHolding) item.forceActiveFocus()
+    }
+
+    // Above the boot screen: on a new display output, keep it or go back.
+    Loader {
+        id: displayKeepLoader
+        anchors.fill: parent
+        z: 9500
+        active: root.displayHolding
+        source: "views/DisplayKeep.qml"
         onLoaded: item.forceActiveFocus()
     }
 

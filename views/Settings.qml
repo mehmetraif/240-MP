@@ -26,6 +26,14 @@ FocusScope {
     // they are not needed on macOS/Desktop or when run by hand, so it's yes/no for that case.
     property bool autostartSession: false
     property bool canRestart: false
+
+    // Display Output, read from displayOutput in buildModel(): the outputs
+    // this board has, the one in force, and the one chosen to switch to.
+    property string boardModel: ""
+    property var outputOptions: []
+    property string outputCurrent: ""
+    property string outputCurrentLabel: ""
+    property var outputChoice: ({})
     property var quitOptions: settingsRoot.autostartSession
         ? [{ label: "Power Off",        action: "quit"     }]
           .concat(settingsRoot.canRestart ? [{ label: "Restart", action: "restart" }] : [])
@@ -328,6 +336,23 @@ FocusScope {
 
         // SYSTEM section
         items.push({ type: "section", label: "Application" })
+        // DISPLAY OUTPUT — where the picture goes, among the outputs this
+        // board has (displayOutput, by its model): select opens them. The Pi
+        // reads it at power-on, so a change restarts OSD/OS, and the new
+        // output stays only when kept on it (views/DisplayKeep.qml).
+        if (displayOutput && displayOutput.available) {
+            boardModel = displayOutput.boardModel
+            outputOptions = displayOutput.options
+            outputCurrent = displayOutput.current
+            outputCurrentLabel = displayOutput.currentLabel
+            items.push({
+                type: "display_output",
+                label: "Display Output",
+                value: outputCurrentLabel,
+                description: "Where the picture goes, among the outputs this Pi has: a change restarts OSD/OS, and the new output stays only when you keep it on its screen, else the old one comes back in 15 seconds\n[COMPOSITE] The AV jack (Pi 4) or TV pads (Pi 5)  [GPIO COMPOSITE] Pi 5's GPIO pins  [SCART RGB] A cable on the GPIO pins",
+                moduleId: ""
+            })
+        }
         items.push({
             type: "submenu",
             key: "remap_controls",
@@ -375,6 +400,15 @@ FocusScope {
         }
         settingsList.positionViewAtIndex(settingsList.currentIndex, ListView.Contain)
         settingsList.showWholeRows()
+    }
+
+    // The outputs, the cursor on the one in force.
+    function openOutputs() {
+        outputPrompt.open()
+        for (var i = 0; i < outputOptions.length; i++) {
+            if (outputOptions[i].id === outputCurrent)
+                outputPrompt.choiceIndex = i
+        }
     }
 
     function firstSelectableAfter(idx) {
@@ -552,6 +586,8 @@ FocusScope {
                     settingsRoot.navigateTo("views/About.qml", {}, { currentIndex: settingsList.currentIndex })
                 else
                     settingsRoot.navigateTo("views/ModuleSettings.qml", { moduleId: row.moduleId }, { currentIndex: settingsList.currentIndex })
+            } else if (row && row.type === "display_output") {
+                settingsRoot.openOutputs()
             } else if (row && row.type === "quit") {
                 quitPrompt.open()
             } else if (row && row.type === "slider" && row.on !== undefined) {
@@ -585,7 +621,8 @@ FocusScope {
                 height: rowItem.lineHeight
                 heading: rowItem.row.type === "section"
                 label: rowItem.row.label || ""
-                value: rowItem.row.type === "list_single" ? (rowItem.row.value || "")
+                value: rowItem.row.type === "list_single" || rowItem.row.type === "display_output"
+                       ? (rowItem.row.value || "")
                      : rowItem.slider && rowItem.row.on !== undefined ? (rowItem.row.on ? "On" : "Off") : ""
                 selected: settingsList.currentIndex === index
             }
@@ -636,6 +673,40 @@ FocusScope {
         anchors.left: parent.left
         anchors.bottomMargin: root.sh * 0.1041667 //50
         anchors.leftMargin: root.sw * 0.125 //80
+    }
+
+    // --- DISPLAY OUTPUT: the outputs this board has, then a restart for one ---
+    ChoiceOverlay {
+        id: outputPrompt
+        anchors.fill: parent
+        promptText: "Display Output"
+        subtitleText: settingsRoot.boardModel + "\nNow: " + settingsRoot.outputCurrentLabel
+        choices: settingsRoot.outputOptions.map(function(o) { return { label: o.label, action: o.id } })
+        onActivated: function(id) {
+            if (id === settingsRoot.outputCurrent)
+                return
+            for (var i = 0; i < settingsRoot.outputOptions.length; i++) {
+                if (settingsRoot.outputOptions[i].id === id)
+                    settingsRoot.outputChoice = settingsRoot.outputOptions[i]
+            }
+            outputConfirm.open()
+        }
+        onClosed: settingsList.forceActiveFocus()
+    }
+
+    ChoiceOverlay {
+        id: outputConfirm
+        anchors.fill: parent
+        promptText: "Switch to " + (settingsRoot.outputChoice.label || "") + "?"
+        subtitleText: "OSD/OS restarts on it. Keep it there, or in 15 seconds it comes back to "
+                      + settingsRoot.outputCurrentLabel
+        choices: [{ label: "Switch and Restart", action: "switch" },
+                  { label: "Cancel",             action: "cancel" }]
+        onActivated: function(act) {
+            if (act === "switch")
+                displayOutput.apply(settingsRoot.outputChoice.id)
+        }
+        onClosed: settingsList.forceActiveFocus()
     }
 
     // --- QUIT CONFIRMATION OVERLAY ---

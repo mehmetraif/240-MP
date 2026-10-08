@@ -53,7 +53,7 @@ However, if you already have Raspberry Pi OS set up and working for your TV then
 
     I would also suggest filling out Hostname, User and Wifi in the customization section and enabling SSH there as it will save you from having to set those up manually later.
 
-2) After the write is complete, reconnect the card to your PC and update your config.txt to one of the following (please make sure to choose the one that best matches your TV):
+2) After the write is complete, reconnect the card to your PC and update your config.txt to one of the following (please make sure to choose the one that best matches your TV). The OSD/OS image comes set up instead, and switches between HDMI, composite and SCART RGB in Settings → Display Output ([os/README.md](os/README.md#display-output-hdmi-composite-or-scart)):
 
     **Option 1: For composite out on a CRT TV (NTSC)...**
     ```

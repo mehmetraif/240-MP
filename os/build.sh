@@ -14,7 +14,7 @@
 #   FIRST_USER_PASS   password of the first user; without one the account is
 #                     locked and people log in as the user Imager creates
 #   FIRST_USER_NAME   default "pi"; the user the app runs as
-#   OSDOS_DISPLAY     hdmi (default), crt-ntsc or crt-pal
+#   OSDOS_DISPLAY     hdmi (default), or another preset in stage-osdos/03-boot/files
 #   ENABLE_SSH        0 (default) or 1
 #   OSDOS_STREAMING   1 (default) or 0: the browser the Netflix and Prime
 #                     Video modules open (Chromium with Widevine, and cage),

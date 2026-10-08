@@ -124,7 +124,10 @@ INSTALL_DIR="/opt/osdos"
 # updater refuses to stage anything without it (older installs must re-run
 # this installer once to pick up the launcher/osdos-stop contract).
 # 2: osdos-stop also reboots on exit 12, so the quit menu offers Restart.
-export OSDOS_LAUNCHER_API=2
+# 3: osdos-stop also writes a display preset on exit 20-29 and reboots, so
+#    Settings offers Display Output (OSD/OS image), and the launcher takes the
+#    output that preset names.
+export OSDOS_LAUNCHER_API=3
 
 # ── Apply a staged in-app update ───────────────────────────────────────────────
 # The app downloads the release tarball to DATA_ROOT/updates and writes
@@ -179,6 +182,26 @@ else
     export QT_QPA_EGLFS_ALWAYS_SET_MODE=1
     export QT_QPA_EGLFS_KMS_ATOMIC=1
 
+    # On a Pi 5, the output the OSD/OS image's display preset names
+    # (/boot/firmware/osdos-display.txt: "# osdos-output: <type>"), in its mode
+    # ("# osdos-mode: WxH") if the connector has it: a Pi 5 may keep HDMI on
+    # beside a CRT, and there a composite mode's lines make PAL or NTSC. mpv
+    # plays on it too (OSDOS_DRM_*). A Pi 4 has one output on at a time.
+    KMS_CARD=""; KMS_OUTPUT=""; KMS_MODE=""
+    PRESET=/boot/firmware/osdos-display.txt
+    if [ -r "$PRESET" ] && tr -d '\0' 2>/dev/null < /proc/device-tree/model | grep -q '^Raspberry Pi 5'; then
+        want=$(sed -n 's/^# osdos-output: *\([A-Za-z-]*\).*/\1/p' "$PRESET" | head -n1)
+        mode=$(sed -n 's/^# osdos-mode: *\([0-9]*x[0-9]*\).*/\1/p' "$PRESET" | head -n1)
+        for d in /sys/class/drm/card*-"${want:-none}"-*; do
+            [ -e "$d" ] || continue
+            n=$(basename "$d"); KMS_CARD="${n%%-*}"; KMS_OUTPUT="${n#*-}"
+            if [ -n "$mode" ] && grep -qE "^${mode}i?\$" "$d/modes" 2>/dev/null; then
+                KMS_MODE="$mode"
+            fi
+            break
+        done
+    fi
+
     # Point Qt EGLFS at the DRM card that has a real display pipeline. Render-
     # only nodes (v3d) have no connector dirs under /sys/class/drm and make Qt
     # fail with "drmModeGetResources failed (Operation not supported)". On
@@ -186,13 +209,14 @@ else
     # Pi5 the v3d render node often enumerates first, so we must select the
     # right card explicitly. Prefer a connected connector; fall back to the
     # first card that has any connector at all.
-    KMS_CARD=""
-    for s in /sys/class/drm/card*-*/status; do
-        [ -e "$s" ] || continue
-        if [ "$(cat "$s")" = "connected" ]; then
-            n=$(basename "$(dirname "$s")"); KMS_CARD="${n%%-*}"; break
-        fi
-    done
+    if [ -z "$KMS_CARD" ]; then
+        for s in /sys/class/drm/card*-*/status; do
+            [ -e "$s" ] || continue
+            if [ "$(cat "$s")" = "connected" ]; then
+                n=$(basename "$(dirname "$s")"); KMS_CARD="${n%%-*}"; break
+            fi
+        done
+    fi
     if [ -z "$KMS_CARD" ]; then
         for d in /sys/class/drm/card*-*; do
             [ -e "$d" ] || continue
@@ -201,7 +225,17 @@ else
     fi
     if [ -n "$KMS_CARD" ] && [ -e "/dev/dri/$KMS_CARD" ]; then
         KMS_CONF="${XDG_RUNTIME_DIR:-/tmp}/osdos-kms.json"
-        printf '{ "device": "/dev/dri/%s" }\n' "$KMS_CARD" > "$KMS_CONF"
+        if [ -n "$KMS_OUTPUT" ]; then
+            # Qt names an output by its type and number: HDMI-A-1 is HDMI1.
+            qt_name="${KMS_OUTPUT%-*}"
+            qt_name="${qt_name%-[AB]}${KMS_OUTPUT##*-}"
+            printf '{ "device": "/dev/dri/%s", "outputs": [ { "name": "%s", "primary": true%s } ] }\n' \
+                "$KMS_CARD" "$qt_name" "${KMS_MODE:+, \"mode\": \"$KMS_MODE\"}" > "$KMS_CONF"
+            export OSDOS_DRM_DEVICE="/dev/dri/$KMS_CARD" OSDOS_DRM_CONNECTOR="$KMS_OUTPUT" \
+                OSDOS_DRM_MODE="$KMS_MODE"
+        else
+            printf '{ "device": "/dev/dri/%s" }\n' "$KMS_CARD" > "$KMS_CONF"
+        fi
         export QT_QPA_EGLFS_KMS_CONFIG="$KMS_CONF"
     fi
 fi
@@ -235,7 +269,7 @@ ExecStartPre=+-/usr/bin/systemctl stop osdos-terminal.service
 ExecStart=${LAUNCHER}
 Restart=on-failure
 RestartSec=5s
-RestartPreventExitStatus=10 12
+RestartPreventExitStatus=10 12 20 21 22 23 24 25 26 27 28 29
 ExecStopPost=+/usr/local/bin/osdos-stop
 StandardOutput=journal
 StandardError=journal
@@ -250,6 +284,8 @@ UNIT
     # keeps Restart=on-failure from relaunching the app over that shell.
     # Exit 12 is the quit menu's "Restart": reboot (kept out of Restart=on-failure
     # the same way, so the app isn't started again on the way down).
+    # Exit 20-29 is Settings → Display Output on the OSD/OS image: a display
+    # preset written, then a reboot, kept out of Restart=on-failure as well.
     # Exit 11 is "Apply & Restart" from the in-app updater (views/Update.qml):
     # do nothing here — it's a failure status, so Restart=on-failure relaunches
     # through the launcher, which applies the staged update before exec.
@@ -259,10 +295,37 @@ UNIT
 #!/usr/bin/env bash
 # Called by osdos.service ExecStopPost. systemd sets $EXIT_STATUS to the app's
 # exit code, or to the signal name if a signal killed it.
+
+# Settings → Display Output on the OSD/OS image: the chosen preset (or the one
+# before it, to go back) over osdos-display.txt, which the firmware reads only
+# at power-on. A missing preset changes nothing; the app says so after the
+# reboot. A Pi 5's SCART RGB needs its composite sync on GPIO 1.
+display_output() {
+    local boot=/boot/firmware src
+    if [ "$1" = previous ]; then
+        src="$boot/osdos-display-previous.txt"
+    else
+        src="$boot/osdos-display-$1.txt"
+    fi
+    [ -f "$src" ] || return 1
+    [ "$1" = previous ] || cp -f "$boot/osdos-display.txt" "$boot/osdos-display-previous.txt"
+    cp -f "$src" "$boot/osdos-display.txt.new" && mv -f "$boot/osdos-display.txt.new" "$boot/osdos-display.txt" || return 1
+    if grep -q '^# osdos-output: DPI' "$boot/osdos-display.txt"; then
+        echo "options drm_rp1_dpi force_csync=1" > /etc/modprobe.d/osdos-display.conf
+    else
+        rm -f /etc/modprobe.d/osdos-display.conf
+    fi
+    sync
+}
+# The app's codes for them (src/display/DisplayOutput.cpp): keep the two in step.
+DISPLAY_PRESETS=(hdmi crt-ntsc crt-pal crt-gpio-ntsc crt-gpio-pal
+                 scart-rgb-ntsc scart-rgb-pal scart-rgb-240p scart-rgb-288p previous)
+
 case "${EXIT_STATUS:-}" in
     10) systemctl start osdos-terminal.service ;;
     11) : ;;  # in-app update restart — Restart=on-failure brings the app back up
     12) systemctl reboot ;;  # the quit menu's Restart
+    2[0-9]) display_output "${DISPLAY_PRESETS[EXIT_STATUS - 20]}"; systemctl reboot ;;
     129|130|143|HUP|INT|TERM|KILL) : ;;  # stopped from outside, not by the user
     *)  systemctl poweroff ;;
 esac

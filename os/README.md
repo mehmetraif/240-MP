@@ -62,15 +62,61 @@ The Pi writes to it too: the Playlists module downloads its offline playlists' v
 
 A card with less than 2 GiB to spare past the system gets no film partition, and the system takes all of it, as Raspberry Pi OS does. The split replaces Raspberry Pi OS's first-boot resize (`raspberrypi-sys-mods`' `resize_early`, overridden in `/etc/initramfs-tools/scripts`), so it happens once, on a freshly flashed card.
 
-### HDMI or a CRT
+### Display output: HDMI, composite or SCART
 
-The display output is set in `osdos-display.txt` on the boot partition (the FAT one any computer can open). To switch, copy one of the presets next to it over that file:
+**Settings → Display Output** switches where the picture goes, among the outputs the Pi has: OSD/OS reads the board's model and offers only those.
 
-| Preset | Output |
+| Output | Preset (`osdos-display-….txt`) | Pi 3 | Pi 4 | Pi 5 |
+|---|---|---|---|---|
+| HDMI, resolution auto-detected (the default) | `hdmi` | ✓ | ✓ | ✓ |
+| Composite NTSC / PAL, 4:3: the AV jack, or a Pi 5's TV pads | `crt-ntsc`, `crt-pal` | ✓ | ✓ | ✓ |
+| Composite NTSC / PAL from a Pi 5's GPIO pins | `crt-gpio-ntsc`, `crt-gpio-pal` | | | ✓ |
+| SCART RGB on the GPIO pins, NTSC timing (480i) / PAL timing (576i) | `scart-rgb-ntsc`, `scart-rgb-pal` | | ✓ | ✓ |
+| SCART RGB on the GPIO pins, 240p / 288p | `scart-rgb-240p`, `scart-rgb-288p` | | ✓ | |
+
+The Pi reads its display settings only as it powers on, so the switch is a restart:
+
+1. Choose an output and **Switch and Restart**. OSD/OS writes that preset over `osdos-display.txt` on the boot partition (as root, through its stop helper `osdos-stop`: no `sudo`) and reboots.
+2. On the new output it asks **Keep this display output?** first, over the boot screen. **Keep** keeps it. Without an answer within 15 seconds (a screen that shows nothing, a TV that can't show that standard), it goes back to the output before, restarting again, and says so.
+
+From any computer, copy a preset over `osdos-display.txt` on the boot partition (the FAT one, **bootfs**), the way to put a card right that shows nothing. On a Pi 5 a SCART RGB preset also needs its composite sync: the line `options drm_rp1_dpi force_csync=1` in `/etc/modprobe.d/osdos-display.conf` (the setting writes it).
+
+Only the Pi 4's HDMI and composite have been tested. The other outputs are starting points, there for the keep-or-go-back to fall back on:
+
+- **Pi 4**: one output is on at a time. Its composite turns HDMI off, as Raspberry Pi's firmware does with `enable_tvout=1`, and so does its RGB, whose timing is the firmware's (`dpi_timings`). Should its 480i or 576i not hold, 240p and 288p are progressive (the menus then have half the lines).
+- **Pi 5**: it may keep HDMI on beside a CRT. The preset names the output OSD/OS and its videos use (`# osdos-output:` in it) and the mode (`# osdos-mode:`), whose lines make composite NTSC (480) or PAL (576): its composite chip takes the standard from them. Its RGB is the kernel's (`vc4-kms-dpi-generic`), 480i and 576i as Raspberry Pi added them in 2025, with the composite sync SCART needs made on GPIO 1. Netflix and Prime Video's browser picks a screen of its own.
+
+#### The cables
+
+GPIO pins carry 3.3 V and take nothing more: SCART's 5 V and 12 V must never reach them.
+
+**Composite to SCART (or RCA).** On a Pi 4 (and 3), the AV jack carries the picture and the sound (a 4-pole plug, as camcorder cables have, wired in this order):
+
+| Pi AV jack | SCART pin |
 |---|---|
-| `osdos-display-hdmi.txt` | HDMI, resolution auto-detected (the default) |
-| `osdos-display-crt-ntsc.txt` | Composite, NTSC, 4:3 |
-| `osdos-display-crt-pal.txt` | Composite, PAL, 4:3 |
+| Tip: left audio | 6 (audio in, left) |
+| Ring 1: right audio | 2 (audio in, right) |
+| Ring 2: ground | 4 (audio ground), 17 (video ground), 21 (shield) |
+| Sleeve: composite video | 20 (video in) |
+
+A Pi 5 has no AV jack: its composite comes from the two pads by HDMI 1 (J7, the picture and ground) and needs wires or a pin header soldered on, to SCART pin 20 and 17. It has no analog audio either: a USB sound card gives SCART pins 6 and 2 their sound. The **GPIO composite** of a Pi 5 is an 8-bit code on GPIO 4 (lowest bit) to 11, for a DAC to turn into the picture: the pads are the simpler way.
+
+**SCART RGB on the GPIO pins** (Pi 4, Pi 5), in the layout of the VGA666 board, which the presets use:
+
+| GPIO (header pin) | Signal | SCART pin |
+|---|---|---|
+| 16–21 (36, 11, 12, 35, 38, 40) | red, 6 bits, GPIO 21 the highest | 15 (red), ground 13 |
+| 10–15 (19, 23, 32, 33, 8, 10) | green, 6 bits, GPIO 15 the highest | 11 (green), ground 9 |
+| 4–9 (7, 29, 31, 26, 24, 21) | blue, 6 bits, GPIO 9 the highest | 7 (blue), ground 5 |
+| 1 (28), Pi 5 | composite sync | 20 (through 680 Ω), ground 17 |
+| 2 and 3 (3, 5), Pi 4 | vertical and horizontal sync, negative | joined into a composite sync, negative as SCART's: two diodes (cathodes to GPIO 2 and 3), their anodes pulled up to 3.3 V by 470 Ω, then 330 Ω to pin 20; or a 74HC86 powered from 3.3 V (at 5 V it can't read the GPIO's 3.3 V), as XNOR: GPIO 2 XOR GPIO 3, through a second gate with its other input at 3.3 V, then 680 Ω to pin 20 |
+| 3.3 V (1) | RGB on | 16 (blanking) through 100 Ω (or 5 V, pin 2, through 180 Ω), ground 18 |
+| GND (6, 9, …) | ground | 4, 5, 9, 13, 17, 18, 21 |
+
+- Each colour's six pins meet at its SCART pin through resistors of 510 Ω (the highest bit), 1 kΩ, 2 kΩ, 3.9 kΩ, 8.2 kΩ and 16 kΩ (the lowest), as on the VGA666: about 0.7 V into the TV's 75 Ω. 549 Ω, 1.1 kΩ, 2.21 kΩ, 4.42 kΩ, 8.87 kΩ and 17.8 kΩ (E96) halve each step exactly; 1 % resistors are close enough for 6 bits.
+- Sound: from the Pi 4's AV jack (tip, ring 1, ring 2 as above), whose pins are inside the Pi, clear of the GPIO pins, or a Pi 5's USB sound card, to pins 6, 2 and 4.
+- Pin 8 at 9.5–12 V (from a 12 V supply through 1 kΩ) switches most TVs to the SCART input, in 4:3. Without it, choose the input with the TV's remote.
+- The picture rolls on a Pi 4: change the sync polarities in the preset's `dpi_timings` (its 2nd and 7th numbers) from 0 to 1.
 
 The rest of `config.txt` matches the settings [INSTALL.md](../INSTALL.md) documents, including the per-model drivers and overclocking.
 
@@ -101,7 +147,7 @@ The image lands in `os/work/pi-gen/deploy/`. `os/build.sh` fetches pi-gen at a p
 |---|---|---|
 | `FIRST_USER_PASS` | — | Password of the first user. Without one, the account is locked. |
 | `FIRST_USER_NAME` | `pi` | The first user; the app runs as this user. |
-| `OSDOS_DISPLAY` | `hdmi` | Initial display preset: `hdmi`, `crt-ntsc` or `crt-pal`. |
+| `OSDOS_DISPLAY` | `hdmi` | Initial display preset, by its name in the table [above](#display-output-hdmi-composite-or-scart) (`crt-pal` for `osdos-display-crt-pal.txt`). |
 | `OSDOS_STREAMING` | `1` | `0` leaves out the Netflix and Prime Video modules' browser (Chromium, Widevine, cage, wtype), which YouTube's sign-in uses too. |
 | `OSDOS_YOUTUBE` | `1` | `0` leaves out the YouTube module's yt-dlp, Deno and ffmpeg; the module then says yt-dlp is missing. |
 | `OSDOS_ROOT_SIZE` | `8` | GiB the system keeps of the card; the rest becomes the film partition on the first boot. `0`: no film partition, the system takes the whole card. |

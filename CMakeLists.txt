@@ -63,6 +63,7 @@ endif()
 add_executable(osdos
     src/main.cpp
     src/util/LegacyNames.cpp
+    src/util/Board.cpp
     src/AppCore.cpp
     src/modules/local_files/LocalFilesBackend.cpp
     src/modules/plex/PlexBackend.cpp
@@ -95,6 +96,7 @@ add_executable(osdos
     src/input/IdleTracker.cpp
     src/update/UpdateManager.cpp
     src/boot/BootProgress.cpp
+    src/display/DisplayOutput.cpp
     src/bluetooth/BluetoothManager.cpp
     $<$<BOOL:${APPLE}>:src/util/MacosUtils.mm>
 )

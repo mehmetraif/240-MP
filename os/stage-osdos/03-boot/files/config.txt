@@ -1,11 +1,19 @@
 # OSD/OS image boot configuration. More options: http://rptl.io/configtxt
 #
-# The display output is set in osdos-display.txt, next to this file. To switch
-# between a CRT (composite) and a modern TV (HDMI), copy one of these presets
-# over it, from any computer:
-#   osdos-display-hdmi.txt      HDMI, resolution auto-detected
-#   osdos-display-crt-ntsc.txt  composite, NTSC, 4:3
-#   osdos-display-crt-pal.txt   composite, PAL, 4:3
+# The display output is set in osdos-display.txt, next to this file, a copy of
+# one of the presets beside it. Settings → Display Output switches between the
+# ones the Pi has; from any computer, copy one over it:
+#   osdos-display-hdmi.txt            HDMI, resolution auto-detected
+#   osdos-display-crt-ntsc.txt        composite, NTSC, 4:3 (AV jack, Pi 5 TV pads)
+#   osdos-display-crt-pal.txt         composite, PAL, 4:3
+#   osdos-display-crt-gpio-ntsc.txt   composite on a Pi 5's GPIO pins, NTSC
+#   osdos-display-crt-gpio-pal.txt    composite on a Pi 5's GPIO pins, PAL
+#   osdos-display-scart-rgb-ntsc.txt  RGB on the GPIO pins for SCART, 480i
+#   osdos-display-scart-rgb-pal.txt   RGB on the GPIO pins for SCART, 576i
+#   osdos-display-scart-rgb-240p.txt  the same on a Pi 4, 240p
+#   osdos-display-scart-rgb-288p.txt  the same on a Pi 4, 288p
+# On a Pi 5 a SCART RGB preset also needs its composite sync (copied by hand,
+# /etc/modprobe.d/osdos-display.conf: options drm_rp1_dpi force_csync=1).
 #
 # The per-model settings below are the ones INSTALL.md documents.
 

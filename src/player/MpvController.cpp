@@ -5,6 +5,8 @@
 #include "../util/MpvLocator.h"
 #include "../util/DisplayHandoff.h"
 #include "../util/FontconfigOverride.h"
+#include "../util/Board.h"
+#include "../util/LegacyNames.h"
 #include <QCoreApplication>
 #include <QGuiApplication>
 #include <QDir>
@@ -801,20 +803,14 @@ void MpvController::sendCommand(const QJsonArray &args) {
 
 MpvController::VideoProfile MpvController::detectVideoProfile() const {
 #ifdef Q_OS_LINUX
-    // The Raspberry Pi model string (e.g. "Raspberry Pi 4 Model B Rev 1.5") is
-    // exposed NUL-terminated at /proc/device-tree/model. Pi 3 and Pi 4 both boot
-    // Fake KMS but have different CPU budgets, so they get different decode paths;
-    // Pi 5 boots Full KMS and direct-renders with --vo=drm.
-    QFile f("/proc/device-tree/model");
-    if (f.open(QIODevice::ReadOnly)) {
-        const QString model =
-            QString::fromLatin1(f.readAll()).remove(QChar('\0')).trimmed();
-        if (model.startsWith("Raspberry Pi 5"))
-            return VideoProfile::PiFullKms;
-        if (model.startsWith("Raspberry Pi 4"))
-            return VideoProfile::Pi4;
-        if (model.startsWith("Raspberry Pi 3"))
-            return VideoProfile::Pi3;
+    // By the board's model (util/Board). Pi 3 and Pi 4 both boot Fake KMS but
+    // have different CPU budgets, so they get different decode paths; Pi 5
+    // boots Full KMS and direct-renders with --vo=drm.
+    switch (board::family()) {
+    case board::Family::Pi5: return VideoProfile::PiFullKms;
+    case board::Family::Pi4: return VideoProfile::Pi4;
+    case board::Family::Pi3: return VideoProfile::Pi3;
+    case board::Family::Other: break;
     }
 #endif
     return VideoProfile::Generic;
@@ -864,6 +860,18 @@ void MpvController::appendVideoArgs(QStringList &args) const {
             // this can be accomodated for in mpv.conf via a monitorpixelaspect property or
             // in cmdline.txt/config.txt at the OS level vs hardcoding something here.
             args << "--vo=drm" << "--hwdec=auto-safe";
+        }
+        // The output the display preset names, which the launcher found for
+        // the app's own screen (OSDOS_DRM_*): mpv plays on it too, in its mode,
+        // where the board has more than one output on (a Pi 5 keeps HDMI on
+        // beside a CRT, and the mode's lines pick its PAL or NTSC).
+        const QString drmDevice = legacy::env("DRM_DEVICE");
+        const QString drmConnector = legacy::env("DRM_CONNECTOR");
+        if (!drmDevice.isEmpty() && !drmConnector.isEmpty()) {
+            args << "--drm-device=" + drmDevice << "--drm-connector=" + drmConnector;
+            const QString drmMode = legacy::env("DRM_MODE");
+            if (!drmMode.isEmpty())
+                args << "--drm-mode=" + drmMode;
         }
     } else {
 #if defined(Q_OS_MACOS)
