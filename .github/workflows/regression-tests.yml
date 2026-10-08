@@ -1,0 +1,31 @@
+name: Regression tests
+on:
+  push:
+    branches: [fix/search-playback-atomic-saves]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake qt6-base-dev qt6-declarative-dev qt6-svg-dev libdrm-dev libssl-dev libsdl2-dev libpcsclite-dev libmpv-dev
+      - name: Configure application
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+      - name: Build application
+        run: cmake --build build --parallel 2
+      - name: Configure tests
+        run: cmake -S tests -B build-tests -DCMAKE_BUILD_TYPE=Debug
+      - name: Build tests
+        run: cmake --build build-tests --parallel 2
+      - name: Run regression tests
+        run: ctest --test-dir build-tests --output-on-failure --timeout 60

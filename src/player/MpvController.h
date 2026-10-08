@@ -2,6 +2,7 @@
 #include <QImage>
 #include <QObject>
 #include <QProcess>
+#include <QPointer>
 #include <QLocalSocket>
 #include <QSize>
 #include <QTimer>
@@ -193,6 +194,9 @@ private:
                             const QStringList &extraArgs, const QString &jellyfinToken, bool embedded);
     // An mpv process for a session: args its options, media what plays.
     void startProcess(QStringList args, const QStringList &media);
+    void launchAfterRetirement(int serial, const QStringList &args,
+                               const QStringList &media, bool embedded);
+    void stopAfterRetirement(int serial, int positionMs);
     // Transparent Background is on, and libmpv is there to play inside the app.
     bool transparentBackground() const;
     // The decode and drawing flags for a session played inside the app, as
@@ -259,6 +263,7 @@ private:
     DisplayHandoff *m_handoff      = nullptr;
     VideoProfile  m_videoProfile  = VideoProfile::Generic;
     QProcess     *m_process        = nullptr;
+    QPointer<QProcess> m_retiringProcess;
     QLocalSocket *m_ipc            = nullptr;
     QTimer       *m_connectTimer   = nullptr;
     QTimer       *m_watchdogTimer  = nullptr;

@@ -2,6 +2,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QSaveFile>
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QUrl>
@@ -69,12 +70,19 @@ QJsonObject AppCore::loadConfig() const {
 }
 
 void AppCore::saveConfig(const QJsonObject &config) const {
-    QFile f(m_dataRoot + "/config.json");
+    QSaveFile f(m_dataRoot + "/config.json");
     if (!f.open(QIODevice::WriteOnly)) {
         qWarning("[AppCore] Could not write config.json: %s", qPrintable(f.errorString()));
         return;
     }
-    f.write(QJsonDocument(config).toJson(QJsonDocument::Indented));
+    const QByteArray data = QJsonDocument(config).toJson(QJsonDocument::Indented);
+    if (f.write(data) != data.size()) {
+        qWarning("[AppCore] Could not write config.json: %s", qPrintable(f.errorString()));
+        f.cancelWriting();
+        return;
+    }
+    if (!f.commit())
+        qWarning("[AppCore] Could not commit config.json: %s", qPrintable(f.errorString()));
 }
 
 bool AppCore::isModuleEnabled(const ModuleEntry &m, const QJsonObject &modulesConfig) const {

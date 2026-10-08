@@ -174,9 +174,17 @@ MpvController::~MpvController() {
     // An embedded session ends first, while everything it reports to is still here.
     if (m_embedded)
         m_embedded->stop();
-    if (m_process && m_process->state() != QProcess::NotRunning) {
-        m_process->terminate();
-        m_process->waitForFinished(2000);
+    // Shutdown may occur while a replacement is waiting for the old player.
+    // Both processes must release the display before the handoff is restored.
+    for (QProcess *process : {m_process, m_retiringProcess.data()}) {
+        if (process && process->state() != QProcess::NotRunning) {
+            process->disconnect();
+            process->terminate();
+            if (!process->waitForFinished(2000)) {
+                process->kill();
+                process->waitForFinished(1000);
+            }
+        }
     }
     // Quitting mid-playback on a headless Pi used to leave the VT switched away
     // and DRM master dropped — a black screen or a stray text console. Restore
@@ -460,20 +468,34 @@ void MpvController::loadAndPlay(const QString &url, float startSeconds,
         }
     }
 
-    // Whatever played until now ends here, at once.
+    // Retire the old process without waiting on the UI thread. Keep it alive
+    // until it exits: deleting a running QProcess can itself block.
     if (m_process) {
-        m_process->disconnect();
-        if (m_process->state() != QProcess::NotRunning) {
-            m_process->terminate();
-            m_process->waitForFinished(1000);
+        QProcess *old = m_process;
+        old->disconnect();
+        if (old->state() != QProcess::NotRunning) {
+            m_retiringProcess = old;
+            connect(old, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+                    old, &QObject::deleteLater);
+            connect(old, &QProcess::errorOccurred, old, [old](QProcess::ProcessError error) {
+                if (error == QProcess::FailedToStart)
+                    old->deleteLater();
+            });
+            connect(old, &QProcess::started, old, [old]() { old->terminate(); });
+            old->terminate();
+            QTimer::singleShot(1000, old, [old]() {
+                if (old->state() != QProcess::NotRunning)
+                    old->kill();
+            });
+        } else {
+            old->deleteLater();
         }
-        m_process->deleteLater();
         m_process = nullptr;
     }
     endEmbedded();
     m_watchdogTimer->stop();
+    m_connectTimer->stop();
     m_ipc->abort();
-    QFile::remove(m_socketPath);
     m_position    = 0;
     m_duration    = 0;
     m_playlistPos = -1;
@@ -505,14 +527,46 @@ void MpvController::loadAndPlay(const QString &url, float startSeconds,
     m_pendingStartMs = int(startSeconds * 1000.0f);
     const int serial = ++m_launchSerial;
     QTimer::singleShot(50, this, [this, serial, args, media, embedded]() {
-        if (serial != m_launchSerial)
-            return;
-        m_launchPending = false;
-        if (embedded)
-            startEmbedded(args);
-        else
-            startProcess(args, media);
+        launchAfterRetirement(serial, args, media, embedded);
     });
+}
+
+void MpvController::launchAfterRetirement(int serial, const QStringList &args,
+                                         const QStringList &media, bool embedded) {
+    if (serial != m_launchSerial)
+        return;
+    if (m_retiringProcess && m_retiringProcess->state() != QProcess::NotRunning) {
+        QTimer::singleShot(25, this, [this, serial, args, media, embedded]() {
+            launchAfterRetirement(serial, args, media, embedded);
+        });
+        return;
+    }
+    QFile::remove(m_socketPath);
+    m_launchPending = false;
+    if (embedded) {
+        if (m_handoff)
+            m_handoff->releaseNow(QLatin1String(kHandoffOwner));
+        m_headlessMode = false;
+        startEmbedded(args);
+    } else {
+        startProcess(args, media);
+    }
+}
+
+void MpvController::stopAfterRetirement(int serial, int positionMs) {
+    if (serial != m_launchSerial)
+        return;
+    if (m_retiringProcess && m_retiringProcess->state() != QProcess::NotRunning) {
+        QTimer::singleShot(25, this, [this, serial, positionMs]() {
+            stopAfterRetirement(serial, positionMs);
+        });
+        return;
+    }
+    QFile::remove(m_socketPath);
+    if (m_handoff)
+        m_handoff->releaseNow(QLatin1String(kHandoffOwner));
+    m_headlessMode = false;
+    emit playbackEnded(positionMs, 0, QStringLiteral("stopped"));
 }
 
 void MpvController::startProcess(QStringList args, const QStringList &media) {
@@ -673,11 +727,11 @@ void MpvController::stop() {
     // its player it stopped where it was to start. Told as a process's exit
     // is, not from inside the player's own call.
     if (m_launchPending) {
-        ++m_launchSerial;
+        const int serial = ++m_launchSerial;
         m_launchPending = false;
         const int pos = m_pendingStartMs;
-        QTimer::singleShot(0, this, [this, pos]() {
-            emit playbackEnded(pos, 0, QStringLiteral("stopped"));
+        QTimer::singleShot(0, this, [this, serial, pos]() {
+            stopAfterRetirement(serial, pos);
         });
         return;
     }
