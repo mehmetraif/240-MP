@@ -5,14 +5,17 @@
 -- app's modes, and under whatever the app draws over the picture.
 -- MpvController loads it for every session while Settings' CHANNEL LOGO is
 -- on, with the corner in script-opts (logo-corner=tl|tr|bl|br, or all for
--- one in each of the four). It stands 7%
+-- one in each of the four). With Settings' LOGO IMAGE, a picture of the
+-- user's own stands there instead: MpvController reads it into mpv's raw
+-- overlay format at the size it is shown (logo-image, logo-width and
+-- logo-height), and it is laid over the picture with overlay-add. It stands 7%
 -- of the output's height tall and 10% of the picture's width and height in
 -- from the picture's corner (the letterbox bars are outside it), inside a
 -- CRT's safe area, and follows the output's size.
 local assdraw = require 'mp.assdraw'
 local options = require 'mp.options'
 
-local opts = { corner = "tr" }
+local opts = { corner = "tr", image = "", width = 0, height = 0 }
 options.read_options(opts, "logo")
 
 -- The artwork's frame, in its own units.
@@ -63,11 +66,27 @@ local function draw()
         return
     end
 
+    local mx, my = vw * 0.10, vh * 0.10
+    local corners = opts.corner == "all" and { "tl", "tr", "bl", "br" } or { opts.corner }
+
+    -- A picture of the user's own: an overlay in each corner, at its size.
+    if opts.image ~= "" and opts.width > 0 and opts.height > 0 then
+        for i, corner in ipairs(corners) do
+            local left = corner == "tl" or corner == "bl"
+            local top = corner == "tl" or corner == "tr"
+            local x = left and (vx0 + mx) or (vx1 - mx - opts.width)
+            local y = top and (vy0 + my) or (vy1 - my - opts.height)
+            mp.command_native({ name = "overlay-add", id = i - 1,
+                                x = math.max(0, math.floor(x)), y = math.max(0, math.floor(y)),
+                                file = opts.image, offset = 0, fmt = "bgra",
+                                w = opts.width, h = opts.height, stride = opts.width * 4 })
+        end
+        return
+    end
+
     local h = H * 0.07
     local s = h / ART.h
     local w = ART.w * s
-    local mx, my = vw * 0.10, vh * 0.10
-    local corners = opts.corner == "all" and { "tl", "tr", "bl", "br" } or { opts.corner }
 
     local ass = assdraw.ass_new()
     for _, corner in ipairs(corners) do

@@ -286,9 +286,11 @@ FocusScope {
     // A block of a folder's entries for a branch: a window of anchorRows
     // around entry `around`, or with around < 0 its first few, the last of
     // them "…" when there are more. null for an empty folder off the spine.
+    // An entry marked branchHidden is left out of a folder's first few (the
+    // file picker's USE THIS FOLDER, in every folder).
     function blockFor(path, around) {
         var l = listing(path, true)
-        var items = l.items
+        var items = around >= 0 ? l.items : l.items.filter(function(item) { return !item.branchHidden })
         var rows = []
         var offset = 0
         if (items.length === 0) {

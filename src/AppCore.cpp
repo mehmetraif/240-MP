@@ -573,28 +573,42 @@ QVariantMap AppCore::theme(const QString &id) const {
     return theme;
 }
 
-QVariantList AppCore::listDirectories(const QString &path) {
-    QVariantList result;
-    QDir dir(path);
-    if (!dir.exists()) return result;
-    const QStringList names = dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot | QDir::Hidden, QDir::Name);
-    for (const QString &name : names) {
-        QVariantMap item;
-        item["name"] = name;
-        item["path"] = dir.absoluteFilePath(name);
-        result.append(item);
+QVariantList AppCore::filePlaces() const {
+    QVariantList places;
+    auto add = [&places](const QString &name, const QString &path) {
+        if (QFileInfo(path).isDir())
+            places.append(QVariantMap{ { "name", name }, { "path", path } });
+    };
+    add(QStringLiteral("Home"), QDir::homePath());
+    // Where drives and partitions are mounted: the OSD/OS image's OSD-OS
+    // partition and USB drives, udisks', macOS's.
+    add(QStringLiteral("Media"), QStringLiteral("/media"));
+    const QString user = QString::fromLocal8Bit(qgetenv("USER"));
+    if (!user.isEmpty())
+        add(QStringLiteral("Drives"), QStringLiteral("/run/media/") + user);
+    add(QStringLiteral("Volumes"), QStringLiteral("/Volumes"));
+    add(QStringLiteral("Root"), QStringLiteral("/"));
+    return places;
+}
+
+QVariantList AppCore::folderEntries(const QString &path, const QStringList &fileTypes) const {
+    QVariantList entries;
+    const QDir dir(path);
+    if (path.isEmpty() || !dir.exists())
+        return entries;
+    // Hidden ones are left out, as the menus would only fill with them.
+    const QFileInfoList folders = dir.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot,
+                                                    QDir::Name | QDir::IgnoreCase);
+    for (const QFileInfo &f : folders)
+        entries.append(QVariantMap{ { "name", f.fileName() }, { "path", f.absoluteFilePath() }, { "isFolder", true } });
+    if (fileTypes.isEmpty())
+        return entries;
+    const QFileInfoList files = dir.entryInfoList(QDir::Files, QDir::Name | QDir::IgnoreCase);
+    for (const QFileInfo &f : files) {
+        if (fileTypes.contains(f.suffix().toLower()))
+            entries.append(QVariantMap{ { "name", f.fileName() }, { "path", f.absoluteFilePath() }, { "isFolder", false } });
     }
-    return result;
-}
-
-QString AppCore::parentDirectory(const QString &path) {
-    QDir dir(path);
-    if (!dir.cdUp()) return path;
-    return dir.absolutePath();
-}
-
-QString AppCore::homePath() {
-    return QDir::homePath();
+    return entries;
 }
 
 // A device typically has several addresses (RPi: eth0 + wlan0; SteamOS: wlan0 plus

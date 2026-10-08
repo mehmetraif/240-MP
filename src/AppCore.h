@@ -65,9 +65,15 @@ public:
     // it dresses ({ source URL, border, tile }), only those it has that can
     // be used; empty for none, or for one gone or unreadable.
     Q_INVOKABLE QVariantMap theme(const QString &id) const;
-    Q_INVOKABLE QVariantList listDirectories(const QString &path);
-    Q_INVOKABLE QString parentDirectory(const QString &path);
-    Q_INVOKABLE QString homePath();
+    // The file picker's (views/FilePicker.qml) places, the folders its tree
+    // starts from: home, where drives and partitions are mounted (/media,
+    // /run/media/<user>, /Volumes) and the root, those there are, as
+    // [{ name, path }].
+    Q_INVOKABLE QVariantList filePlaces() const;
+    // A folder's entries for the file picker, [{ name, path, isFolder }]: its
+    // folders, then its files of these types (lower case; none, no files),
+    // each by name, hidden ones left out.
+    Q_INVOKABLE QVariantList folderEntries(const QString &path, const QStringList &fileTypes) const;
     Q_INVOKABLE QString localIpAddress() const;
     // The licence's text (LICENSE next to the app, the GNU GPL v3), its
     // paragraphs each on one line so a view wraps them to its width; "" when

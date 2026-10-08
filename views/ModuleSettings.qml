@@ -268,11 +268,13 @@ FocusScope {
             } else if (item.type === "action") {
                 appCore.invoke_module_action(moduleSettingsRoot.moduleId, item.action_slot)
             } else if (item.type === "directory_browser") {
-                var savedPath = currentValues[item.key] || ""
-                moduleSettingsRoot.navigateTo("views/DirectoryBrowser.qml", {
+                // Picked on the file picker's tree; "" is the module's own.
+                moduleSettingsRoot.navigateTo("views/FilePicker.qml", {
                     moduleId: moduleSettingsRoot.moduleId,
                     settingKey: item.key,
-                    currentPath: savedPath !== "" ? savedPath : appCore.homePath()
+                    currentPath: currentValues[item.key] || "",
+                    defaultLabel: "Default Folder",
+                    label: item.label
                 }, { currentIndex: settingsList.currentIndex })
             }
         }

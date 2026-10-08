@@ -43,7 +43,7 @@ As an app ([Install](#install)), OSD/OS is the same on screen, on top of whateve
 - **A tape loading** while a video starts: VHS noise in the color scheme's colours and a dubbing deck's display, with where the video is and, once known, how long it is. Settings → Loading Effect turns the noise off.
 - **Hint Bar** and **Help Line** in Settings: the key hints at the foot of every screen and the line about the selected row under a menu, each on or off once the keys are second nature.
 - **About** in Settings: what OSD/OS is, who makes it, what it is made of and under which license, with the license's text to read on the device.
-- **The logo** in a corner of the picture while a video plays, like a channel's: Settings → Channel Logo picks the corner, all four, or none. It is on the About page and on the boot screen's cassette too.
+- **The logo** in a corner of the picture while a video plays, like a channel's: Settings → Channel Logo picks the corner, all four, or none, and Logo Image a picture of your own in place of OSD/OS's. It is on the About page and on the boot screen's cassette too.
 - **Scaling** for 16:9 pictures on a 4:3 screen: Letterbox, 14:9, Pan & Scan or Anamorphic. Set it for every module, or for one module in its own settings.
 - **Netflix and Prime Video** catalogues from TMDB in the same tree. A title plays in the service's own player.
 - **The OSD/OS image**, a Raspberry Pi OS Lite image that boots straight into OSD/OS and shows a VHS boot screen while its services come up.

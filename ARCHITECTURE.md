@@ -67,6 +67,7 @@ osd-os/
     ModuleList.qml
     Settings.qml
     About.qml                       # Settings → About: the credits, and the licence's text
+    FilePicker.qml                  # the folder or file a setting names, picked on a TreeBrowser
     ...
     Components/                     # shared QML components (AppBar, HintBar, MenuRow, MenuList, HelpLine, ScrollMarks, TreeBrowser, InfoPanel, EntryOptions, PlaylistAdder, PlayerMenu, LoadingScreen, PromptScreen, OsdGround, ThemeImage, MousePointer, OnScreenKeyboard, WebPlayerBrowse, WebPlayerLaunch, the Osd* elements, ChoiceOverlay, qmldir)
     BootScreen.qml                  # boot screen of the OSD/OS image (see os/README.md)
@@ -125,7 +126,7 @@ Loaded at startup by `AppCore` — the single source of truth for a module's ide
 | `multiselect_submenu` | Multi-select list via submenu | `options_source`, `options_slot` |
 | `submenu` | A page of its own for a group of settings, like YouTube's ADVANCED | `settings`: its rows, in this same format (a submenu may hold another) |
 | `module_view` | Opens the module itself on one of its own views, like Netflix's SIGN IN | `params`: the `navParams` its `Root.qml` routes on |
-| `directory_browser` | Keyboard-navigable directory picker | `default` (path string, may be empty) |
+| `directory_browser` | A folder, picked on the file picker's tree ([FilePicker](#filepicker-viewsfilepickerqml)); `""` is the module's own | `default` (path string, may be empty) |
 | `action` | Button that calls a backend slot | `action_slot` |
 
 Additional fields any setting may carry:
@@ -181,7 +182,7 @@ A real example (Plex) — note `requires_auth`, dynamic options, and apply slots
 | `get_module_auth_state(moduleId)` | Returns the module's auth state (for `requires_auth` settings) |
 | `getCustomColorScheme()` | Returns the user's custom color scheme |
 | `themes()` / `theme(id)` | Settings → Theme: the themes there are (`[{ id, name }]`: the app's own in `assets/themes` and the data folder's `themes`, one there in place of the app's of the same folder name), and one read for QML (`root.theme`), a picture of each of the window's parts it dresses (see [Themes](#themes-settings--theme)) |
-| `listDirectories(path)` / `parentDirectory(path)` / `homePath()` | Helpers for `directory_browser` |
+| `filePlaces()` / `folderEntries(path, types)` | The file picker's places (home, `/media`, `/run/media/<user>`, `/Volumes`, the root, those there are) and a folder's entries: its folders, then its files of those types, hidden ones left out |
 | `licenseText()` | The licence's text (`LICENSE` next to the app), its paragraphs each on one line, for Settings → About |
 
 ### Signals
@@ -299,6 +300,8 @@ The on-screen controls mpv shows during playback are custom Lua scripts in `scri
 ### The channel logo (`scripts/mpv-logo.lua`)
 
 Settings → **Channel Logo** (`app.video_logo`: `"tl"`, `"tr"` (the default, when unset), `"bl"`, `"br"`, `"all"` for one in each corner, or `"off"`) puts OSD/OS's logo in a corner of the picture while a video plays, the way a channel's sits in a broadcast. mpv draws it itself: `sessionArgs()` loads `scripts/mpv-logo.lua` with `logo-corner=<corner>` among the script options, so it is there in both modes (the embedded session takes the same `--script`), and it is in the picture, under whatever the app draws over it (the menus over a video behind them, with Transparent Background). The script redraws `assets/images/logo-bug.svg` as ASS vector shapes (`mp.assdraw`, one event per colour) on `mp.set_osd_ass` at the output's size: 7% of the output's height tall, 10% of the picture's width and height in from the picture's corner (`osd-dimensions`, its margins taken off, so a letterboxed picture's bars stay clear of it), and again whenever the output's size changes. Like every setting mpv is launched with, it applies from the next video.
+
+Settings → **Logo Image** (`app.video_logo_image`, a picture's path; OSD/OS's logo when unset), offered while Channel Logo isn't Off, puts a picture of the user's own there instead, picked on the [FilePicker](#filepicker-viewsfilepickerqml) (PNG, JPEG, SVG, GIF, BMP or WebP). `sessionArgs()` reads it at the logo's height (7% of the screen's) into raw premultiplied BGRA (`osdos-logo.bgra` in the temp folder), mpv's overlay format, and hands the script `logo-image`, `logo-width` and `logo-height`; the script lays it in each corner with `overlay-add` (ids 0 to 3), placed as the drawn logo is. It is made at the size it is shown because mpv before 0.38 can't scale an overlay. A picture that can't be read leaves OSD/OS's logo, with a line in the log.
 
 ### Transparent Background: video inside the app
 
@@ -708,7 +711,7 @@ What the OSD is drawn on, as Settings → **OSD Background** (`app.osd_backgroun
 
 `Main.qml` lays one under every view (`z: -1`, over the window's own colour, black but for Full). Over a video behind the menus it is as solid as Transparent Background says, and in Window only the window is drawn (`surround: false`), the picture showing whole around it. A layer that hides the whole view under it lays its own (`PromptScreen`, the `OnScreenKeyboard` and `InfoPanel` below the title bar, `NfcCardWriter`, Bluetooth's DETAILS), never a `Rectangle` of `root.surfaceColor`, so the window goes on under it just as it was: it works in screen coordinates, the window placed where it lies on the screen whatever part of it the ground covers. `LoadingScreen` and the boot screen keep their own full-screen ground: the tape's picture, not the OSD's.
 
-Settings offers Window Frame only while OSD Background is Window: the row's `shownWith: { key, value }` keeps it in the model, with no line and passed over by the cursor, while the row with that key has another value, so the list stays where it is as the row comes and goes.
+Settings offers Window Frame only while OSD Background is Window: the row's `shownWith: { key, value }` (or `{ key, not }`, Logo Image's while Channel Logo isn't Off) keeps it in the model, with no line and passed over by the cursor, while the row with that key has another value, so the list stays where it is as the row comes and goes.
 
 ### Themes (Settings → Theme)
 
@@ -762,6 +765,21 @@ Anything shaped like folders, browsed as a horizontal tree, the way Local Files,
 | `leaveRequested()` | Back with no folder left to close |
 
 `openItem({ name, path })` opens a folder that isn't an entry of the current one, like a search's results; `refresh(path, keepEntry)` fetches a folder again (its entries changed, or came in after `fetch` returned `null`), the cursor keeping its row, or with `keepEntry` the entry it was on (not for a list that grows under the cursor, like YouTube's MORE); `leave(prefix)` closes the open folders at `prefix` and in it, a drive pulled out; `folderName` is the open folder's name, for the `AppBar` subtitle, and `currentEntry` the entry under the cursor, for a footer that says what select will do (`[ENTER]:OPEN` on a folder, `:PLAY` on a film). A key already held as the tree appears (Back held to close a player) does not repeat into it.
+
+### FilePicker (`views/FilePicker.qml`)
+
+The picker every setting that names a folder or a file opens: the same horizontal tree Local Files is browsed with, from its places (`AppCore::filePlaces()`: home, where drives and partitions are mounted, the root) down, each folder's entries from `folderEntries()`. A module's `directory_browser` setting opens it (`ModuleSettings`), and so does Settings → Logo Image (a row of `type: "file"`, its `picker` the navParams below). It opens down to the folder or file chosen now, the cursor on it; the choice is saved with `save_setting` and back comes back, and back at the top leaves the setting as it was.
+
+| navParams | Description |
+|---|---|
+| `moduleId`, `settingKey` | The setting it saves to (`moduleId` `""` for an app one) |
+| `currentPath` | The folder or file chosen now; `""` for the default |
+| `mode` | `"folder"` (when unset): each folder's first entry is **USE THIS FOLDER**, which picks it; `"file"`: the folders, then the files of `types`, select on one picking it |
+| `types` | With `"file"`: the file types offered, lower case (`["png", "jpg", …]`) |
+| `defaultLabel` | An entry before the places that saves `""`: the module's own folder (**Default Folder**), OSD/OS's logo |
+| `label` | What is picked, for the title bar |
+
+USE THIS FOLDER carries `branchHidden`, which the `TreeBrowser` leaves out of a branch's glance at a folder, where it would be every folder's first line.
 
 ### InfoPanel (`views/Components/InfoPanel.qml`)
 

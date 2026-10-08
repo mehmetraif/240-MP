@@ -286,7 +286,24 @@ FocusScope {
             options: logoOpts,
             values: logoVals,
             value: logoOpts[logoIdx < 0 ? logoVals.indexOf("tr") : logoIdx],
-            description: "OSD/OS's logo in a corner of the picture while a video plays, like a channel's, from the next video on\n[ALL CORNERS] In all four  [OFF] None",
+            description: "A logo in a corner of the picture while a video plays, like a channel's: OSD/OS's, or your own (Logo Image), from the next video on\n[ALL CORNERS] In all four  [OFF] None",
+            moduleId: ""
+        })
+
+        // LOGO IMAGE — the channel logo's picture: OSD/OS's, or one of the
+        // user's own, picked on the file picker (views/FilePicker.qml) with
+        // select. Offered while Channel Logo is on; MpvController reads it.
+        var logoImage = appSettings["video_logo_image"] || ""
+        items.push({
+            type: "file",
+            key: "video_logo_image",
+            label: "Logo Image",
+            value: logoImage !== "" ? logoImage.substring(logoImage.lastIndexOf("/") + 1) : "OSD/OS",
+            path: logoImage,
+            picker: { mode: "file", types: ["png", "jpg", "jpeg", "svg", "gif", "bmp", "webp"],
+                      defaultLabel: "OSD/OS Logo" },
+            description: "The channel logo's picture, from the next video on: OSD/OS's, or one of your own, as tall as OSD/OS's\n[ENTER] Pick a picture on the file browser, a PNG with a clear background best",
+            shownWith: { key: "video_logo", not: "Off" },
             moduleId: ""
         })
 
@@ -459,7 +476,8 @@ FocusScope {
     }
 
     // A row offered only while another row has a value (its shownWith,
-    // { key, value }): Window Frame, while OSD Background is Window. It is in
+    // { key, value }), or any but one ({ key, not }): Window Frame while OSD
+    // Background is Window, Logo Image while Channel Logo isn't Off. It is in
     // the model all the time, so the list stays where it is as it comes and
     // goes.
     function rowShown(idx) {
@@ -468,7 +486,8 @@ FocusScope {
             return true
         for (var i = 0; i < settingsItems.length; i++) {
             if (settingsItems[i].key === row.shownWith.key)
-                return settingsItems[i].value === row.shownWith.value
+                return row.shownWith.not !== undefined ? settingsItems[i].value !== row.shownWith.not
+                                                      : settingsItems[i].value === row.shownWith.value
         }
         return false
     }
@@ -651,6 +670,12 @@ FocusScope {
                     settingsRoot.navigateTo("views/ModuleSettings.qml", { moduleId: row.moduleId }, { currentIndex: settingsList.currentIndex })
             } else if (row && row.type === "display_output") {
                 settingsRoot.openOutputs()
+            } else if (row && row.type === "file") {
+                // Picked on the file picker, which saves it and comes back.
+                settingsRoot.navigateTo("views/FilePicker.qml",
+                                        Object.assign({ moduleId: row.moduleId, settingKey: row.key,
+                                                        currentPath: row.path, label: row.label }, row.picker),
+                                        { currentIndex: settingsList.currentIndex })
             } else if (row && row.type === "quit") {
                 quitPrompt.open()
             } else if (row && row.type === "slider" && row.on !== undefined) {
@@ -688,6 +713,7 @@ FocusScope {
                 heading: rowItem.row.type === "section"
                 label: rowItem.row.label || ""
                 value: rowItem.row.type === "list_single" || rowItem.row.type === "display_output"
+                       || rowItem.row.type === "file"
                        ? (rowItem.row.value || "")
                      : rowItem.slider && rowItem.row.on !== undefined ? (rowItem.row.on ? "On" : "Off") : ""
                 selected: settingsList.currentIndex === index
