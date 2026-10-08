@@ -1,0 +1,18 @@
+# RGB to a CRT through SCART, PAL timing (288p), from a Pi 4's GPIO pins,
+# should its 576i not hold: GPIO 4-21 carry the colours to a resistor DAC (the
+# VGA666's layout), GPIO 2 and 3 the vertical and horizontal sync
+# (os/README.md has the cable). Chosen in Settings → Display Output, or copied
+# over osdos-display.txt (config.txt says how).
+
+# The Pi 4's DPI is its firmware's, the only output, its syncs negative as a
+# TV's (dpi_timings' 2nd and 7th numbers): should the picture roll, try 1.
+[pi4]
+dtoverlay=vga666
+enable_dpi_lcd=1
+display_default_lcd=1
+hdmi_ignore_hotplug=1
+dpi_group=2
+dpi_mode=87
+dpi_timings=720 0 12 64 68 288 0 3 3 18 0 0 0 50 0 13500000 1
+
+[all]

@@ -32,6 +32,7 @@
 #include "input/IdleTracker.h"
 #include "update/UpdateManager.h"
 #include "boot/BootProgress.h"
+#include "display/DisplayOutput.h"
 #include "bluetooth/BluetoothManager.h"
 #include "util/ExecPath.h"
 #include "util/DisplayHandoff.h"
@@ -216,6 +217,7 @@ int main(int argc, char *argv[]) {
     IdleTracker         idleTracker(60);   // disabled until Main.qml applies the saved setting
     UpdateManager       updateManager(appRoot, dataRoot);
     BootProgress        bootProgress;      // inert outside the OSD/OS image (os/)
+    DisplayOutput       displayOutput(dataRoot); // Settings → Display Output, on the image
     BluetoothManager    bluetoothManager;  // Settings → Bluetooth (BlueZ on Linux)
 
     // Playback follows the UI's display: mpv gets a --fs-screen* arg derived
@@ -250,6 +252,7 @@ int main(int argc, char *argv[]) {
     ctx->setContextProperty("inputManager",  &inputManager);
     ctx->setContextProperty("updateManager", &updateManager);
     ctx->setContextProperty("bootProgress",  &bootProgress);
+    ctx->setContextProperty("displayOutput", &displayOutput);
     ctx->setContextProperty("bluetoothManager", &bluetoothManager);
     // Whether a child has the screen (Main.qml: root.screenHandedOff).
     ctx->setContextProperty("displayHandoff", &displayHandoff);
