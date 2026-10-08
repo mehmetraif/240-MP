@@ -35,6 +35,7 @@ osd-os/
         ServerDownload.h/.cpp       # one download from a media server, on a thread of its own
       ...
     util/
+      AtomicFile.h                  # writeFileAtomically(): a state file written whole, never cut short
       FileNames.h                   # safeFileName(): a name every filesystem takes (exFAT's rules)
       SslErrors.h                   # expectedLanSslErrors(): a LAN server's own certificate
       EmbyApi.h                     # the Emby API's URLs that Jellyfin shares (browse, download, stream)
@@ -75,6 +76,7 @@ osd-os/
     themes/                         # Settings → Theme's own themes (DOS, Rounded): theme.json and two-colour pictures
   Main.qml                          # app root
   CMakeLists.txt
+  tests/                            # regression tests, built apart (see tests/README.md)
   os/                               # OSD/OS image: a pi-gen stage on Raspberry Pi OS Lite
   docs/                             # the README's screenshots (docs/screenshots/, 640×480) and diagrams (docs/images/)
 ```
@@ -228,7 +230,7 @@ The current MPV implementation is a good reference implementation of the "browse
 
 ### How the hand-off works
 
-1. **Launch** — `loadAndPlay(url, startSeconds, audioTrack, subTrack, ...)` starts mpv as a `QProcess`. Playback parameters are passed as mpv command-line flags: `--start=<sec>` (resume offset), `--playlist-start=<n>`, `--loop-playlist=inf`, and so on; what plays comes last, behind a `--`, so a name beginning with `-` is never taken for an option. mpv is found on `PATH` — the app never links libmpv. Whatever played until then ends at once, but the new session starts a tick (50 ms) later, so that the player's loading screen is drawn first: starting mpv runs synchronously and, on the Pi, switches the VT at once, suspending Qt's render thread before the frame can paint. A `stop()` in that tick cancels the start and ends it as stopped where it was to begin; another `loadAndPlay()` supersedes it. A player calls `loadAndPlay()` and is done; it never defers the call itself.
+1. **Launch** — `loadAndPlay(url, startSeconds, audioTrack, subTrack, ...)` starts mpv as a `QProcess`. Playback parameters are passed as mpv command-line flags: `--start=<sec>` (resume offset), `--playlist-start=<n>`, `--loop-playlist=inf`, and so on; what plays comes last, behind a `--`, so a name beginning with `-` is never taken for an option. mpv is found on `PATH` — the app never links libmpv. Whatever played until then is told to quit (SIGTERM, and a kill a second on if it is still there) without the app waiting for it: the new session starts once that process has gone and the screen is free (`screenBusy()`), and no sooner than a tick (50 ms) later, so that the player's loading screen is drawn first: starting mpv runs synchronously and, on the Pi, switches the VT at once, suspending Qt's render thread before the frame can paint. A `stop()` before then cancels the start and ends it as stopped where it was to begin, once the old process has gone; another `loadAndPlay()` supersedes it, the stop then not reported. A retired process that outlives even its kill (stuck in a driver, or on a network mount gone away) is given up on after 5 s, so that the menus come back. A player calls `loadAndPlay()` and is done; it never defers the call itself.
 2. **Control channel** — mpv is started with `--input-ipc-server=<socket>` (a Unix domain socket at `/tmp/osdos-mpv.sock`). `MpvController` connects to it with a `QLocalSocket` and sends JSON commands via `sendCommand(QJsonArray)`. `seekTo()` and `sendKey()` (which sends mpv a `keypress` command) go over this channel — that's how the USB remote / keyboard drives mpv's OSC while it's fullscreen.
 3. **State back to QML** — `MpvController` issues `observe_property` for `time-pos`, `duration`, and `playlist-pos`, and re-publishes them as `Q_PROPERTY`s + the `positionChanged` / `durationChanged` / `playlistPosChanged` signals. A watchdog timer logs a warning if no `time-pos` event arrives for ~10 s (freeze detection).
 4. **Exit** — when mpv quits, `MpvController` emits a single signal, **`playbackEnded(finalPos, finalDur, reason)`**, where `reason` is one of:
@@ -236,6 +238,8 @@ The current MPV implementation is a good reference implementation of the "browse
     - `"stopped"` — the user quit/stopped before the end (also the safe default for a crash/kill with no end-file event). Record the resume position and return.
     - `"failed"` — mpv exited with code 2 (file couldn't be played). A module may attempt recovery first.  For example: Plex retries with transcoding — otherwise it just returns.
     - `"menu"` — the process ended for its player's own menu: back, for a player whose session note says `menu: true` (see [Its player's menu](#transparent-background-video-inside-the-app)). The player saves where it got to as for `"stopped"`, opens its menu instead of going back, and starts the video again where it was as the menu closes.
+
+    On headless Linux it comes once the screen is the app's again (`handBackScreen()`: DisplayHandoff's release, 200 ms after mpv exits, for the vc4 driver's last commit), and a session asked for meanwhile waits for that release rather than have it take the screen from it. An end that comes after another session was asked for isn't reported: it would read as the new one's.
 
     **The baseline for every module to keep in mind:** by the time `playbackEnded` fires, mpv has already exited, so a handler that returns without either calling `goBack()` or starting fresh playback (`loadAndPlay`, e.g. in an autoplay/retry scenario) will leave the now-defunct Player view focused over a dead subprocess which will cause the app to freeze. So please handle the one signal, then branch on `reason` only where you have special behavior, and make sure no branch falls through.
 
@@ -484,7 +488,7 @@ Please review `PlexBackend` as a reference implementation.
 
 - All HTTP via `QNetworkAccessManager` — async, on the main thread, no worker threads needed.
 - Results returned to QML via signals.
-- Auth/state persisted to JSON files in the data dir.
+- Auth/state persisted to JSON files in the data dir, each written whole with `writeFileAtomically()` (`src/util/AtomicFile.h`; owner-only for a token or a key), never through a `QFile` opened for writing: a crash or a power cut mid-write would leave it cut short.
 - `Q_INVOKABLE` for slots called from QML; `signals:` for callbacks to QML.
 - For dynamic settings dropdowns, emit `dynamicOptionsReady(key, [{id, label}])` — auto-connected; `AppCore` re-emits with the module ID prepended.
 - For auth-gated modules, emit `authStateChanged()` on sign-in/out — auto-connected and re-emitted as `moduleAuthStateChanged(moduleId)`.
@@ -789,7 +793,7 @@ When it comes up is the app's **INFO SCREEN** setting (`app.info_screen`): `off`
 
 ### Recently Watched and Favorites
 
-The tree modules (Local Files, Netflix, Prime Video, YouTube) begin with **RECENTLY WATCHED** and **FAVORITES**, then **SEARCH** and their own folders. Both are the module's lists in AppCore (`get_list(moduleId, "recent" | "favorites")`, kept in `lists.json` in the data folder), holding entries as the tree had them, so one plays from there as it would from anywhere else: a view puts an entry on `recent` as it plays it (the newest 30), and on `favorites` from its options (`EntryOptions`). YouTube's RECENTLY WATCHED is its own watch history (`history`), which keeps the resume positions too. Local Files leaves out the entries whose file has gone (`existing()`, a drive taken out, say), and its SEARCH walks the whole media folder, then the USB drives plugged in, a slice at a time, so a big library never holds the screen still: `search(path, words)` gives what the last search for that folder found, or starts it and `searchReady(path)` follows, keeping the first 200 names that hold every word.
+The tree modules (Local Files, Netflix, Prime Video, YouTube) begin with **RECENTLY WATCHED** and **FAVORITES**, then **SEARCH** and their own folders. Both are the module's lists in AppCore (`get_list(moduleId, "recent" | "favorites")`, kept in `lists.json` in the data folder), holding entries as the tree had them, so one plays from there as it would from anywhere else: a view puts an entry on `recent` as it plays it (the newest 30), and on `favorites` from its options (`EntryOptions`). YouTube's RECENTLY WATCHED is its own watch history (`history`), which keeps the resume positions too. Local Files leaves out the entries whose file has gone (`existing()`, a drive taken out, say), and its SEARCH walks the whole media folder, then the USB drives plugged in, on a worker thread (`QtConcurrent`, given only copies of what it needs), so a big library never holds the screen still, keeping no more than the first 200 names by name as it goes: `search(path, words)` gives what the last search for that folder found, or starts it and `searchReady(path)` follows; a search for another folder, or a new media folder, cancels one under way.
 
 One favourite can **PLAY AT STARTUP**: chosen in its options (`EntryOptions`, which puts it on FAVORITES too), it is the app setting `startup_favorite` (`{ module, path, name }`). After the boot screen `Main.qml`'s `openStartupModule()` opens its module, ahead of Start on Module, with `navParams.startupPlay` set to the entry, as long as it is still one of that module's favourites; the module's router passes it on to its tree view, which plays it as if chosen in FAVORITES (a trail into that folder, so back from it lands there). Only as the view first opens: a view coming back gets `navListState` instead. Settings → Play at Startup can only turn it off. `AppCore::save_setting` takes a JS object for this (QML hands it over as a `QJSValue`). The tree tells the player it plays at startup (`navParams.startup`), and the player then never asks where to start: it resumes where the video was stopped, or starts it from the beginning, as the app setting `startup_from` (Settings → Startup From, `Resume` or `Beginning`, offered while there is a startup favourite) says. A resume prompt is no question to put to a player switched on to play.
 
@@ -903,4 +907,4 @@ User configuration is stored in `config.json` in the app's data directory:
 }
 ```
 
-Each module's settings live under `modules.<id>`. Use `save_setting` / `get_setting` (which support dot-notation keys) rather than writing the file directly. A module's lists (RECENTLY WATCHED, FAVORITES) are in `lists.json` beside it, through `get_list` / `add_to_list` / `remove_from_list`. The data directory is created on first run and is separate from the app itself, so rebuilding never wipes user settings. For the exact per-OS path (macOS vs Raspberry Pi OS), see [BUILDING.md](BUILDING.md#configuration).
+Each module's settings live under `modules.<id>`. Use `save_setting` / `get_setting` (which support dot-notation keys) rather than writing the file directly. A module's lists (RECENTLY WATCHED, FAVORITES) are in `lists.json` beside it, through `get_list` / `add_to_list` / `remove_from_list`. Both are written whole (`writeFileAtomically()`): a crash, a power cut or a full disk mid-save leaves the old file, never a cut-short one, which `loadConfig()` would take for none, the next save then writing the defaults over every setting. The data directory is created on first run and is separate from the app itself, so rebuilding never wipes user settings. For the exact per-OS path (macOS vs Raspberry Pi OS), see [BUILDING.md](BUILDING.md#configuration).

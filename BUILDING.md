@@ -417,6 +417,8 @@ Set them inline, e.g. `QML_IMPORT_TRACE=1 APP_ROOT=$(pwd) ./build/osdos`.
 
 ## GitHub Actions
 
+Besides the release workflow below, two run on their own: **Regression tests** ([regression-tests.yml](.github/workflows/regression-tests.yml)) builds the app and runs the tests in `tests/` on Linux x64 and arm64 for every pull request, and every push to `main`, that touches the C++ (see [tests/README.md](tests/README.md)); **OS image** ([os-image.yml](.github/workflows/os-image.yml)) builds the OSD/OS image for a pull request that touches it.
+
 ### How to trigger a build
 
 Releases are built automatically when you push a version tag:
