@@ -62,12 +62,12 @@ A pure-QML module needs **no C++ changes** — the shell discovers it from its m
 - Please follow the same style as the source you are editing.
 - If you are contributing new code, keep the style consistent with other similar works.
 - Parameterize as much as possible, try to avoid hard coded values whenever you can.
-- **C++**: backends are `QObject` subclasses — use `Q_INVOKABLE` for slots QML calls and `signals:` for callbacks to QML, and persist state as JSON in the data directory (see [C++ Backend Patterns](ARCHITECTURE.md#c-backend-patterns)).
+- **C++**: backends are `QObject` subclasses — use `Q_INVOKABLE` for slots QML calls and `signals:` for callbacks to QML, and persist state as JSON in the data directory, each file written whole with `writeFileAtomically()` (see [C++ Backend Patterns](ARCHITECTURE.md#c-backend-patterns)).
 - **QML**: views are `FocusScope`s that declare `navParams` and communicate via the `navigateTo` / `goBack` signals — never call router functions directly (see [QML View Patterns](ARCHITECTURE.md#qml-view-patterns)).
 
 ### Testing your change
 
-Sorry I've not made time yet to work on automated tests so for now testing is manual:
+A few things that are easy to get wrong have regression tests in `tests/` (Local Files' search, settings and state files written whole, one video handed over to the next; see [tests/README.md](tests/README.md)). CI runs them on every pull request that touches the C++, and you can run them yourself in a minute. Everything else is tested by hand:
 
 - **Build and run** on at least one target (macOS ARM or Raspberry Pi). See [BUILDING.md](BUILDING.md#run).
 - **Navigate with a remote/keyboard only** and confirm every screen in your change is reachable and exitable.

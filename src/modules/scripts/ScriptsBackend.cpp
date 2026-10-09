@@ -1,5 +1,6 @@
 #include "ScriptsBackend.h"
 #include "ScriptLauncher.h"
+#include "../../util/AtomicFile.h"
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -387,14 +388,8 @@ bool ScriptsBackend::setFavorite(const QString &basename, bool favorite) {
     if (!replaced)
         lines.append(QStringLiteral("favorite = ") + (favorite ? "yes" : "no"));
 
-    QFile out(sidecar);
-    if (!out.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-        qWarning("[Scripts] Could not update %s: %s",
-                 qPrintable(QFileInfo(sidecar).fileName()), qPrintable(out.errorString()));
+    if (!writeFileAtomically(sidecar, (lines.join(QLatin1Char('\n')) + "\n").toUtf8()))
         return false;
-    }
-    out.write((lines.join(QLatin1Char('\n')) + "\n").toUtf8());
-    out.close();
 
     qDebug("[Scripts] %s favorite = %s", qPrintable(basename), favorite ? "yes" : "no");
     scanScriptsDir();

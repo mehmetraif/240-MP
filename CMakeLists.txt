@@ -28,7 +28,7 @@ endif()
 
 include(GNUInstallDirs)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Quick Qml Network Svg)
+find_package(Qt6 REQUIRED COMPONENTS Core Concurrent Gui Quick Qml Network Svg)
 find_package(OpenSSL REQUIRED)
 find_package(SDL2 CONFIG REQUIRED) # gamepad input (InputManager)
 
@@ -108,6 +108,7 @@ target_compile_definitions(osdos PRIVATE APP_VERSION="${APP_VERSION}" APP_BUILD=
 
 target_link_libraries(osdos PRIVATE
     Qt6::Core
+    Qt6::Concurrent
     Qt6::Gui
     Qt6::Quick
     Qt6::Qml

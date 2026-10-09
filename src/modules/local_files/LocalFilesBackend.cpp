@@ -1,15 +1,18 @@
 #include "LocalFilesBackend.h"
 #include "RemovableDrives.h"
+#include "util/AtomicFile.h"
 #include "util/LegacyNames.h"
 #include "../../AppCore.h"
 #include <QDir>
 #include <QDirIterator>
 #include <QFile>
+#include <QFutureWatcher>
+#include <QtConcurrent/QtConcurrentRun>
+#include <atomic>
 #include <QFileInfo>
 #include <QVariantMap>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QTimer>
 #include <algorithm>
 
 // supported image types
@@ -34,18 +37,15 @@ static const QStringList kSystemFolders = {
 // A search under way (search()): the folder it walks, then the others.
 struct LocalFilesBackend::SearchRun {
     QString path;
-    QStringList words;
-    std::unique_ptr<QDirIterator> it;
-    QStringList next;
-    QVariantList found;
+    std::atomic_bool cancelled { false };
 };
 
 // No more matches than a tree column is good for: the first, by name.
 static constexpr int kSearchLimit = 200;
-// Entries looked at between two turns of the event loop.
-static constexpr int kSearchSlice = 400;
-
-LocalFilesBackend::~LocalFilesBackend() = default;
+LocalFilesBackend::~LocalFilesBackend() {
+    if (m_search)
+        m_search->cancelled = true;
+}
 
 LocalFilesBackend::LocalFilesBackend(const QString &appRoot, const QString &dataRoot, AppCore *appCore,
                                      QObject *parent)
@@ -105,10 +105,8 @@ QVariantMap LocalFilesBackend::loadHistory() const {
 }
 
 void LocalFilesBackend::saveHistory(const QVariantMap &history) {
-    QFile file(historyFilePath());
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate))
-        return;
-    file.write(QJsonDocument(QJsonObject::fromVariantMap(history)).toJson(QJsonDocument::Compact));
+    writeFileAtomically(historyFilePath(),
+                        QJsonDocument(QJsonObject::fromVariantMap(history)).toJson(QJsonDocument::Compact));
 }
 
 QVariantMap LocalFilesBackend::getSavedPosition(const QString &filePath) {
@@ -246,6 +244,8 @@ void LocalFilesBackend::setMediaRoot(const QString &path) {
     QDir().mkpath(m_mediaRoot);
     m_drives->setMediaRoot(m_mediaRoot);
     // What was found was found in the old folder.
+    if (m_search)
+        m_search->cancelled = true;
     m_search.reset();
     m_foundPath.clear();
     m_found.clear();
@@ -311,16 +311,17 @@ QVariantList LocalFilesBackend::getItems(const QString &path) {
 }
 
 // ---------------------------------------------------------------------------
-// Search: names under the media folder, walked a slice at a time.
+// Search: names under the media folder, scanned off the UI thread.
 // ---------------------------------------------------------------------------
 
 // A tree entry for a name, as getItems() makes them; empty for a file that
 // isn't media.
-QVariantMap LocalFilesBackend::entryFor(const QString &dirPath, const QString &name, bool isDir) const {
+QVariantMap LocalFilesBackend::entryFor(const QString &dirPath, const QString &name, bool isDir) {
     const QString full = QDir(dirPath).absoluteFilePath(name);
     QVariantMap item;
     if (isDir) {
-        if (isPlaylist(name) && QFileInfo::exists(full + QLatin1Char('/') + name)) {
+        if (kPlaylistExts.contains(QFileInfo(name).suffix().toLower())
+                && QFileInfo::exists(full + QLatin1Char('/') + name)) {
             item["name"] = name;
             item["path"] = full + QLatin1Char('/') + name;
             item["isFolder"] = false;
@@ -346,19 +347,68 @@ QVariant LocalFilesBackend::search(const QString &path, const QString &words, bo
         return QVariant();
     m_foundPath.clear();
     m_found.clear();
-    // A run under way always has its next slice waiting: one more would make two.
-    const bool running = m_search != nullptr;
-    m_search = std::make_unique<SearchRun>();
-    m_search->path = path;
-    m_search->words = words.simplified().toLower().split(QLatin1Char(' '), Qt::SkipEmptyParts);
-    // Not through symbolic links: one pointing back up would never end.
-    m_search->it = std::make_unique<QDirIterator>(
-        m_mediaRoot, QDir::Dirs | QDir::Files | QDir::NoDotAndDotDot, QDirIterator::Subdirectories);
-    const QList<RemovableDrives::Drive> plugged = m_drives->drives();
-    for (const RemovableDrives::Drive &d : plugged)
-        m_search->next << d.path;
-    if (!running)
-        QTimer::singleShot(0, this, &LocalFilesBackend::searchSlice);
+    if (m_search)
+        m_search->cancelled = true;
+    const auto run = std::make_shared<SearchRun>();
+    run->path = path;
+    m_search = run;
+    QStringList roots { m_mediaRoot };
+    for (const RemovableDrives::Drive &d : m_drives->drives())
+        roots << d.path;
+    const QStringList terms = words.simplified().toLower().split(QLatin1Char(' '), Qt::SkipEmptyParts);
+    auto *watcher = new QFutureWatcher<QVariantList>(this);
+    connect(watcher, &QFutureWatcher<QVariantList>::finished, this, [this, watcher, run]() {
+        watcher->deleteLater();
+        if (run->cancelled || m_search != run)
+            return;
+        m_foundPath = run->path;
+        m_found = watcher->result();
+        m_search.reset();
+        emit searchReady(m_foundPath);
+    });
+    // Only value snapshots enter the worker: it never accesses the backend or
+    // RemovableDrives, and can safely finish after the backend is destroyed.
+    watcher->setFuture(QtConcurrent::run([run, roots, terms]() {
+        QVariantList found;
+        auto less = [](const QVariant &a, const QVariant &b) {
+            const QVariantMap left = a.toMap(), right = b.toMap();
+            const int order = QString::compare(left.value("name").toString(),
+                                               right.value("name").toString(), Qt::CaseInsensitive);
+            return order != 0 ? order < 0
+                              : left.value("path").toString() < right.value("path").toString();
+        };
+        for (const QString &root : roots) {
+            if (run->cancelled)
+                return QVariantList();
+            // Not through symbolic links: one pointing back up would never end.
+            QDirIterator it(root, QDir::Dirs | QDir::Files | QDir::NoDotAndDotDot,
+                            QDirIterator::Subdirectories);
+            while (!run->cancelled && it.hasNext()) {
+                it.next();
+                const QFileInfo info = it.fileInfo();
+                const QString name = info.fileName().toLower();
+                if (terms.isEmpty() || !std::all_of(terms.cbegin(), terms.cend(),
+                        [&name](const QString &term) { return name.contains(term); }))
+                    continue;
+                const QVariantMap item = entryFor(info.absolutePath(), info.fileName(), info.isDir());
+                if (item.isEmpty())
+                    continue;
+                // A max heap keeps the alphabetically first 200, using O(200)
+                // result storage and O(log 200) work per matching entry.
+                const QVariant candidate(item);
+                if (found.size() < kSearchLimit) {
+                    found.append(candidate);
+                    std::push_heap(found.begin(), found.end(), less);
+                } else if (less(candidate, found.front())) {
+                    std::pop_heap(found.begin(), found.end(), less);
+                    found.back() = candidate;
+                    std::push_heap(found.begin(), found.end(), less);
+                }
+            }
+        }
+        std::sort_heap(found.begin(), found.end(), less);
+        return found;
+    }));
     return QVariant();
 }
 
@@ -369,41 +419,4 @@ QVariantList LocalFilesBackend::existing(const QVariantList &entries) const {
             kept << v;
     }
     return kept;
-}
-
-void LocalFilesBackend::searchSlice() {
-    if (!m_search)
-        return;
-    SearchRun &run = *m_search;
-    for (int n = 0; n < kSearchSlice; ++n) {
-        if (!run.it->hasNext()) {
-            if (run.next.isEmpty())
-                break;
-            run.it = std::make_unique<QDirIterator>(run.next.takeFirst(),
-                                                    QDir::Dirs | QDir::Files | QDir::NoDotAndDotDot,
-                                                    QDirIterator::Subdirectories);
-            continue;
-        }
-        run.it->next();
-        const QFileInfo info = run.it->fileInfo();
-        const QString name = info.fileName().toLower();
-        if (run.words.isEmpty() || !std::all_of(run.words.cbegin(), run.words.cend(),
-                                                [&name](const QString &w) { return name.contains(w); }))
-            continue;
-        const QVariantMap item = entryFor(info.absolutePath(), info.fileName(), info.isDir());
-        if (!item.isEmpty())
-            run.found.append(item);
-    }
-    if (run.it->hasNext() || !run.next.isEmpty()) {
-        QTimer::singleShot(0, this, &LocalFilesBackend::searchSlice);
-        return;
-    }
-    std::sort(run.found.begin(), run.found.end(), [](const QVariant &a, const QVariant &b) {
-        return QString::compare(a.toMap().value("name").toString(), b.toMap().value("name").toString(),
-                                Qt::CaseInsensitive) < 0;
-    });
-    m_foundPath = run.path;
-    m_found = run.found.mid(0, kSearchLimit);
-    m_search.reset();
-    emit searchReady(m_foundPath);
 }

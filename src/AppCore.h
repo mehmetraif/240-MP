@@ -132,7 +132,8 @@ private slots:
 
 private:
     QJsonObject loadConfig() const;
-    void saveConfig(const QJsonObject &config) const;
+    // False when it couldn't be written (the reason is in the log).
+    bool saveConfig(const QJsonObject &config) const;
     QJsonObject loadLists() const;
     void saveLists(const QJsonObject &lists) const;
     QString moduleIdForBackend(QObject *backend) const;
