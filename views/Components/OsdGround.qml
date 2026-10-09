@@ -72,7 +72,9 @@ Item {
         y: root.osdWindow.y - ground.y
         width: root.osdWindow.width
         height: root.osdWindow.height
-        color: root.surfaceColor
+        // The theme's frame draws the window whole, its middle too: what the
+        // picture leaves clear (a rounded corner) shows what is around it.
+        color: ground.framed && themedFrame.shown ? "transparent" : root.surfaceColor
         border.color: root.primaryColor
         border.width: ground.framed && !themedFrame.shown ? root.px : 0
         antialiasing: false

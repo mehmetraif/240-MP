@@ -1,0 +1,7 @@
+{
+    "name": "Template",
+    "window":    { "image": "window.png", "border": 4 },
+    "titleBar":  { "image": "titlebar.png", "border": [2, 2, 5, 2] },
+    "hintBar":   { "image": "hintbar.png", "border": 3, "tile": "repeat" },
+    "selection": { "image": "selection.png", "border": 3 }
+}

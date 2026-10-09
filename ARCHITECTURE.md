@@ -78,7 +78,7 @@ osd-os/
   CMakeLists.txt
   tests/                            # regression tests, built apart (see tests/README.md)
   os/                               # OSD/OS image: a pi-gen stage on Raspberry Pi OS Lite
-  docs/                             # the README's screenshots (docs/screenshots/, 640×480) and diagrams (docs/images/)
+  docs/                             # the README's screenshots (docs/screenshots/, 640×480), diagrams (docs/images/) and the theme template (docs/theme-template/)
 ```
 
 There are three modules today: `local_files`, `plex`, and `ambient_mode`. `plex` is a helpful reference when building something new as it covers a more complex use case (connecting to a 3rd party API with auth)
@@ -719,10 +719,10 @@ Settings offers Window Frame only while OSD Background is Window: the row's `sho
 
 ### Themes (Settings → Theme)
 
-Settings → **Theme** (`app.theme`, a theme's folder name; none when unset) dresses the window, apart from the colour scheme: a theme gives the shapes of the window's parts, and the scheme still gives every colour, so any theme goes with any scheme. A theme is a folder with a `theme.json` (its `name`, and a picture for any of `window`, `titleBar`, `hintBar` and `selection`: `{ "image", "border", "tile" }`, or just the file's name), the app's own in `assets/themes` (DOS, Rounded) or the data folder's `themes`, one there in place of the app's of the same folder name. The format, for a theme's author, is in the README's [Themes](README.md#themes).
+Settings → **Theme** (`app.theme`, a theme's folder name; none when unset) dresses the window, apart from the colour scheme: a theme gives the shapes of the window's parts, and the scheme still gives every colour, so any theme goes with any scheme. A theme is a folder with a `theme.json` (its `name`, and a picture for any of `window`, `titleBar`, `hintBar` and `selection`: `{ "image", "border", "tile" }`, or just the file's name), the app's own in `assets/themes` (DOS, Rounded) or the data folder's `themes`, one there in place of the app's of the same folder name. The format, for a theme's author, is in the README's [Themes](README.md#themes), and a theme to start from, with a script that draws its pictures from text drawings, in [docs/theme-template](docs/theme-template/).
 
 - `AppCore::themes()` lists them for the Settings row, by name (the value saved is the folder's name), and `theme(id)` reads one for `Main.qml`'s `root.theme`: the parts it has that can be used, their files as URLs. A picture must be a PNG, GIF or BMP in the theme's own folder (a path out of it, or a link out of it, is refused) and a `border` one number or four; the log names what was left out, and a `theme.json` that isn't JSON leaves the theme out of the list.
-- `ThemeImage` draws a part where the window's own drawing goes, which stays as the fallback: `OsdGround`'s window frame (`window`, with Window Frame On or Shadow), the `AppBar`'s bar (`titleBar`), the `HintBar` (`hintBar`), and the selected line (`selection`) in `MenuRow`, the main menu, the `TreeBrowser`'s cursor and a `PromptScreen`'s answers.
+- `ThemeImage` draws a part where the window's own drawing goes, which stays as the fallback: `OsdGround`'s window frame (`window`, with Window Frame On or Shadow; under it the window has no fill of its own, so the picture draws the whole window and what it leaves clear shows what is around it), the `AppBar`'s bar (`titleBar`), the `HintBar` (`hintBar`), and the selected line (`selection`) in `MenuRow`, the main menu, the `TreeBrowser`'s cursor and a `PromptScreen`'s answers.
 - `OsdSkinProvider` (`src/util/`, `image://osdskin/<primary>/<surface>/<file URL>`) maps the picture to the two colours a pixel at a time: clear (alpha under half) stays clear, light (grey from half up) takes the scheme's colour, dark its background. It reads only local files. A change of scheme, or OSD Background's Off, asks for the picture again in the new colours.
 
 ### VCR OSD elements
