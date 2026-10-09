@@ -276,7 +276,7 @@ YouTube without the YouTube app: your subscriptions, channels and playlists, sea
 
 Settings → **Theme** dresses the window, apart from the color scheme: the shapes of OSD Background's window frame, the title and hint bars, and the selected line. A theme gives only shapes. They are drawn in the color scheme's two colors, so every theme goes with every scheme. Two come with OSD/OS: **DOS**, a double line round the window, and **Rounded**, round corners on the window, the bars and the selected line.
 
-A theme is a folder in the data folder's `themes` (`~/.local/share/OSD-OS/themes/` on Linux and the OSD/OS image, `~/Library/Application Support/OSD-OS/themes/` on macOS), holding a `theme.json` and its pictures:
+A theme is a folder in the data folder's `themes` (`~/.local/share/OSD-OS/themes/` on Linux and the OSD/OS image, `~/Library/Application Support/OSD-OS/themes/` on macOS), holding a `theme.json` and its pictures. To make one, start from the **[theme template](docs/theme-template/)**: it dresses every part and uses every option, and its script draws the pictures from text drawings. A theme's `theme.json` looks like this:
 
 ```json
 {
@@ -289,7 +289,7 @@ A theme is a folder in the data folder's `themes` (`~/.local/share/OSD-OS/themes
 ```
 
 - **Every part is optional**: one left out is drawn as OSD/OS draws it. `window` is the frame of OSD Background's window (Window, with Window Frame On or Shadow).
-- **A picture has two colors**, a PNG (or GIF, BMP): white where the color scheme's color goes, black where its background goes, transparent where nothing is drawn. Each of its pixels is an art pixel, a pixel of a 240-line picture, scaled up to the screen without blurring.
+- **A picture has two colors**, a PNG (or GIF, BMP): white where the color scheme's color goes, black where its background goes, transparent where nothing is drawn (round the window's frame, what is around the window shows). Each of its pixels is an art pixel, a pixel of a 240-line picture, scaled up to the screen without blurring.
 - **`border`** is how many of the picture's pixels at each edge are its frame: one number, or `[left, top, right, bottom]`. The corners stay as drawn, the edges stretch along the part, and the middle fills the rest. `"tile": "repeat"` repeats the edges instead of stretching them (for a dotted line).
 - **One of OSD/OS's own** is replaced by a folder of the same name in the data folder. The log says which theme was read, and what in it could not be used.
 
