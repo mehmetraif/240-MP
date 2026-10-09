@@ -1,6 +1,6 @@
 # Regression tests
 
-Two test programs, built apart from the app. CI runs them on Linux x64 and arm64 for every pull request that touches `src/`, `tests/` or the build ([regression-tests.yml](../.github/workflows/regression-tests.yml)). They need CMake, a C++17 compiler and Qt 6's development packages (Core, Concurrent, Gui, Network, Qml, Quick and Test), and libdrm's on Linux. Neither needs mpv or a display.
+Three test programs, built apart from the app. CI runs them on Linux x64 and arm64 for every pull request that touches `src/`, `tests/` or the build ([regression-tests.yml](../.github/workflows/regression-tests.yml)). They need CMake, a C++17 compiler and Qt 6's development packages (Core, Concurrent, Gui, Network, Qml, Quick and Test), and libdrm's on Linux. None needs mpv or a display.
 
 ```sh
 cmake -S tests -B build-tests
@@ -15,6 +15,12 @@ ctest --test-dir build-tests --output-on-failure
   - Settings and resume points survive a restart.
   - A save that can't be made (the data folder read-only) leaves the old file as it was. Run as root, that test skips itself: root writes to a read-only folder anyway.
   - State files keep their permissions, and a token is owner-only from its first write.
+- **looks** (`looks_test.cpp`): themes and skins (Settings → Theme and Skin), read from the app's folder and the data folder's.
+  - Themes read as they always have.
+  - Skins are listed by name, each once, the data folder's in place of the app's, with what each sets; a `skin.json` that isn't JSON is left out, for the app's of its name.
+  - A skin's names are passed on, a theme's read; its own colours, theme and effect are read from its folder, and a picture or shader out of it, by a path or a link, is refused. Knobs are held between 0 and 1.
+  - What can't be used is there but empty (Video 1's colours, OSD/OS's own window, no effect), and null is as left out.
+  - An id is a folder's name, never a path.
 - **playback_retire** (`playback_retire_test.cpp`, Linux only). A video is asked for while another plays in an mpv process, against a stand-in for mpv: a shell script first on `PATH` that writes down when it starts, is told to quit and exits.
   - The app goes on while the old player quits, and the new one starts only once it has gone.
   - Of several videos asked for in a row, only the last plays.

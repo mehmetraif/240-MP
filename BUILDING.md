@@ -16,6 +16,7 @@ brew install cmake
 
 - Download from [qt.io/download](https://qt.io/download) or `brew install qt@6`.
 - Install to `~/Qt/`
+- With the installer, add **Qt Shader Tools** (under Additional Libraries; Homebrew's Qt includes it): it compiles the screen's effects into the app. Optional: without it Settings → Effect is left out, and a skin's effect with it.
 
 **Install mpv (required for playback):**
 
@@ -104,12 +105,15 @@ sudo apt-get install -y \
   qml6-module-qtquick qml6-module-qtquick-controls \
   qml6-module-qtquick-window \
   libqt6svg6 qt6-svg-dev qt6-svg-plugins qt6-wayland \
+  qt6-shadertools-dev \
   libdrm-dev libxkbcommon-dev libssl-dev \
   libsdl2-dev \
   mpv
 ```
 
 `mpv` is the playback engine — OSD/OS launches it as a subprocess. No libmpv build dependency is required. `libmpv-dev` is optional: with its headers the Transparent Background setting is built in, which plays video inside the app's window through libmpv (`libmpv2`, opened at run time; `install.sh` and the OS image install it).
+
+`qt6-shadertools-dev` is optional too: it compiles the screen's effects (`shaders/`) into the app, for Settings → Effect and a skin's effect; without it they are left out. Nothing of it is needed at run time.
 
 For the NFC Reader module, `libpcsclite-dev` is optional and only needed for PC/SC readers such as the ACR122U — it is detected automatically at configure time. A PN532 USB reader needs no build dependency at all.
 
@@ -219,7 +223,7 @@ sudo apt-get install -y build-essential cmake \
 
 `libpcsclite-dev` is optional and only adds PC/SC reader support to the NFC module. It is listed here because CI builds with it, so the released AppImage bundles `libpcsclite.so.1` and PC/SC works on any host running `pcscd`. Leaving it out still produces a working build — the PN532 USB driver links nothing.
 
-Qt 6 can come from your distro (`qt6-base-dev qt6-declarative-dev qt6-svg-dev qml6-module-qtquick*`) or from the [Qt online installer](https://www.qt.io/download-qt-installer) (set `CMAKE_PREFIX_PATH` to it, matching CI's Qt 6.7).
+Qt 6 can come from your distro (`qt6-base-dev qt6-declarative-dev qt6-svg-dev qt6-shadertools-dev qml6-module-qtquick*`) or from the [Qt online installer](https://www.qt.io/download-qt-installer) with Qt Shader Tools (set `CMAKE_PREFIX_PATH` to it, matching CI's Qt 6.7).
 
 > **The bundled `mpv` must be modern (≥ 0.38)** — the app's "forced subtitles only" option (`--subs-with-matching-audio=forced`) was added in mpv 0.38, and distro packages are often older (Ubuntu 24.04 ships 0.37, 22.04 ships 0.34.1). If your distro's mpv is too old, build one first and point `MPV_BIN` at it:
 >

@@ -86,14 +86,56 @@ Window {
         }
     })
     property var allSchemes: schemes  // may gain a "Custom" entry on startup
+    // Settings' COLOR SCHEME (app.color_scheme).
     property string currentScheme: "Video 1"
-    readonly property var scheme: allSchemes[currentScheme] || allSchemes["Video 1"]
+    // Settings' SKIN (app.skin, a skin's folder name; none when unset):
+    // AppCore::skin()'s reading of it, {} for none. A skin sets the colour
+    // scheme, the theme and the effect together, or some of them: what it
+    // sets (its colors, theme, effect) takes the place of Settings' own row,
+    // which Settings hides while it is chosen; what it doesn't is as set there.
+    property var skin: ({})
+    // The colours in force: the skin's, a scheme's name or its own, else
+    // Settings'. A name not there is Video 1, as Settings' own is.
+    readonly property var scheme: {
+        var colors = skin.colors
+        if (colors === undefined)
+            return allSchemes[currentScheme] || allSchemes["Video 1"]
+        if (typeof colors === "string")
+            return allSchemes[colors] || allSchemes["Video 1"]
+        return colors.primary ? colors : allSchemes["Video 1"]
+    }
     // Settings' THEME (app.theme, a theme's folder name; none when unset),
     // apart from the colour scheme: AppCore::theme()'s reading of it, {} for
-    // none. Pictures of the window's parts (its frame, the title and hint
-    // bars, the selected line) that the shared components draw in the
-    // scheme's two colours (ThemeImage), each in place of its own drawing.
-    property var theme: ({})
+    // none.
+    property var themeSetting: ({})
+    // The theme in force, the skin's or Settings': pictures of the window's
+    // parts (its frame, the title and hint bars, the selected line) that the
+    // shared components draw in the scheme's two colours (ThemeImage), each
+    // in place of its own drawing.
+    readonly property var theme: skin.theme !== undefined ? skin.theme : themeSetting
+    // Settings' EFFECT (app.effect): one of effectPresets by name, or "Off",
+    // the default.
+    property string effectSetting: "Off"
+    // The effects Settings offers, as the built-in shader draws them
+    // (shaders/effects.frag): each of its knobs 0 (none) to 1.
+    readonly property var effectPresets: ({
+        "Scanlines": { "scanlines": 0.5 },
+        "CRT":       { "scanlines": 0.35, "curvature": 0.6, "glow": 0.35, "vignette": 0.5 },
+        "VHS":       { "bleed": 0.6, "noise": 0.5, "glow": 0.25, "scanlines": 0.15 }
+    })
+    // The effect in force, over the whole screen (see screen below): the
+    // skin's, a preset's name or its own, else Settings'. {} for none.
+    readonly property var effect: {
+        var e = skin.effect !== undefined ? skin.effect : effectSetting
+        return typeof e === "string" ? (effectPresets[e] || ({})) : e
+    }
+    // The built-in effect's shader, "" in a build without one (see
+    // CMakeLists.txt): Settings offers no EFFECT then.
+    readonly property string effectShader: appCore ? appCore.effectShader() : ""
+    // Whether there can be an effect: Settings offers EFFECT only then.
+    readonly property bool effectsUsable: effectShader !== "" && screen.gpu
+    // A skin's own shader that wouldn't compile is tried again once chosen again.
+    onSkinChanged: screen.ownShaderFailed = false
     // Settings' OSD BACKGROUND (app.osd_background), what the menus are drawn
     // on (Components/OsdGround): "Full", the default, the scheme's background
     // over the whole screen; "Window", a framed window of it behind what a
@@ -158,8 +200,12 @@ Window {
         function onAppSettingChanged(key, value) {
             if (key === "color_scheme") {
                 root.currentScheme = value
+            } else if (key === "skin") {
+                root.skin = appCore.skin(String(value || ""))
             } else if (key === "theme") {
-                root.theme = appCore.theme(String(value || ""))
+                root.themeSetting = appCore.theme(String(value || ""))
+            } else if (key === "effect") {
+                root.effectSetting = String(value || "Off")
             } else if (key === "osd_frame") {
                 root.osdFrame = root.osdFrameOf(value)
             } else if (key === "transparent_background") {
@@ -216,8 +262,10 @@ Window {
             savedScheme = "Video 1"
         }
         root.currentScheme = savedScheme
-        // A theme gone from its folder reads as none.
-        root.theme = appCore.theme(String((cfg.app && cfg.app.theme) || ""))
+        // A theme or a skin gone from its folder reads as none.
+        root.themeSetting = appCore.theme(String((cfg.app && cfg.app.theme) || ""))
+        root.skin = appCore.skin(String((cfg.app && cfg.app.skin) || ""))
+        root.effectSetting = String((cfg.app && cfg.app.effect) || "Off")
         root.osdFrame = root.osdFrameOf(cfg.app && cfg.app.osd_frame)
         root.backdropSolidity = root.solidityOf(cfg.app && cfg.app.transparent_background)
         root.pointerSetting = String((cfg.app && cfg.app.mouse_pointer) || "5")
@@ -436,194 +484,276 @@ Window {
         return isNaN(n) ? 100 : Math.max(0, Math.min(100, n))
     }
 
-    VideoSurface {
-        anchors.fill: parent
-        controller: mpvController
-        visible: root.videoActive
-        z: root.videoBehind ? -2 : 5000
-    }
-    // What the menus are drawn on (OSD BACKGROUND), under every view. Over a
-    // video behind them, as solid as Transparent Background says, and in
-    // WINDOW only the window, the picture showing whole around it.
-    OsdGround {
-        anchors.fill: parent
-        z: -1
-        visible: !root.videoBehind || root.backdropSolidity > 0
-        opacity: root.videoBehind ? root.backdropSolidity / 100 : 1
-        surround: !root.videoBehind
-    }
-
-    // A running user script suppresses the screen saver too — a takeover script
-    // owns the display, and even a console one is legitimately silent for as long
-    // as it takes. Its own flag rather than reusing mpvActive, so ending one
-    // session can't unblock the saver while the other is still going.
-    Connections {
-        target: scriptsBackend
-        function onScriptRunningChanged() {
-            idleTracker.scriptActive = scriptsBackend.scriptBusy
-            idleTracker.resetActivity()
-            if (!scriptsBackend.scriptBusy)
-                root.dismissScreenSaver()
-        }
-    }
-
-    // --- MODULE LOADER ---
-    Loader {
-        id: moduleLoader;
-        anchors.fill: parent;
-        focus: true;
-        source: "views/ModuleList.qml";
-
-        // Playback follows the open module's own settings where it has them
-        // (its Scaling).
-        onSourceChanged: mpvController.setActiveModule(appCore.moduleIdForSource(source.toString()))
-
-        Keys.onPressed: (event) => {
-            if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_Q) {
-                Qt.quit()
-            }
-        }
-
-        onLoaded: {
-            // While the boot screen is up it keeps the focus; QML gives no
-            // order between this and its own onLoaded, so don't race it. Nor
-            // the window asking to keep a new display output.
-            if (root.bootActive || root.displayHolding)
-                return
-            item.forceActiveFocus()
-            root.openStartupModule()
-        }
-
-        Connections {
-            target: moduleLoader.item
-            ignoreUnknownSignals: true
-
-            function onNavigateTo(path, params, listState) {
-                root.appNavStack.push({ source: moduleLoader.source, params: root.appCurrentParams, listState: listState || {} })
-                root.appCurrentParams = params || {}
-                moduleLoader.setSource(path, { "navParams": params || {} })
-            }
-
-            function onGoBack() {
-                if (root.appNavStack.length === 0) return
-                var prev = root.appNavStack.pop()
-                root.appCurrentParams = prev.params
-                moduleLoader.setSource(prev.source, { "navParams": prev.params, "navListState": prev.listState || {} })
-            }
-
-        }
-    }
-
-    // --- SCREEN SAVER (Idle Tracker integration) ---
-    Connections {
-        target: idleTracker
-        function onActiveChanged() {
-            // Only show on active → true; never hide here — the overlay's
-            // key handler owns dismissal, preventing the C++ event filter's
-            // synchronous reset from stealing the key from QML. Never over the
-            // boot screen, which would lose focus to it.
-            if (idleTracker.active && idleTracker.enabled && !root.bootActive) {
-                if (!screenSaverActive) {
-                    var usableW = screenSaverOverlay.width - bounceLogo.width
-                    var usableH = screenSaverOverlay.height - bounceLogo.height
-                    bounceLogo.x = Math.random() * (usableW > 0 ? usableW : 1)
-                    bounceLogo.y = Math.random() * (usableH > 0 ? usableH : 1)
-                    bounceLogo.vx = (Math.random() > 0.5 ? 1 : -1) * (1 + Math.random() * 1.5)
-                    bounceLogo.vy = (Math.random() > 0.5 ? 1 : -1) * (1 + Math.random() * 1.5)
-                    screenSaverActive = true
-                    screenSaverOverlay.forceActiveFocus()
-                }
-            }
-        }
-    }
-
-    // Above the module views, below the screen saver. Declared after
-    // moduleLoader so its focus grab wins over the first view's.
-    Loader {
-        id: bootScreenLoader
-        anchors.fill: parent
-        z: 9000
-        active: root.bootActive
-        source: "views/BootScreen.qml"
-        onLoaded: if (!root.displayHolding) item.forceActiveFocus()
-    }
-
-    // Above the boot screen: on a new display output, keep it or go back.
-    Loader {
-        id: displayKeepLoader
-        anchors.fill: parent
-        z: 9500
-        active: root.displayHolding
-        source: "views/DisplayKeep.qml"
-        onLoaded: item.forceActiveFocus()
-    }
-
+    // --- THE SCREEN, AND ITS EFFECT (Settings → Effect, or the skin's) ---
+    // All the screen shows is drawn in here: the menus, a video playing in the
+    // window (Transparent Background), the boot screen, the screen saver, the
+    // pointer. With an effect on, it is drawn into one texture first, and that
+    // through one shader on the GPU on its way to the screen
+    // (shaders/effects.frag, or a skin's own): scanlines, a picture tube's
+    // curve, glow, colour bleed, noise and a vignette, each as strong as the
+    // effect has it. With none, neither the texture nor the shader is there.
+    // A video in mpv's own window (Transparent Background off) isn't drawn
+    // here: the effect doesn't reach it.
     Item {
-        id: screenSaverOverlay
+        id: screen
         anchors.fill: parent
-        visible: screenSaverActive
-        z: 9999
-        focus: visible
 
-        // Solid black background — no transparency so it serves as a true
-        // CRT burn-in prevention black frame between the logo bounces.
+        // The software renderer draws no shaders.
+        readonly property bool gpu: GraphicsInfo.api !== GraphicsInfo.Software
+        // The shader: the skin's own, unless it won't compile, else the
+        // built-in one; none once that won't either.
+        property bool ownShaderFailed: false
+        property bool shaderFailed: false
+        readonly property string shader: root.effect.shader && !ownShaderFailed ? root.effect.shader
+                                                                                : root.effectShader
+        readonly property bool shaded: gpu && shader !== "" && !shaderFailed
+            && (!!root.effect.shader || ["scanlines", "curvature", "glow", "bleed", "noise", "vignette"]
+                    .some(function(knob) { return root.effect[knob] > 0 }))
+        // Seconds, for what moves: the noise, a skin's own shader that says it
+        // moves (animate). They rest while another process has the screen.
+        property real time: 0
+
+        layer.enabled: shaded
+        layer.smooth: true
+        layer.effect: ShaderEffect {
+            fragmentShader: screen.shader
+            property size resolution: Qt.size(root.sw, root.sh)
+            property real px: root.px
+            property real time: screen.time
+            property real scanlines: root.effect.scanlines || 0
+            property real curvature: root.effect.curvature || 0
+            property real glow: root.effect.glow || 0
+            property real bleed: root.effect.bleed || 0
+            property real noise: root.effect.noise || 0
+            property real vignette: root.effect.vignette || 0
+            onStatusChanged: {
+                if (status !== ShaderEffect.Error)
+                    return
+                var own = screen.shader !== root.effectShader
+                console.warn("[Effect] " + fragmentShader + " can't be used" + (log ? ": " + log : "")
+                             + (own ? ", OSD/OS's own in its place" : ", none"))
+                // Once the shader is set: it is being set now.
+                Qt.callLater(function() {
+                    if (own)
+                        screen.ownShaderFailed = true
+                    else
+                        screen.shaderFailed = true
+                })
+            }
+        }
+
+        Timer {
+            interval: 50
+            repeat: true
+            running: screen.shaded && (root.effect.noise > 0 || root.effect.animate === true)
+                     && !root.screenHandedOff
+            onTriggered: screen.time = (screen.time + interval / 1000) % 3600
+        }
+
+        // The window's colour, under everything, in the texture with the rest.
         Rectangle {
             anchors.fill: parent
-            color: "#000000"
+            z: -3
+            visible: screen.shaded
+            color: root.color
         }
 
-        // Bouncing logo — classic DVD player screen saver
-        Image {
-            id: bounceLogo
-            source: "assets/images/logo.svg"
-            sourceSize.width: root.sw * 0.05
-            sourceSize.height: root.sw * 0.05
-            fillMode: Image.PreserveAspectFit
-            antialiasing: true
+        VideoSurface {
+            anchors.fill: parent
+            controller: mpvController
+            visible: root.videoActive
+            z: root.videoBehind ? -2 : 5000
+        }
+        // What the menus are drawn on (OSD BACKGROUND), under every view. Over a
+        // video behind them, as solid as Transparent Background says, and in
+        // WINDOW only the window, the picture showing whole around it.
+        OsdGround {
+            anchors.fill: parent
+            z: -1
+            visible: !root.videoBehind || root.backdropSolidity > 0
+            opacity: root.videoBehind ? root.backdropSolidity / 100 : 1
+            surround: !root.videoBehind
+        }
 
-            property real vx: 0
-            property real vy: 0
+        // A running user script suppresses the screen saver too — a takeover script
+        // owns the display, and even a console one is legitimately silent for as long
+        // as it takes. Its own flag rather than reusing mpvActive, so ending one
+        // session can't unblock the saver while the other is still going.
+        Connections {
+            target: scriptsBackend
+            function onScriptRunningChanged() {
+                idleTracker.scriptActive = scriptsBackend.scriptBusy
+                idleTracker.resetActivity()
+                if (!scriptsBackend.scriptBusy)
+                    root.dismissScreenSaver()
+            }
+        }
 
-            // Physics tick at ~60 fps while the overlay is visible
-            Timer {
-                interval: 16
-                repeat: true
-                running: screenSaverActive
-                onTriggered: {
-                    bounceLogo.x += bounceLogo.vx
-                    bounceLogo.y += bounceLogo.vy
+        // --- MODULE LOADER ---
+        Loader {
+            id: moduleLoader;
+            anchors.fill: parent;
+            focus: true;
+            source: "views/ModuleList.qml";
 
-                    if (bounceLogo.x + bounceLogo.width > screenSaverOverlay.width) {
-                        bounceLogo.x = screenSaverOverlay.width - bounceLogo.width
-                        bounceLogo.vx = -Math.abs(bounceLogo.vx)
-                    } else if (bounceLogo.x < 0) {
-                        bounceLogo.x = 0
-                        bounceLogo.vx = Math.abs(bounceLogo.vx)
-                    }
+            // Playback follows the open module's own settings where it has them
+            // (its Scaling).
+            onSourceChanged: mpvController.setActiveModule(appCore.moduleIdForSource(source.toString()))
 
-                    if (bounceLogo.y + bounceLogo.height > screenSaverOverlay.height) {
-                        bounceLogo.y = screenSaverOverlay.height - bounceLogo.height
-                        bounceLogo.vy = -Math.abs(bounceLogo.vy)
-                    } else if (bounceLogo.y < 0) {
-                        bounceLogo.y = 0
-                        bounceLogo.vy = Math.abs(bounceLogo.vy)
+            Keys.onPressed: (event) => {
+                if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_Q) {
+                    Qt.quit()
+                }
+            }
+
+            onLoaded: {
+                // While the boot screen is up it keeps the focus; QML gives no
+                // order between this and its own onLoaded, so don't race it. Nor
+                // the window asking to keep a new display output.
+                if (root.bootActive || root.displayHolding)
+                    return
+                item.forceActiveFocus()
+                root.openStartupModule()
+            }
+
+            Connections {
+                target: moduleLoader.item
+                ignoreUnknownSignals: true
+
+                function onNavigateTo(path, params, listState) {
+                    root.appNavStack.push({ source: moduleLoader.source, params: root.appCurrentParams, listState: listState || {} })
+                    root.appCurrentParams = params || {}
+                    moduleLoader.setSource(path, { "navParams": params || {} })
+                }
+
+                function onGoBack() {
+                    if (root.appNavStack.length === 0) return
+                    var prev = root.appNavStack.pop()
+                    root.appCurrentParams = prev.params
+                    moduleLoader.setSource(prev.source, { "navParams": prev.params, "navListState": prev.listState || {} })
+                }
+
+            }
+        }
+
+        // --- SCREEN SAVER (Idle Tracker integration) ---
+        Connections {
+            target: idleTracker
+            function onActiveChanged() {
+                // Only show on active → true; never hide here — the overlay's
+                // key handler owns dismissal, preventing the C++ event filter's
+                // synchronous reset from stealing the key from QML. Never over the
+                // boot screen, which would lose focus to it.
+                if (idleTracker.active && idleTracker.enabled && !root.bootActive) {
+                    if (!screenSaverActive) {
+                        var usableW = screenSaverOverlay.width - bounceLogo.width
+                        var usableH = screenSaverOverlay.height - bounceLogo.height
+                        bounceLogo.x = Math.random() * (usableW > 0 ? usableW : 1)
+                        bounceLogo.y = Math.random() * (usableH > 0 ? usableH : 1)
+                        bounceLogo.vx = (Math.random() > 0.5 ? 1 : -1) * (1 + Math.random() * 1.5)
+                        bounceLogo.vy = (Math.random() > 0.5 ? 1 : -1) * (1 + Math.random() * 1.5)
+                        screenSaverActive = true
+                        screenSaverOverlay.forceActiveFocus()
                     }
                 }
             }
         }
 
-        // Capture any keypress to dismiss — consumes the event so the
-        // underlying view never sees it, preventing accidental navigation.
-        // Ctrl+Q still quits (moduleLoader's handler is a sibling, so it
-        // can't see keys focused here — handle the chord directly).
-        Keys.onPressed: (event) => {
-            event.accepted = true
-            if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_Q) {
-                Qt.quit()
-                return
+        // Above the module views, below the screen saver. Declared after
+        // moduleLoader so its focus grab wins over the first view's.
+        Loader {
+            id: bootScreenLoader
+            anchors.fill: parent
+            z: 9000
+            active: root.bootActive
+            source: "views/BootScreen.qml"
+            onLoaded: if (!root.displayHolding) item.forceActiveFocus()
+        }
+
+        // Above the boot screen: on a new display output, keep it or go back.
+        Loader {
+            id: displayKeepLoader
+            anchors.fill: parent
+            z: 9500
+            active: root.displayHolding
+            source: "views/DisplayKeep.qml"
+            onLoaded: item.forceActiveFocus()
+        }
+
+        Item {
+            id: screenSaverOverlay
+            anchors.fill: parent
+            visible: screenSaverActive
+            z: 9999
+            focus: visible
+
+            // Solid black background — no transparency so it serves as a true
+            // CRT burn-in prevention black frame between the logo bounces.
+            Rectangle {
+                anchors.fill: parent
+                color: "#000000"
             }
-            screenSaverActive = false
-            moduleLoader.forceActiveFocus()
+
+            // Bouncing logo — classic DVD player screen saver
+            Image {
+                id: bounceLogo
+                source: "assets/images/logo.svg"
+                sourceSize.width: root.sw * 0.05
+                sourceSize.height: root.sw * 0.05
+                fillMode: Image.PreserveAspectFit
+                antialiasing: true
+
+                property real vx: 0
+                property real vy: 0
+
+                // Physics tick at ~60 fps while the overlay is visible
+                Timer {
+                    interval: 16
+                    repeat: true
+                    running: screenSaverActive
+                    onTriggered: {
+                        bounceLogo.x += bounceLogo.vx
+                        bounceLogo.y += bounceLogo.vy
+
+                        if (bounceLogo.x + bounceLogo.width > screenSaverOverlay.width) {
+                            bounceLogo.x = screenSaverOverlay.width - bounceLogo.width
+                            bounceLogo.vx = -Math.abs(bounceLogo.vx)
+                        } else if (bounceLogo.x < 0) {
+                            bounceLogo.x = 0
+                            bounceLogo.vx = Math.abs(bounceLogo.vx)
+                        }
+
+                        if (bounceLogo.y + bounceLogo.height > screenSaverOverlay.height) {
+                            bounceLogo.y = screenSaverOverlay.height - bounceLogo.height
+                            bounceLogo.vy = -Math.abs(bounceLogo.vy)
+                        } else if (bounceLogo.y < 0) {
+                            bounceLogo.y = 0
+                            bounceLogo.vy = Math.abs(bounceLogo.vy)
+                        }
+                    }
+                }
+            }
+
+            // Capture any keypress to dismiss — consumes the event so the
+            // underlying view never sees it, preventing accidental navigation.
+            // Ctrl+Q still quits (moduleLoader's handler is a sibling, so it
+            // can't see keys focused here — handle the chord directly).
+            Keys.onPressed: (event) => {
+                event.accepted = true
+                if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_Q) {
+                    Qt.quit()
+                    return
+                }
+                screenSaverActive = false
+                moduleLoader.forceActiveFocus()
+            }
+        }
+
+        // The mouse pointer (MOUSE POINTER, below), over everything.
+        MousePointer {
+            id: pointer
+            z: 20001
+            visible: root.pointerShown && root.pointerSetting !== "off"
         }
     }
 
@@ -653,12 +783,6 @@ Window {
             idleTracker.resetActivity()
             root.dismissScreenSaver()
         }
-    }
-
-    MousePointer {
-        id: pointer
-        z: 20001
-        visible: root.pointerShown && root.pointerSetting !== "off"
     }
 
     Timer {

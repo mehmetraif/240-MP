@@ -65,6 +65,22 @@ public:
     // it dresses ({ source URL, border, tile }), only those it has that can
     // be used; empty for none, or for one gone or unreadable.
     Q_INVOKABLE QVariantMap theme(const QString &id) const;
+    // Settings → Skin: the colour scheme, the theme and the effect in one
+    // folder with a skin.json, the app's own (assets/skins) or the data
+    // folder's (skins), as themes are. The skins there are, [{ id, name,
+    // sets }] by name, sets naming what each sets of "colors", "theme" and
+    // "effect": Settings hides those rows while it is chosen.
+    Q_INVOKABLE QVariantList skins() const;
+    // One skin read for QML (Main.qml's root.skin): { id, name } and what it
+    // sets, each in place of Settings' own row: colors, a scheme's name or
+    // { primary, surface }; theme, as theme() reads one; effect, a preset's
+    // name or { scanlines, curvature, glow, bleed, noise, vignette (0 to 1),
+    // animate, shader (a .qsb of its own, as a URL) }. Empty for none, or for
+    // one gone or unreadable.
+    Q_INVOKABLE QVariantMap skin(const QString &id) const;
+    // Settings → Effect: the effect's shader (shaders/effects.frag) as a URL,
+    // "" in a build without it (one made without Qt Shader Tools).
+    Q_INVOKABLE QString effectShader() const;
     // The file picker's (views/FilePicker.qml) places, the folders its tree
     // starts from: home, where drives and partitions are mounted (/media,
     // /run/media/<user>, /Volumes) and the root, those there are, as
@@ -144,10 +160,14 @@ private:
     // manifest default (an "enabled" setting whose default is "OFF"), else true.
     bool isModuleEnabled(const ModuleEntry &m, const QJsonObject &modulesConfig) const;
     QVariantMap importColorScheme(QJsonObject &obj) const;
-    // The folder of the theme with this id whose theme.json reads, the data
-    // folder's before the app's, and that theme.json; empty when there is
-    // none (or the id isn't a folder's name).
-    QString themeDir(const QString &id, QJsonObject *json) const;
+    // The folder of the theme or the skin (kind: "theme", "skin") with this
+    // id whose theme.json or skin.json reads, the data folder's before the
+    // app's, and that JSON; empty when there is none (or the id isn't a
+    // folder's name).
+    QString lookDir(const QString &kind, const QString &id, QJsonObject *json) const;
+    // The themes or the skins there are, id → its JSON, the first found of
+    // each id.
+    QMap<QString, QJsonObject> looks(const QString &kind) const;
 
     QString m_appRoot;
     QString m_dataRoot;

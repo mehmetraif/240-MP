@@ -52,6 +52,14 @@ FocusScope {
         var items = []
 
         // APPLICATION section
+        // Skin — the colour scheme, the theme and the effect in one
+        // (AppCore::skins(), the app's own and the data folder's skins
+        // folder; read in Main.qml as root.skin). The rows it sets are hidden
+        // while it is chosen (their shownWith), and are as they were again
+        // once it isn't.
+        items.push(lookRow("skin", "Skin", appCore.skins(),
+            "The color scheme, the theme and the effect in one\n[NONE] Each as set below  A skin hides the rows it sets  A new one is a folder in the data folder's skins, see the README"))
+
         var colorOpts = ["Video 1","Late Night","Synthwave","Terminal","T-120","Amber","Kinescope","SMPTE ECR 1-1978"]
         // Adding a new approach to add multiple custom themes at once
         var cThemes = appCore.getCustomColorSchemes()
@@ -70,36 +78,34 @@ FocusScope {
             options: colorOpts,
             value: appSettings["color_scheme"] || "Video 1",
             description: "Choose your prefered color scheme\nPlease see the wiki for details on adding a custom one",
+            shownWith: { key: "skin", unset: "colors" },
             moduleId: ""
         })
 
         // Theme — how the window is dressed, apart from the colour scheme: the
         // shapes of its frame, bars and selected line, in the scheme's colours
         // (AppCore::themes(), the app's own and the data folder's themes
-        // folder; read in Main.qml as root.theme). Saved by folder name, shown
-        // by the theme's name.
-        var themeList = appCore.themes()
-        var themeOpts = ["None"], themeVals = [""], themeValue = "None"
-        for (var ti = 0; ti < themeList.length; ti++) {
-            var themeName = themeList[ti].name
-            // Two of one name apart by their folders.
-            if (themeOpts.indexOf(themeName) >= 0)
-                themeName += " (" + themeList[ti].id + ")"
-            themeOpts.push(themeName)
-            themeVals.push(themeList[ti].id)
-            if (themeList[ti].id === appSettings["theme"])
-                themeValue = themeName
+        // folder; read in Main.qml as root.themeSetting).
+        items.push(Object.assign(lookRow("theme", "Theme", appCore.themes(),
+            "How the window is dressed: its frame, the title and hint bars and the selected line, in the color scheme's colors\n[NONE] OSD/OS's own  A new one is a folder in the data folder's themes, see the README"),
+            { shownWith: { key: "skin", unset: "theme" } }))
+
+        // Effect — a picture tube's look over the whole screen, on the GPU
+        // (Main.qml's screen; the presets are root.effectPresets). Offered
+        // only where there can be one.
+        if (root.effectsUsable) {
+            var effectOpts = ["Off"].concat(Object.keys(root.effectPresets))
+            items.push({
+                type: "list_single",
+                key: "effect",
+                label: "Effect",
+                options: effectOpts,
+                value: effectOpts.indexOf(appSettings["effect"]) > 0 ? appSettings["effect"] : "Off",
+                description: "A picture tube's look over the whole screen, drawn on the GPU\n[OFF] None  [SCANLINES] Dark lines between the picture's  [CRT] A tube's curve, scanlines and glow  [VHS] A tape's color bleed and noise",
+                shownWith: { key: "skin", unset: "effect" },
+                moduleId: ""
+            })
         }
-        items.push({
-            type: "list_single",
-            key: "theme",
-            label: "Theme",
-            options: themeOpts,
-            values: themeVals,
-            value: themeValue,
-            description: "How the window is dressed: its frame, the title and hint bars and the selected line, in the color scheme's colors\n[NONE] OSD/OS's own  A new one is a folder in the data folder's themes, see the README",
-            moduleId: ""
-        })
 
         // OSD Background — what the menus are drawn on (Components/OsdGround,
         // read in Main.qml): the colour scheme's background over the whole
@@ -476,8 +482,10 @@ FocusScope {
     }
 
     // A row offered only while another row has a value (its shownWith,
-    // { key, value }), or any but one ({ key, not }): Window Frame while OSD
-    // Background is Window, Logo Image while Channel Logo isn't Off. It is in
+    // { key, value }), or any but one ({ key, not }), or one that doesn't set
+    // this row's ({ key, unset }, the other row's sets for its choice): Window
+    // Frame while OSD Background is Window, Logo Image while Channel Logo
+    // isn't Off, Color Scheme while the skin doesn't set the colors. It is in
     // the model all the time, so the list stays where it is as it comes and
     // goes.
     function rowShown(idx) {
@@ -485,11 +493,37 @@ FocusScope {
         if (!row || !row.shownWith)
             return true
         for (var i = 0; i < settingsItems.length; i++) {
-            if (settingsItems[i].key === row.shownWith.key)
-                return row.shownWith.not !== undefined ? settingsItems[i].value !== row.shownWith.not
-                                                      : settingsItems[i].value === row.shownWith.value
+            var other = settingsItems[i]
+            if (other.key !== row.shownWith.key)
+                continue
+            if (row.shownWith.unset !== undefined) {
+                var sets = other.sets && other.sets[other.options.indexOf(other.value)]
+                return !sets || sets.indexOf(row.shownWith.unset) < 0
+            }
+            return row.shownWith.not !== undefined ? other.value !== row.shownWith.not
+                                                  : other.value === row.shownWith.value
         }
         return false
+    }
+
+    // A row choosing one of the themes or the skins there are (AppCore's
+    // themes(), skins(): [{ id, name, sets }]), or none: saved by folder name,
+    // shown by name, two of one name apart by their folders. sets, for each
+    // choice, the rows a skin sets.
+    function lookRow(key, label, looks, description) {
+        var row = { type: "list_single", key: key, label: label, options: ["None"], values: [""],
+                    sets: [[]], value: "None", description: description, moduleId: "" }
+        for (var i = 0; i < looks.length; i++) {
+            var name = looks[i].name
+            if (row.options.indexOf(name) >= 0)
+                name += " (" + looks[i].id + ")"
+            row.options.push(name)
+            row.values.push(looks[i].id)
+            row.sets.push(looks[i].sets || [])
+            if (looks[i].id === appSettings[key])
+                row.value = name
+        }
+        return row
     }
 
     // The cursor stops on rows, not on headings or rows not offered now.

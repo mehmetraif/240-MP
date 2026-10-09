@@ -16,6 +16,15 @@ target_link_libraries(storage_search_test PRIVATE
     Qt6::Core Qt6::Concurrent Qt6::Network Qt6::Qml Qt6::Test)
 add_test(NAME storage_search COMMAND storage_search_test)
 
+# Themes and skins, read from the app's folder and the data folder's (AppCore).
+add_executable(looks_test
+    looks_test.cpp
+    ../src/AppCore.cpp
+    ../src/util/LegacyNames.cpp)
+target_include_directories(looks_test PRIVATE ../src)
+target_link_libraries(looks_test PRIVATE Qt6::Core Qt6::Network Qt6::Qml Qt6::Test)
+add_test(NAME looks COMMAND looks_test)
+
 # One video handed over to the next (MpvController), against a stand-in for
 # mpv. Linux only: the stand-in is a shell script that looks in /proc.
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")

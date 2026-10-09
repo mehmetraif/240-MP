@@ -154,6 +154,20 @@ else()
     message(STATUS "libmpv headers not found — Transparent Background will be unavailable")
 endif()
 
+# Qt Shader Tools compiles the screen's effects (shaders/, Settings → Effect and
+# a skin's effect) into the binary, for every graphics API Qt draws with: OpenGL
+# (ES on the Pi), Metal, Direct3D. Optional: without it the app builds and runs,
+# Settings → Effect left out (qt6-shadertools-dev on Debian / Raspberry Pi OS;
+# Qt Shader Tools in Qt's installer).
+find_package(Qt6 QUIET COMPONENTS ShaderTools)
+if(Qt6ShaderTools_FOUND)
+    qt_add_shaders(osdos "osdos_shaders"
+        PREFIX "/"
+        FILES shaders/effects.frag)
+else()
+    message(STATUS "Qt Shader Tools not found — Settings → Effect will be unavailable")
+endif()
+
 # BlueZ over D-Bus for Settings → Bluetooth (src/bluetooth). Linux only: a Mac
 # pairs devices in its own settings. Without Qt D-Bus the row is left out.
 if(NOT APPLE)
