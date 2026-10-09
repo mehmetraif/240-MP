@@ -1,0 +1,11 @@
+{
+    "name": "Template",
+    "colors": { "primary": "#F2E6C9", "surface": "#1B2A4A" },
+    "theme": {
+        "window":    { "image": "window.png", "border": 4 },
+        "titleBar":  { "image": "titlebar.png", "border": [2, 2, 5, 2] },
+        "hintBar":   { "image": "hintbar.png", "border": 3, "tile": "repeat" },
+        "selection": { "image": "selection.png", "border": 3 }
+    },
+    "effect": { "shader": "tube.frag.qsb", "animate": true, "scanlines": 0.4 }
+}

@@ -74,11 +74,14 @@ osd-os/
     BootScreen.qml                  # boot screen of the OSD/OS image (see os/README.md)
   assets/
     themes/                         # Settings → Theme's own themes (DOS, Rounded): theme.json and two-colour pictures
+    skins/                          # Settings → Skin's own skins (Trinitron, Late Show, Green Screen): skin.json
+  shaders/
+    effects.frag                    # Settings → Effect's shader, compiled into the app (Qt Shader Tools)
   Main.qml                          # app root
   CMakeLists.txt
   tests/                            # regression tests, built apart (see tests/README.md)
   os/                               # OSD/OS image: a pi-gen stage on Raspberry Pi OS Lite
-  docs/                             # the README's screenshots (docs/screenshots/, 640×480), diagrams (docs/images/) and the theme template (docs/theme-template/)
+  docs/                             # the README's screenshots (docs/screenshots/, 640×480), diagrams (docs/images/), and the theme and skin templates (docs/theme-template/, docs/skin-template/)
 ```
 
 There are three modules today: `local_files`, `plex`, and `ambient_mode`. `plex` is a helpful reference when building something new as it covers a more complex use case (connecting to a 3rd party API with auth)
@@ -184,6 +187,8 @@ A real example (Plex) — note `requires_auth`, dynamic options, and apply slots
 | `get_module_auth_state(moduleId)` | Returns the module's auth state (for `requires_auth` settings) |
 | `getCustomColorScheme()` | Returns the user's custom color scheme |
 | `themes()` / `theme(id)` | Settings → Theme: the themes there are (`[{ id, name }]`: the app's own in `assets/themes` and the data folder's `themes`, one there in place of the app's of the same folder name), and one read for QML (`root.theme`), a picture of each of the window's parts it dresses (see [Themes](#themes-settings--theme)) |
+| `skins()` / `skin(id)` | Settings → Skin: the skins there are (`[{ id, name, sets }]`, found as themes are, in `assets/skins` and the data folder's `skins`; `sets` names which of `colors`, `theme` and `effect` each sets), and one read for QML (`root.skin`, see [Skins and effects](#skins-and-effects-settings--skin-and-effect)) |
+| `effectShader()` | Settings → Effect's shader as a URL (`qrc:/shaders/effects.frag.qsb`), `""` in a build without it |
 | `filePlaces()` / `folderEntries(path, types)` | The file picker's places (home, `/media`, `/run/media/<user>`, `/Volumes`, the root, those there are) and a folder's entries: its folders, then its files of those types, hidden ones left out |
 | `licenseText()` | The licence's text (`LICENSE` next to the app), its paragraphs each on one line, for Settings → About |
 
@@ -715,7 +720,7 @@ What the OSD is drawn on, as Settings → **OSD Background** (`app.osd_backgroun
 
 `Main.qml` lays one under every view (`z: -1`, over the window's own colour, black but for Full). Over a video behind the menus it is as solid as Transparent Background says, and in Window only the window is drawn (`surround: false`), the picture showing whole around it. A layer that hides the whole view under it lays its own (`PromptScreen`, the `OnScreenKeyboard` and `InfoPanel` below the title bar, `NfcCardWriter`, Bluetooth's DETAILS), never a `Rectangle` of `root.surfaceColor`, so the window goes on under it just as it was: it works in screen coordinates, the window placed where it lies on the screen whatever part of it the ground covers. `LoadingScreen` and the boot screen keep their own full-screen ground: the tape's picture, not the OSD's.
 
-Settings offers Window Frame only while OSD Background is Window: the row's `shownWith: { key, value }` (or `{ key, not }`, Logo Image's while Channel Logo isn't Off) keeps it in the model, with no line and passed over by the cursor, while the row with that key has another value, so the list stays where it is as the row comes and goes.
+Settings offers Window Frame only while OSD Background is Window: the row's `shownWith: { key, value }` (or `{ key, not }`, Logo Image's while Channel Logo isn't Off; or `{ key, unset }`, Color Scheme's while the skin doesn't set the colours) keeps it in the model, with no line and passed over by the cursor, while the row with that key has another value, so the list stays where it is as the row comes and goes.
 
 ### Themes (Settings → Theme)
 
@@ -724,6 +729,26 @@ Settings → **Theme** (`app.theme`, a theme's folder name; none when unset) dre
 - `AppCore::themes()` lists them for the Settings row, by name (the value saved is the folder's name), and `theme(id)` reads one for `Main.qml`'s `root.theme`: the parts it has that can be used, their files as URLs. A picture must be a PNG, GIF or BMP in the theme's own folder (a path out of it, or a link out of it, is refused) and a `border` one number or four; the log names what was left out, and a `theme.json` that isn't JSON leaves the theme out of the list.
 - `ThemeImage` draws a part where the window's own drawing goes, which stays as the fallback: `OsdGround`'s window frame (`window`, with Window Frame On or Shadow; under it the window has no fill of its own, so the picture draws the whole window and what it leaves clear shows what is around it), the `AppBar`'s bar (`titleBar`), the `HintBar` (`hintBar`), and the selected line (`selection`) in `MenuRow`, the main menu, the `TreeBrowser`'s cursor and a `PromptScreen`'s answers.
 - `OsdSkinProvider` (`src/util/`, `image://osdskin/<primary>/<surface>/<file URL>`) maps the picture to the two colours a pixel at a time: clear (alpha under half) stays clear, light (grey from half up) takes the scheme's colour, dark its background. It reads only local files. A change of scheme, or OSD Background's Off, asks for the picture again in the new colours.
+
+### Skins and effects (Settings → Skin and Effect)
+
+Settings → **Effect** (`app.effect`: `"Off"`, the default, or a preset's name; `root.effectSetting`) draws a picture tube's look over the whole screen, on the GPU. Settings → **Skin** (`app.skin`, a skin's folder name; none when unset; `root.skin`) sets the colour scheme, the theme and the effect together. The format, for a skin's author, is in the README's [Skins and effects](README.md#skins-and-effects), and a skin to start from, with a shader of its own, in [docs/skin-template](docs/skin-template/).
+
+**The effect.** `Main.qml` draws all the screen shows inside one item, `screen`: the window's colour (a `Rectangle`, so that it is drawn with the rest), the `VideoSurface`, `OsdGround`, the module loader, the boot screen, the window asking to keep a display output, the screen saver and the mouse pointer. With an effect in force `screen` is a layer: Qt Quick draws it into a texture, and its `layer.effect`, a `ShaderEffect`, draws that onto the screen through one fragment shader. With none the layer is off, and nothing of it runs. Whatever else the shell puts on the screen goes inside `screen` too, or the effect passes it by; the hover-only `MouseArea` stays outside, as it draws nothing.
+
+- `shaders/effects.frag` is the built-in shader. `qt_add_shaders` (CMake, with Qt Shader Tools, optional) compiles it at build time for every graphics API Qt Quick draws with (GLSL ES 100 and GLSL 120/150 for OpenGL and the Pi's OpenGL ES, SPIR-V, HLSL, MSL) into the binary, at `:/shaders/effects.frag.qsb`; without Qt Shader Tools, `effectShader()` is `""` and Settings leaves Effect out. Its knobs, 0 (none) to 1 each, are uniforms the `ShaderEffect` sets from its properties of the same names: `scanlines` (the foot of each line of art pixels darker, on the screen's own lines: curved lines a pixel or two apart would beat against them into bands), `curvature` (the picture bulges like a tube's face, its corners going round, the edge soft), `glow` (a halo round light parts: light from a pixel and a half round, where that is brighter), `bleed` (red from the left, blue from the right, up to an art pixel and a half), `noise` (grain in art pixels, new at every tick) and `vignette` (the corners darker), with `resolution`, `px` and `time`. A knob at 0 skips its part.
+- **Presets** are `root.effectPresets`, knob values by name (Scanlines, CRT, VHS): Settings offers Off and them.
+- `root.effect` is the effect in force, the skin's (a preset's name, or its own) or else Settings'. `screen.shaded` turns the layer on: a GPU (`GraphicsInfo.api` not `Software`: the software scene graph draws no shaders, and a layer whose effect draws nothing would blank the screen), a shader, and a knob above 0 or a skin's own shader.
+- **Time** ticks every 50 ms only while the noise is on or a skin's own shader moves (`animate`), and not while another process has the screen (`root.screenHandedOff`). Otherwise the screen is drawn again only when something on it changes, as without an effect.
+- **A shader that can't be used** (`ShaderEffect.status` `Error`: a skin's `.qsb` that isn't one, or has nothing for the API this Qt draws with) is logged (`[Effect]`) and replaced: a skin's own by the built-in, with the skin's knobs; the built-in by none. The flag that does it is set later (`Qt.callLater`), as the shader is still being set then.
+- **What it costs.** Each frame is drawn twice, the screen into the texture and the texture through the shader: one pass over every pixel, with up to seven reads of the texture (glow four, bleed two). Menus at rest aren't drawn again, so they cost nothing more; with the noise on the screen is drawn 20 times a second, and under a video playing in the window (Transparent Background) at the video's rate. At 1080p a pass is two million pixels, at a CRT's 480 or 576 lines about a sixth of that.
+- A video in mpv's own window (Transparent Background off) is mpv's, on the screen without the app: the effect doesn't reach it.
+
+**Skins.** A skin is a folder with a `skin.json`, the app's own in `assets/skins` (Trinitron, Late Show, Green Screen) or the data folder's `skins`, one there in place of the app's of the same folder name: found as themes are (`AppCore::lookDir()`, `looks()`). Its `colors` (a colour scheme's name, or `{ primary, surface }`), `theme` (a theme's name, or parts as in a `theme.json`, pictures in the skin's folder) and `effect` (a preset's name, or knobs, `animate`, and `shader`, a `.qsb` in its folder) are each optional, and null is as left out.
+
+- `AppCore::skins()` lists them for the Settings row, each with `sets`. `skin(id)` reads one for `root.skin`: a name as it is (the schemes and the presets are `Main.qml`'s; a theme's is read with `theme()`), a part of its own checked: two `#rrggbb` colours, pictures and shader in its folder (a path or a link out of it refused), knobs held to 0..1. A part that can't be used is there, empty, and is drawn as none: Video 1's colours, OSD/OS's own window, no effect.
+- `Main.qml` makes what is in force: `root.scheme` (the skin's colours, or a scheme by its name, else Settings' Color Scheme), `root.theme` (the skin's theme, else `root.themeSetting`, Settings' Theme) and `root.effect`. Views read `root.theme`, `root.primaryColor` and `root.surfaceColor` as they always have, so a skin reaches them without a change.
+- Settings puts Skin above Color Scheme, Theme and Effect, and hides each of those while the skin chosen sets it: the row's `shownWith: { key: "skin", unset: "colors" }` reads the Skin row's `sets` for its choice. They keep their values, back in force with None.
 
 ### VCR OSD elements
 

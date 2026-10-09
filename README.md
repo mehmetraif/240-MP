@@ -40,6 +40,7 @@ As an app ([Install](#install)), OSD/OS is the same on screen, on top of whateve
 - **A mouse pointer** (a mouse, or a keyboard's touchpad) that shows while the mouse moves and hides again after 5 seconds (Settings → Mouse Pointer).
 - **OSD Background** in Settings: the color scheme's background all over (Full), none, the menus on black like a deck's on-screen display (Off), or a framed window of it behind the menus, black around it (Window). Over a video behind the menus, a window lies over the picture, which shows whole around it. Settings → Window Frame, offered with Window, frames it with a line, with nothing, or with a line and a DOS window's shadow.
 - **Themes** in Settings, apart from the color scheme: the shapes of the window's frame, the title and hint bars and the selected line, drawn in the color scheme's colors. Two come with it, DOS and Rounded, and a new one is a folder of pictures ([Themes](#themes)).
+- **Effects and skins** in Settings. Effect draws a picture tube over the whole screen on the GPU: scanlines, a curved face and glow (CRT), or a tape's color bleed and noise (VHS). A skin sets the color scheme, the theme and the effect at once: Trinitron, Late Show and Green Screen come with it, and a new one is a folder, with a shader of its own if you like ([Skins and effects](#skins-and-effects)).
 - **A tape loading** while a video starts: VHS noise in the color scheme's colours and a dubbing deck's display, with where the video is and, once known, how long it is. Settings → Loading Effect turns the noise off.
 - **Hint Bar** and **Help Line** in Settings: the key hints at the foot of every screen and the line about the selected row under a menu, each on or off once the keys are second nature.
 - **About** in Settings: what OSD/OS is, who makes it, what it is made of and under which license, with the license's text to read on the device.
@@ -292,6 +293,37 @@ A theme is a folder in the data folder's `themes` (`~/.local/share/OSD-OS/themes
 - **A picture has two colors**, a PNG (or GIF, BMP): white where the color scheme's color goes, black where its background goes, transparent where nothing is drawn (round the window's frame, what is around the window shows). Each of its pixels is an art pixel, a pixel of a 240-line picture, scaled up to the screen without blurring.
 - **`border`** is how many of the picture's pixels at each edge are its frame: one number, or `[left, top, right, bottom]`. The corners stay as drawn, the edges stretch along the part, and the middle fills the rest. `"tile": "repeat"` repeats the edges instead of stretching them (for a dotted line).
 - **One of OSD/OS's own** is replaced by a folder of the same name in the data folder. The log says which theme was read, and what in it could not be used.
+
+## Skins and effects
+
+Settings → **Effect** draws a picture tube's look over the whole screen, on the GPU: **Scanlines**, dark lines between the picture's; **CRT**, a tube's curved face with scanlines, glow and darker corners; **VHS**, a tape's color bleed and noise. It covers all the app draws, a video playing in its window (Transparent Background) too. A video in mpv's own window is mpv's, and goes without.
+
+Settings → **Skin** sets the color scheme, the theme and the effect at once, and hides those rows while it is chosen; **None** brings them back as they were. Three come with OSD/OS: **Trinitron** (Video 1, Rounded, CRT), **Late Show** (Late Night, DOS, VHS) and **Green Screen** (a phosphor green of its own, DOS, a glowing tube).
+
+<table>
+<tr><th width="50%">Skin: Trinitron</th><th width="50%">Over a video</th></tr>
+<tr><td><img src="docs/screenshots/skin-trinitron.png" width="100%" alt="Skin: Trinitron" /></td><td><img src="docs/screenshots/skin-video.png" width="100%" alt="Trinitron over a video" /></td></tr>
+<tr><td>Video 1 in Rounded windows, on a tube's curved face.</td><td>The tube covers a video playing behind the menus too.</td></tr>
+</table>
+
+A skin is a folder in the data folder's `skins` (`~/.local/share/OSD-OS/skins/` on Linux and the OSD/OS image, `~/Library/Application Support/OSD-OS/skins/` on macOS), holding a `skin.json`. To make one, start from the **[skin template](docs/skin-template/)**: colors, a theme and an effect all of its own, the effect a shader. A `skin.json` names a scheme, a theme or an effect OSD/OS has, or brings its own:
+
+```json
+{
+    "name": "Green Screen",
+    "colors": { "primary": "#4AF626", "surface": "#001A00" },
+    "theme": "dos",
+    "effect": { "scanlines": 0.6, "glow": 0.6, "curvature": 0.3, "vignette": 0.5 }
+}
+```
+
+- **Every part is optional**: one left out is as Settings has it.
+- **`colors`** is a color scheme's name (`"Video 1"`), or the two colors everything is drawn in: `primary`, the text, the lines and the selection, and `surface`, the background.
+- **`theme`** is a theme's name (its folder's: `"dos"`), or a theme of its own: its parts as in a `theme.json`, its pictures in the skin's folder.
+- **`effect`** is an effect's name (`"CRT"`), or `scanlines`, `curvature`, `glow`, `bleed`, `noise` and `vignette`, each from 0 (none) to 1, or a shader of its own (`"shader"`, see the template).
+- **One of OSD/OS's own** is replaced by a folder of the same name in the data folder. The log says which skin was read, and what in it could not be used.
+
+An effect has the GPU draw the screen twice, into a picture and then through the effect. Menus at rest aren't drawn again, so they cost nothing more; noise draws the screen 20 times a second, and a video playing in the window as often as its frames come. At a CRT's 480 or 576 lines that is a sixth of the work of 1080p: if a video stutters on a Pi with an effect on, try it without. Effects need a build with Qt Shader Tools, as the releases and the OSD/OS image are ([BUILDING.md](BUILDING.md)).
 
 ## Install
 - **The OSD/OS image**, the whole system for a Raspberry Pi: download `OSD-OS-<version>-raspberry-pi.img.xz` from the [latest release](https://github.com/mehmetraif/OSD-OS/releases/latest) and flash it ([how](os/README.md#flashing))

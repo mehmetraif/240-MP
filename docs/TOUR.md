@@ -137,6 +137,18 @@ Once signed in, each opens on the server's Continue Watching and its libraries. 
 </table>
 
 <table>
+<tr><th width="50%">Skin: Trinitron</th><th width="50%">Skin: Green Screen</th></tr>
+<tr><td><img src="screenshots/skin-trinitron.png" width="100%" alt="Skin: Trinitron" /></td><td><img src="screenshots/skin-green-screen.png" width="100%" alt="Skin: Green Screen" /></td></tr>
+<tr><td>A skin sets the color scheme, the theme and the effect at once. Trinitron is Video 1 in Rounded windows on a tube's curved face, its scanlines, glow and darker corners drawn by the GPU over the whole screen (the CRT effect).</td><td>Green Screen brings a phosphor green of its own, DOS windows and a glowing tube. While a skin is chosen, Settings hides the rows it sets, and None brings them back as they were.</td></tr>
+</table>
+
+<table>
+<tr><th width="50%">Skin: Late Show</th><th width="50%">An effect over a video</th></tr>
+<tr><td><img src="screenshots/skin-late-show.png" width="100%" alt="Skin: Late Show" /></td><td><img src="screenshots/skin-video.png" width="100%" alt="An effect over a video" /></td></tr>
+<tr><td>Late Night's white on black in DOS windows, with a tape's color bleed and noise (the VHS effect).</td><td>The effect covers all the app draws: Trinitron's tube over the menus and a video playing behind them (Transparent Background).</td></tr>
+</table>
+
+<table>
 <tr><th width="50%">A module's settings</th><th width="50%">Picking a folder</th></tr>
 <tr><td><img src="screenshots/module-settings.png" width="100%" alt="A module's settings" /></td><td><img src="screenshots/folder-picker.png" width="100%" alt="Picking a folder" /></td></tr>
 <tr><td>Local Files: its folder, looping, shuffle, resume, subtitles, and its own Scaling.</td><td>Folders are picked on the same tree Local Files is browsed with, from home, the drives and the root down: USE THIS FOLDER picks the one open, Default Folder the module's own.</td></tr>
