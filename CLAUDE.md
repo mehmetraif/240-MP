@@ -1,6 +1,6 @@
 # OSD/OS Development Guidelines
 
-OSD/OS (formerly 240-MP) is a retro VHS-style media app built with C++ Qt6 + QML, targeting Raspberry Pi 4 and macOS. Modules are self-contained media integrations (Plex, Local Files, Ambient Mode, etc.) that the app shell discovers and loads at startup.
+OSD/OS (formerly 240-MP) is a retro VHS-style media app built with C++ Qt6 + QML, targeting Raspberry Pi 4 and 5 and macOS. Modules are self-contained media integrations (Plex, Local Files, Ambient Mode, etc.) that the app shell discovers and loads at startup.
 
 **Playback engine**: OSD/OS launches **mpv** as a subprocess for video playback. mpv must be installed separately (`apt install mpv` on RPi/Debian, `brew install mpv` on macOS). The app handles all browsing, auth, and settings; when a video is selected it hands off to mpv fullscreen via `MpvController`, then resumes when mpv exits. The one exception is Settings → **Transparent Background**: mpv then plays inside the app's own window through libmpv (opened at run time, `EmbeddedMpv`), so back from a video returns to the menus with the picture still playing behind them.
 
@@ -39,6 +39,7 @@ This file stays intentionally lean. The detailed documentation is single-sourced
 
 ## Key facts to keep in mind
 
+- **Test hardware**: the owner tries builds on a Raspberry Pi 4 and a Raspberry Pi 5 (8 GB). The Pi 5 differs where it matters here: it boots Full KMS with mpv flags of its own ([ARCHITECTURE.md → Per-device video decode profiles](ARCHITECTURE.md#per-device-video-decode-profiles)), and it has no AV jack (composite from its TV pads, sound over HDMI or a USB card), so Settings → Display Output and Audio Output offer it other outputs.
 - **Modules are discovered from `modules/*/manifest.json`** at startup — a pure-QML module needs no C++ changes. A module with a backend adds **one** `registerModule(...)` call in `src/main.cpp`; that call is the single place the module ID is stated. (Details: [ARCHITECTURE.md → AppCore](ARCHITECTURE.md#appcore--the-app-shell).)
 - **`registerModule` wires optional backend signals/slots by introspection** (`dynamicOptionsReady`, `authStateChanged`, `onSettingChanged`) — declare them with the exact signatures and no `main.cpp` changes are needed.
 - **Every module's QML entry point is `Root.qml`** (the router). Views are `FocusScope`s that pass state via `navParams` and communicate via `navigateTo` / `goBack` signals. Size everything with `root.sh` / `root.sw`, never hardcoded pixels.
