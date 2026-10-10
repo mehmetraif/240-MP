@@ -10,7 +10,7 @@ OSD/OS has five kinds of effect, each with a row in Settings and a key in a [the
 | Background | Background Effect | Matrix, Fire, Stars, Snow | the GPU, a shader of its own | `effects.background` | `app.background_effect` |
 | Selector | Selector Effect | Sparkles, Welding, Lightning, Rainbow | the CPU | `effects.selector` | `app.selector_effect` |
 | Screen | Screen Effect | Scanlines, CRT, VHS | the GPU, in the screen's shader | `effects.screen` | `app.screen_effect` |
-| Transition | Transition | Fade, Cube, Cube Left, Cube Right, Cube Up, Cube Down, Ripple, Wave, Drop | Qt Quick; Ripple, Wave and Drop the GPU | `effects.transition` | `app.transition` |
+| Transition | Transition | Fade, Cube, Ripple, Wave, Drop | Qt Quick; Ripple, Wave and Drop the GPU | `effects.transition` | `app.transition` |
 
 Every row also offers **Off**, and **THEME** while there is a theme. What the GPU draws is offered only where there is one, and where OSD/OS was built with Qt Shader Tools ([below](#what-needs-a-gpu-and-qt-shader-tools)).
 
@@ -26,7 +26,7 @@ Select the row and change it with ◄ ►. **THEME** (saved as `""`) is the them
 | Background Effect | THEME, Off, Matrix, Fire, Stars, Snow | THEME; without a theme, Off | What goes on behind the menus | `app.background_effect` |
 | Selector Effect | THEME, Off, Sparkles, Welding, Lightning, Rainbow | THEME; without a theme, Off | What goes on round the selected line | `app.selector_effect` |
 | Screen Effect | THEME, Off, Scanlines, CRT, VHS | THEME; without a theme, Off | A tube's or a tape's look over the whole screen | `app.screen_effect` |
-| Transition | THEME, Off, Fade, Cube, Cube Left, Cube Right, Cube Up, Cube Down, Ripple, Wave, Drop | THEME; without a theme, Off | How one window gives way to the next | `app.transition` |
+| Transition | THEME, Off, Fade, Cube, Ripple, Wave, Drop | THEME; without a theme, Off | How one window gives way to the next | `app.transition` |
 
 ### In a theme
 
@@ -44,7 +44,7 @@ A theme's `effects` takes each effect's name, `"Off"`, or, for the text, the bac
 }
 ```
 
-Names are matched exactly, capitals and spaces included (`"Cube Left"`); a name that isn't one is drawn as none. Numbers go from 0 (none) to 1. Every key is in the [theme.json reference](https://github.com/mehmetraif/OSD-OS/wiki/Themes#effects), and a shader of your own in [Shaders](https://github.com/mehmetraif/OSD-OS/wiki/Shaders).
+Names are matched exactly, capitals included (`"CRT"`, not `"crt"`); a name that isn't one is drawn as none. Numbers go from 0 (none) to 1. Every key is in the [theme.json reference](https://github.com/mehmetraif/OSD-OS/wiki/Themes#effects), and a shader of your own in [Shaders](https://github.com/mehmetraif/OSD-OS/wiki/Shaders).
 
 ### In config.json
 
@@ -97,14 +97,14 @@ What goes on behind the menus: over the window's ground and under what a view sh
 | Name | What it looks like | Where |
 |---|---|---|
 | **Matrix** | A rain of glyphs, 5 × 7 art pixels each, falling in columns, each column at its own speed (5 to 14 glyphs a second), its newest glyph bright and a trail of 7 to 22 fading behind it. The glyphs change now and then. Dimmer than the menus' lines, in the scheme's colour | The window |
-| **Fire** | Pixel flames burning up from the foot, about a third of the way up, in six shades of a fire's colours, from dark red to pale yellow, dithered where one shade meets the next | Along the foot |
+| **Fire** | Pixel flames burning up from the window's foot, about a third of the way up, in six shades of a fire's colours, from dark red to pale yellow, dithered where one shade meets the next | The window |
 | **Stars** | A starfield drifting from right to left in three layers, far, middle and near, at 1.5, 5 and 8.5 art pixels a second, the nearer brighter, every star twinkling. In the scheme's colour, a little lighter | The window |
 | **Snow** | Snow falling in three layers, at 4 to 15 art pixels a second, the nearer faster, swaying as it falls: far flakes a dot, near ones a small cross. In the scheme's colour, lighter | The window |
 
 **Where it is drawn.** Each background effect has an area:
 
-- **The window** (all but Fire): with OSD Background: Window, inside the window's frame (the skin's `border`, or the one-art-pixel line, or the window's edge with Window Frame Off). With Full or Off, the whole screen.
-- **The foot** (`"area": "foot"`, Fire's): from the window's top down to the screen's foot, the window's width (the whole screen with Full or Off), so the flames burn up from the bottom of the screen into the window.
+- **The window** (all four): with OSD Background: Window, inside the window's frame (the skin's `border`, or the one-art-pixel line, or the window's edge with Window Frame Off). With Full or Off, the whole screen.
+- **The foot** (`"area": "foot"`, for a theme's own shader): from the window's top down to the screen's foot, the window's width (the whole screen with Full or Off), so it rises from the bottom of the screen into the window.
 
 **On art pixels.** It is drawn at one pixel per art pixel, a pixel of a 240-line picture, and scaled up without smoothing, so it is as blocky as the menus. Every dialog that lays its own ground over the screen (a question, the on-screen keyboard, an info screen) draws the same picture in the same place, so it carries on under the dialog as if the window were still there.
 
@@ -161,8 +161,7 @@ How one window gives way to the next, as you open a module, a screen inside it, 
 | Name | What happens | Time | Pace |
 |---|---|---|---|
 | **Fade** | The old window fades away over the new | 0.48 s | slow at both ends |
-| **Cube** | The window turns over like a cube's face, the next window on the face coming in from a side at random: right, left, below or above. The cube's edge is the screen's width (its height turning up or down), seen from two and a half edges in front; black behind | 0.65 s | slow at both ends |
-| **Cube Left**, **Cube Right**, **Cube Up**, **Cube Down** | The same, always turning one way: Left brings the next face in from the right, Right from the left, Up from below, Down from above | 0.65 s | slow at both ends |
+| **Cube** | The window turns over like a cube's face, the next window on the face coming in from a side at random each time: right, left, below or above. (Cube Left, Right, Up and Down, which once fixed the side, are read as Cube.) The cube's edge is the screen's width (its height turning up or down), seen from two and a half edges in front; black behind | 0.65 s | slow at both ends |
 | **Ripple** | The old window ripples out as the new ripples in: its lines pushed sideways in waves of whole art pixels, strongest halfway, the two windows crossing over in the middle; black behind | 0.48 s | slow at both ends |
 | **Wave** | A wave runs out from a corner at random across the screen, the old window swelling up and settling into the new as it passes, lit on its near slope and shaded on its far one, lower the further it runs, dying away at the far side | 0.9 s | even |
 | **Drop** | A drop falls in a corner at random, and its ring spreads across the screen, slowing as it goes, the new window inside it and the old outside. Ripples run on behind the ring and settle; its rim and their crests catch the light in the scheme's colour | 1 s | slowing |
@@ -200,13 +199,11 @@ flowchart TD
     D -- "no" --> S
     D -- yes --> E["windowCaught(): showView() puts<br/>the new screen in place"]
     E --> F{"Which transition?"}
-    F -- "Cube Left, Right, Up, Down" --> G["Cube, always that way"]
     F -- "Cube" --> H["Cube, a way at random"]
     F -- "Ripple, Wave or Drop<br/>without a shader or a GPU" --> I["Fade"]
     F -- "Wave or Drop, with a GPU" --> J["a corner at random"]
     F -- "Fade, or Ripple with a GPU" --> K["as it is"]
-    G --> L["windowChange.progress runs from 0 to 1:<br/>Fade and Ripple 480 ms, Cube 650 ms,<br/>Wave 900 ms, Drop 1000 ms"]
-    H --> L
+    H --> L["windowChange.progress runs from 0 to 1:<br/>Fade and Ripple 480 ms, Cube 650 ms,<br/>Wave 900 ms, Drop 1000 ms"]
     I --> L
     J --> L
     K --> L
@@ -247,7 +244,7 @@ A video played inside the window is drawn outside the layer the screen effect dr
 | Screen: Scanlines, CRT, VHS | OSD/OS's screen shader | yes | yes |
 | A theme's own background or screen shader | its `.qsb` | no: it comes compiled | yes |
 | Selector: Sparkles, Welding, Lightning, Rainbow | the CPU | no | no |
-| Transition: Fade, Cube, Cube Left, Cube Right, Cube Up, Cube Down | Qt Quick, without a shader | no | no |
+| Transition: Fade, Cube | Qt Quick, without a shader | no | no |
 | Transition: Ripple, Wave, Drop | OSD/OS's transition shaders | yes | yes |
 
 - **Qt Shader Tools** compiles OSD/OS's shaders ([shaders](https://github.com/mehmetraif/OSD-OS/tree/main/shaders)) into the app when it is built. The releases and the OSD/OS image have them. A build from source needs `qt6-shadertools-dev` on Debian and Raspberry Pi OS, or Qt Shader Tools from Qt's installer; without it, CMake says `Qt Shader Tools not found — the shader effects will be unavailable` and the app builds without them ([Building from source](https://github.com/mehmetraif/OSD-OS/wiki/Building-from-Source)).

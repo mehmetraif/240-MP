@@ -8,7 +8,7 @@
 
 <p align="center"><img src="docs/images/default-look.gif" width="640" alt="OSD/OS as it comes: the main menu, Local Files' tree and Settings, in two colors" /></p>
 
-Out of the box it is plain on purpose, as above: two colors, and nothing moving but the cursor. If you want more, a theme changes the whole look at once, with effects, transitions between windows and music of its own, from a tube's curved glass to Matrix rain and a fire under the window. Eight come with it:
+Out of the box it is plain on purpose, as above: two colors, and nothing moving but the cursor. If you want more, a theme changes the whole look at once, with effects, transitions between windows and music of its own, from a tube's curved glass to Matrix rain and a fire in the window. Eight come with it:
 
 <table>
 <tr>

@@ -13,7 +13,7 @@ A theme is the whole look of OSD/OS in one folder: the two colours everything is
 | **Inferno** | amber on brown, its own | Rounded | Background: Fire · Selector: Welding | Cube | a fast, driving tune |
 | **Arcade** | Synthwave | Rounded | Background: Stars · Text: Rainbow · Selector: Rainbow | Cube | a bouncy chiptune |
 | **Winter** | ice on night blue, its own | Rounded | Background: Snow · Text: Shimmer · Selector: Sparkles | Drop | a music box |
-| **Demoscene** | gold on purple, its own | DOS | Background: Stars · Text: Glow · Selector: Sparkles | Cube Left | a tracker's XM |
+| **Demoscene** | gold on purple, its own | DOS | Background: Stars · Text: Glow · Selector: Sparkles | Cube | a tracker's XM |
 
 <table>
 <tr><th width="50%">Trinitron</th><th width="50%">Late Show</th></tr>
@@ -30,7 +30,7 @@ A theme is the whole look of OSD/OS in one folder: the two colours everything is
 <table>
 <tr><th width="50%">Inferno</th><th width="50%">Arcade</th></tr>
 <tr><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/images/theme-inferno.gif" width="100%" alt="Theme: Inferno" /></td><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/images/theme-arcade.gif" width="100%" alt="Theme: Arcade" /></td></tr>
-<tr><td>Amber on brown: pixel flames burning up from under the window, and a welder's sparks bursting from the selected line's corners.</td><td>Synthwave's colors: a starfield, text running through the rainbow, and a pixel rainbow dripping from under the selected line.</td></tr>
+<tr><td>Amber on brown: pixel flames burning up from the window's foot, inside its frame, and a welder's sparks bursting from the selected line's corners.</td><td>Synthwave's colors: a starfield, text running through the rainbow, and a pixel rainbow dripping from under the selected line.</td></tr>
 </table>
 
 <table>
@@ -176,7 +176,7 @@ Snow falling in the window, a glint sweeping across the text every three and a h
 
 ### Demoscene
 
-The one theme whose cube always turns the same way (Cube Left), and the one whose music is a tracker's module: a four-channel FastTracker 2 XM in A minor, with a lead with vibrato, a chord arpeggio, an octave bass and drums, 31 seconds, 7 KB.
+The one theme whose music is a tracker's module: a four-channel FastTracker 2 XM in A minor, with a lead with vibrato, a chord arpeggio, an octave bass and drums, 31 seconds, 7 KB.
 
 ```json
 {
@@ -187,7 +187,7 @@ The one theme whose cube always turns the same way (Cube Left), and the one whos
         "background": "Stars",
         "text": "Glow",
         "selector": "Sparkles",
-        "transition": "Cube Left"
+        "transition": "Cube"
     },
     "music": "demoscene.xm"
 }
@@ -215,7 +215,7 @@ Under it comes a row for each part of a theme:
 | Background Effect | `effects.background` | `app.background_effect` | Off | Matrix, Fire, Stars, Snow |
 | Selector Effect | `effects.selector` | `app.selector_effect` | Off | Sparkles, Welding, Lightning, Rainbow |
 | Screen Effect | `effects.screen` | `app.screen_effect` | Off | Scanlines, CRT, VHS |
-| Transition | `effects.transition` | `app.transition` | Off | Fade, Cube, Cube Left, Cube Right, Cube Up, Cube Down, Ripple, Wave, Drop |
+| Transition | `effects.transition` | `app.transition` | Off | Fade, Cube, Ripple, Wave, Drop |
 | Menu Music | `music` | `app.menu_music` | Off | File: the file chosen on the Music File row |
 
 - **Choosing a theme** with ◄ ► sets every one of these rows back to **THEME** (saved as `""`), the rows hidden at the time too. Music File and Music Volume keep what they were.
@@ -346,15 +346,15 @@ An object with any of five keys. Each takes the name of one of OSD/OS's effects,
 | `background` | `Matrix`, `Fire`, `Stars`, `Snow` | `shader`: a compiled shader (`.qsb`) in the theme's folder; `area`: `"window"` (when left out) or `"foot"` |
 | `selector` | `Sparkles`, `Welding`, `Lightning`, `Rainbow` | None: a name only |
 | `screen` | `Scanlines`, `CRT`, `VHS` | Any of `scanlines`, `curvature`, `glow`, `bleed`, `noise`, `vignette`: numbers from 0 to 1; `shader`: a `.qsb` in the theme's folder; `animate`: `true` for a shader that moves |
-| `transition` | `Fade`, `Cube`, `Cube Left`, `Cube Right`, `Cube Up`, `Cube Down`, `Ripple`, `Wave`, `Drop` | None: a name only |
+| `transition` | `Fade`, `Cube`, `Ripple`, `Wave`, `Drop` | None: a name only |
 
 What each effect looks like, and the numbers behind each name, are in [Effects](https://github.com/mehmetraif/OSD-OS/wiki/Effects).
 
-- **Names are matched exactly**, capitals and spaces included: `"Cube Left"`, not `"cube left"`. A name that isn't one is drawn as none, and nothing in the log says so. `effects` that isn't an object is ignored the same way.
+- **Names are matched exactly**, capitals included: `"CRT"`, not `"crt"`. `Cube Left`, `Cube Right`, `Cube Up` and `Cube Down`, from before the cube turned only at random, are read as `Cube`. A name that isn't one is drawn as none, and nothing in the log says so. `effects` that isn't an object is ignored the same way.
 - **Numbers are held to 0 to 1**: 2 counts as 1, -1 as 0. A value that isn't a number (`"lots"`) is logged and left out. A number of another kind (`scanlines` in `text`) is ignored.
 - **An effect that is neither a name nor an object** (`"screen": 0.5`) is logged, and drawn as none. An object for `selector` or `transition` is drawn as none, without a line in the log.
 - **`text`** is drawn by the screen's shader. A theme with a screen shader of its own has to draw the text effects itself, or they don't show ([Shaders](https://github.com/mehmetraif/OSD-OS/wiki/Shaders#4-keeping-the-text-effects)).
-- **`background`** without a `shader` that loads draws nothing. `"area": "foot"` draws it from the window's top down to the screen's foot, as Fire burns up from below; any other `area` is logged and the window is used.
+- **`background`** without a `shader` that loads draws nothing. `"area": "foot"` draws it from the window's top down to the screen's foot, rising into the window from below; any other `area` is logged and the window is used.
 - **`screen`** with a `shader` runs that shader instead of OSD/OS's, with the numbers given to it. Without one, the numbers drive OSD/OS's own. `"animate": true` keeps the shader's clock, `time`, running; without it `time` counts only while something else moves (a background effect, `noise`, or a moving text effect).
 
 ```json
@@ -488,7 +488,7 @@ Change one thing at a time, and look.
           "background": "Snow",
           "selector": "Lightning",
           "screen": { "scanlines": 0.5, "vignette": 0.4 },
-          "transition": "Cube Down"
+          "transition": "Cube"
       }
   }
   ```
@@ -553,7 +553,7 @@ themes/amber-terminal/
 
 ### Sunday Morning
 
-Saturday-morning cartoons on a Sunday: cream on a deep purple-blue, Rounded windows, text running through the rainbow, sparkles off the selected line, windows turning left like a cube, and a theme song of your own as an MP3.
+Saturday-morning cartoons on a Sunday: cream on a deep purple-blue, Rounded windows, text running through the rainbow, sparkles off the selected line, windows turning over like a cube, and a theme song of your own as an MP3.
 
 ```text
 themes/sunday-morning/
@@ -569,7 +569,7 @@ themes/sunday-morning/
     "effects": {
         "text": "Rainbow",
         "selector": "Sparkles",
-        "transition": "Cube Left"
+        "transition": "Cube"
     },
     "music": "theme-song.mp3"
 }
@@ -581,7 +581,7 @@ themes/sunday-morning/
 
 ### Copperlist
 
-A demo of the late eighties: copper bars, shaded bands of colour swinging up and down behind the menus, drawn by a background shader of the theme's own. Ice blue on midnight, DOS windows, glowing text, lightning, windows turning up, and a tracker's module for music.
+A demo of the late eighties: copper bars, shaded bands of colour swinging up and down behind the menus, drawn by a background shader of the theme's own. Ice blue on midnight, DOS windows, glowing text, lightning, windows turning over like a cube, and a tracker's module for music.
 
 ```text
 themes/copperlist/
@@ -600,7 +600,7 @@ themes/copperlist/
         "text": { "glow": 0.5 },
         "background": { "shader": "copper.frag.qsb" },
         "selector": "Lightning",
-        "transition": "Cube Up"
+        "transition": "Cube"
     },
     "music": "copperlist.xm"
 }
