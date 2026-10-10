@@ -16,7 +16,7 @@
 namespace {
 
 // Wikimedia asks every client to say who it is.
-const char *const kUserAgent = "OSD/OS (https://github.com/anthonycaccese/240-MP)";
+const char *const kUserAgent = "OSD/OS (https://github.com/mehmetraif/OSD-OS)";
 constexpr int kTimeoutMs = 12000;
 // A list that failed is shown empty for this long before it is asked for again,
 // so a tree refreshing on the failure can't loop on it.

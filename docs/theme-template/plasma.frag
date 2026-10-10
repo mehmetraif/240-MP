@@ -18,7 +18,7 @@ layout(std140, binding = 0) uniform buf {
     vec4 paper;       // its background
 };
 
-// A 4×4 ordered dither's threshold for an art pixel, 0 to 1.
+// A 2×2 ordered dither's threshold for an art pixel, 0 to 1.
 float bayer2(vec2 a)
 {
     a = floor(a);

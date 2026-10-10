@@ -193,7 +193,8 @@ void ScriptsBackend::writeStubSidecar(const QString &sidecarPath,
     out += "# taking the screen back; child = wait only for the script itself.\n";
     out += "wait = " + defaults.wait + "\n";
     out += "\n";
-    out += "# takeover on Linux only, and needs a udev rule (see INSTALL.md).\n";
+    out += "# takeover on Linux only, and needs a udev rule (see the wiki:\n";
+    out += "# github.com/mehmetraif/OSD-OS/wiki/Scripts).\n";
     out += "# yes = give the script a real terminal, for one that needs typed input.\n";
     out += "tty = " + QString(defaults.tty ? "yes" : "no") + "\n";
 

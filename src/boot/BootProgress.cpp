@@ -37,8 +37,9 @@ BootProgress::BootProgress(QObject *parent)
     if (unitsFile.isEmpty() || !loadSteps(unitsFile))
         return;
 
-    // Only while systemd is still booting: restarting the app later (a crash,
-    // an in-app update, Exit to Terminal and back) must not replay the screen.
+    // Only while systemd is still booting: starting the app again later (an
+    // in-app update, Exit to Terminal and back, systemctl restart) must not
+    // replay the screen.
     // One synchronous call, before the first frame, so that frame is already
     // the right one.
     QProcess probe;

@@ -288,8 +288,8 @@ bool ScriptLauncher::start(const ScriptEntry &entry, QString *errorOut) {
         const int probe = ::open(devPath.data(), O_RDWR | O_NOCTTY);
         if (probe < 0) {
             qWarning("[Scripts] tty=yes requested but %s is not openable (%s) — "
-                     "running without a controlling terminal. See INSTALL.md for the "
-                     "udev rule.", devPath.data(), strerror(errno));
+                     "running without a controlling terminal. The udev rule it needs is on "
+                     "the wiki: github.com/mehmetraif/OSD-OS/wiki/Scripts", devPath.data(), strerror(errno));
             wantCtty = false;
         } else {
             ::close(probe);

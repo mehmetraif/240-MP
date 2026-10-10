@@ -994,8 +994,9 @@ void MpvController::appendVideoArgs(QStringList &args) const {
     if (m_headlessMode) {
         if (m_videoProfile == VideoProfile::Pi4) {
             // Pi 4B: native --vo=drm draws on the primary plane with precise KMS
-            // page-flip timing (smooth cadence). v4l2m2m-copy keeps decode on the
-            // hardware block but copies frames back to RAM so they land on that
+            // page-flip timing (smooth cadence). drm-copy (HEVC, on rpivid) and
+            // v4l2m2m-copy (H.264) keep decode on the hardware blocks but copy
+            // frames back to RAM so they land on that
             // primary plane instead of the drmprime *overlay* plane — the overlay
             // path (vo=gpu zero-copy) decodes just as cheaply but its presentation
             // jitters into visible 24p judder. The copy + zimg downscale costs more

@@ -481,7 +481,7 @@ Window {
     property string osdBackground: "Full"
     readonly property bool osdOff: osdBackground === "Off"
     // Settings' WINDOW FRAME (app.osd_frame), offered with Window: "On", the
-    // default, a line in the scheme's colour (or the theme's window image);
+    // default, a line in the scheme's colour (or the skin's window image);
     // "Off", none; "Shadow", the line and a DOS window's shadow.
     property string osdFrame: "On"
     property string primaryColor:   osdOff ? lighterOf(scheme.primary, scheme.surface) : scheme.primary

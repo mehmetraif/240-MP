@@ -547,7 +547,9 @@ def write_midi(path, bpm, programs, notes, ppq=480):
     for tick, _, data in events:
         track += number(tick - last) + data
         last = tick
-    # The end, on the loop's last beat, so it loops in time.
+    # The end, where the last note ends. (OSD/OS plays a MIDI file through
+    # FluidSynth's WAV, whose sound dies away for a second or two past the
+    # end, so its loop pauses at the seam.)
     end = int(round(max(n[0] + n[1] for n in notes) * ppq))
     track += number(max(0, end - last)) + b"\xff\x2f\x00"
     with open(path, "wb") as f:

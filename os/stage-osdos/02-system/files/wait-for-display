@@ -1,8 +1,8 @@
 #!/bin/sh
 # ExecStartPre= of osdos.service. The app starts this early in the boot, the
 # vc4 KMS driver may not have registered a display connector yet; Qt EGLFS
-# would then fail and the unit would only retry after RestartSec. Waits up to
-# five seconds for one, and never fails.
+# would then fail, and osdos-stop powers the Pi off on an exit it doesn't
+# know. Waits up to five seconds for one, and never fails.
 
 i=0
 while [ "$i" -lt 100 ]; do
