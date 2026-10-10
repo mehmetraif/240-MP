@@ -8,7 +8,7 @@ OSD/OS has five kinds of effect, each with a row in Settings and a key in a [the
 |---|---|---|---|---|---|
 | Text | Text Effect | Rainbow, Shimmer, Glow, Flicker | the GPU, in the screen's shader | `effects.text` | `app.text_effect` |
 | Background | Background Effect | Matrix, Fire, Stars, Snow | the GPU, a shader of its own | `effects.background` | `app.background_effect` |
-| Selector | Selector Effect | Sparkles, Welding, Lightning, Rainbow | the CPU | `effects.selector` | `app.selector_effect` |
+| Selector | Selector Effect | Sparkles, Welding, Lightning, Rainbow, Snow | the CPU | `effects.selector` | `app.selector_effect` |
 | Screen | Screen Effect | Scanlines, CRT, VHS | the GPU, in the screen's shader | `effects.screen` | `app.screen_effect` |
 | Transition | Transition | Fade, Cube, Ripple, Wave, Drop | Qt Quick; Ripple, Wave and Drop the GPU | `effects.transition` | `app.transition` |
 
@@ -24,7 +24,7 @@ Select the row and change it with ◄ ►. **THEME** (saved as `""`) is the them
 |---|---|---|---|---|
 | Text Effect | THEME, Off, Rainbow, Shimmer, Glow, Flicker | THEME; without a theme, Off | What the text, the lines and the bars do | `app.text_effect` |
 | Background Effect | THEME, Off, Matrix, Fire, Stars, Snow | THEME; without a theme, Off | What goes on behind the menus | `app.background_effect` |
-| Selector Effect | THEME, Off, Sparkles, Welding, Lightning, Rainbow | THEME; without a theme, Off | What goes on round the selected line | `app.selector_effect` |
+| Selector Effect | THEME, Off, Sparkles, Welding, Lightning, Rainbow, Snow | THEME; without a theme, Off | What goes on round the selected line | `app.selector_effect` |
 | Screen Effect | THEME, Off, Scanlines, CRT, VHS | THEME; without a theme, Off | A tube's or a tape's look over the whole screen | `app.screen_effect` |
 | Transition | THEME, Off, Fade, Cube, Ripple, Wave, Drop | THEME; without a theme, Off | How one window gives way to the next | `app.transition` |
 
@@ -120,8 +120,9 @@ What goes on round the selected line: the line in front, which is the answer of 
 | **Welding** | A welder's sparks: every 0.05 to 0.2 seconds a burst of 6 to 15 from one corner at random, thrown outward (within about 57° of the corner's diagonal) at 45 to 165 art pixels a second, falling as they fly, white hot, then yellow, orange and red as they cool, gone in 0.3 to 0.85 seconds. The weld flares white for a moment at each burst |
 | **Lightning** | A bolt every 0.08 to 0.35 seconds: from a corner outward, 16 to 46 art pixels long and jagged, more often than not with a branch; now and then (about one in five) along the line's top or bottom edge from corner to corner. Each lights for two to four frames, brightest as it strikes, its core the scheme's colour almost white, with a faint glow either side |
 | **Rainbow** | A pixel rainbow running down from under the line: six bands, red, orange, yellow, green, blue and violet, two art pixels each, flowing downwards, every column its own length (about 6 to 20 art pixels), swelling and ebbing, never solid, breaking into specks at its end. It runs under the lines below, which stay readable over it; in a dialog, in front |
+| **Snow** | Flakes falling from the line's top edge, about one a second for every seven art pixels of its width, at 7 to 15 art pixels a second, swaying a little as they drift, and melting away over the last third of their 1.6 to 2.8 seconds, a line or two below it. One in four, nearer, is a small cross falling at 14 to 22. They fall where they are, whatever the line does: moving down leaves them above it, moving up below it, and new ones fall from where it has gone. In the scheme's colour, lighter, as the Snow behind the menus is; over the line's box, the box's other colour, as its label is |
 
-The selector effects are drawn by the CPU, about thirty times a second, into a picture of art pixels shown without smoothing. They need no GPU, and Settings offers them everywhere. An effect rests once its last spark is out with no selected line to play round.
+The selector effects are drawn by the CPU, about thirty times a second, into a picture of art pixels shown without smoothing. Snow as a selector effect is its own: the Background Effect Snow, behind the menus, stays as it is, and the two can be used together. They need no GPU, and Settings offers them everywhere. An effect rests once its last spark is out with no selected line to play round.
 
 ## Screen effects
 
@@ -243,7 +244,7 @@ A video played inside the window is drawn outside the layer the screen effect dr
 | Background: Matrix, Fire, Stars, Snow | OSD/OS's background shaders | yes | yes |
 | Screen: Scanlines, CRT, VHS | OSD/OS's screen shader | yes | yes |
 | A theme's own background or screen shader | its `.qsb` | no: it comes compiled | yes |
-| Selector: Sparkles, Welding, Lightning, Rainbow | the CPU | no | no |
+| Selector: Sparkles, Welding, Lightning, Rainbow, Snow | the CPU | no | no |
 | Transition: Fade, Cube | Qt Quick, without a shader | no | no |
 | Transition: Ripple, Wave, Drop | OSD/OS's transition shaders | yes | yes |
 
