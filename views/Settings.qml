@@ -318,6 +318,29 @@ FocusScope {
             moduleId: ""
         })
 
+        // LOADING SCREEN COLORS, BOOT SCREEN COLORS — those two screens in the
+        // colours in force, a theme's or a scheme's (Theme, the default), or
+        // in OSD/OS's own whatever the look: Video 1's white on a VCR's blue.
+        // Read in Main.qml (root.loadingInk, root.bootInk).
+        items.push({
+            type: "list_single",
+            key: "loading_colors",
+            label: "Loading Screen Colors",
+            options: ["Theme", "Default"],
+            value: appSettings["loading_colors"] === "Default" ? "Default" : "Theme",
+            description: "The colours of the screen a video loads behind\n[THEME] The theme's or color scheme's  [DEFAULT] White on blue",
+            moduleId: ""
+        })
+        items.push({
+            type: "list_single",
+            key: "boot_colors",
+            label: "Boot Screen Colors",
+            options: ["Theme", "Default"],
+            value: appSettings["boot_colors"] === "Default" ? "Default" : "Theme",
+            description: "The colours of the boot screen, with its cassette, on the OSD/OS image\n[THEME] The theme's or color scheme's  [DEFAULT] White on blue",
+            moduleId: ""
+        })
+
         // CHANNEL LOGO — OSD/OS's logo in a corner of the picture while a
         // video plays, drawn by mpv (scripts/mpv-logo.lua, loaded by
         // MpvController at each launch, so it applies from the next video).

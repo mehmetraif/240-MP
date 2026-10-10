@@ -9,7 +9,9 @@ import Components
 // keys are pressed.
 //
 // Binds only to root.* (Main.qml mirrors bootProgress there), which stays
-// valid while this Loader-hosted view is torn down.
+// valid while this Loader-hosted view is torn down. Its colours are
+// root.bootInk and root.bootPaper: the theme's, or Video 1's (Settings → Boot
+// Screen Colors).
 FocusScope {
     id: bootRoot
 
@@ -88,7 +90,7 @@ FocusScope {
 
     Rectangle {
         anchors.fill: parent
-        color: root.surfaceColor
+        color: root.bootPaper
     }
 
     // The deck's own on-screen display while a tape plays, inside the same
@@ -101,13 +103,13 @@ FocusScope {
         Text {
             id: playLabel
             text: "PLAY"
-            color: root.primaryColor
+            color: root.bootInk
             font.family: root.globalFont
             font.pixelSize: root.sh * 0.0416667 //20
         }
         PixelIcon {
             name: "play"
-            color: root.primaryColor
+            color: root.bootInk
             anchors.verticalCenter: playLabel.verticalCenter
         }
     }
@@ -118,8 +120,8 @@ FocusScope {
         // 612 × 284 of 1448 × 1086: 270 × 126 at 640×480, 304 × 126 at 720×480.
         width: Math.round(root.sw * 612 / 1448)
         height: Math.round(root.sh * 284 / 1086)
-        ink: root.primaryColor
-        ground: root.surfaceColor
+        ink: root.bootInk
+        ground: root.bootPaper
         x: Math.round((root.sw - width) / 2)
         y: bootRoot.blockY
         progress: bootRoot.shownProgress
@@ -134,6 +136,7 @@ FocusScope {
         width: bootRoot.columnWidth
         segments: bootRoot.barSteps
         value: bootRoot.shownProgress
+        color: root.bootInk
     }
 
     Text {
@@ -142,7 +145,7 @@ FocusScope {
         anchors.top: bar.bottom
         anchors.topMargin: bootRoot.statusGap
         text: root.bootLabel !== "" ? "LOADING" + "...".substr(0, bootRoot.dots) : "READY"
-        color: root.primaryColor
+        color: root.bootInk
         font.family: root.globalFont
         font.pixelSize: bootRoot.textSize
     }
@@ -151,7 +154,7 @@ FocusScope {
         anchors.right: bar.right
         anchors.baseline: status.baseline
         text: Math.round(bootRoot.shownProgress * 100) + "%"
-        color: root.primaryColor
+        color: root.bootInk
         font.family: root.globalFont
         font.pixelSize: bootRoot.textSize
     }
@@ -173,13 +176,13 @@ FocusScope {
                 Rectangle {
                     anchors.fill: parent
                     visible: parent.starting
-                    color: root.primaryColor
+                    color: root.bootInk
                     antialiasing: false
                 }
                 Text {
                     id: line
                     text: bootRoot.marker(modelData.state) + " " + modelData.label
-                    color: parent.starting ? root.surfaceColor : root.primaryColor
+                    color: parent.starting ? root.bootPaper : root.bootInk
                     font.family: root.globalFont
                     font.capitalization: Font.AllUppercase
                     font.pixelSize: bootRoot.textSize
