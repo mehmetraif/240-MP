@@ -15,7 +15,7 @@ However, if you already have Raspberry Pi OS set up and working for your TV then
 - A RaspberryPi
     - The [Pi 4](https://www.raspberrypi.com/products/raspberry-pi-4-model-b/) fits in a nice sweet spot of performance + composite out and its the model I use daily so its the model I am most familiar with. It supports 1080p H264/HEVC playback well on both a CRT and over HDMI.
     - The [Pi 3B and 3B+](https://www.raspberrypi.com/products/raspberry-pi-3-model-b/) work well too with some caveats...  
-        - The default configuration for Pi 3 supports smooth 1080p H264 playback at the expense of removing crop functionality.  If crop is important for your use case on a Pi 3 then you can change the video decode settings with the caveat that 1080p H264 playback will no longer be smooth (720p and below  will still work well). [Playback and mpv](https://github.com/mehmetraif/OSD-OS/wiki/Playback-and-mpv) in the wiki shows how to make that change (`mpv_video_args`).
+        - The default configuration for Pi 3 supports smooth 1080p H264 playback at the expense of removing crop functionality.  If crop is important for your use case on a Pi 3 then set Settings → **1080p Playback** to Off, with the caveat that 1080p H264 playback will no longer be smooth (720p and below will still work well). [Playback and mpv](https://github.com/mehmetraif/OSD-OS/wiki/Playback-and-mpv) in the wiki explains the two decode paths.
         - If you choose to boot a Pi 3/3B+ from USB mass storage instead of SD, some USB flash drives can hang during early boot. If that happens, try an SD card or a different USB drive first before assuming the OSD/OS install is the issue.
     - The [Pi 5](https://www.raspberrypi.com/products/raspberry-pi-5/) also works well but I've only tested over HDMI to a modern TV. The Pi 5 doesn't have a direct composite output port: its composite output is on two pads on the board, which [Display Output](https://github.com/mehmetraif/OSD-OS/wiki/Display-Output) in the wiki covers, along with SCART RGB.
     - What is known about each model is in the wiki's [Installation](https://github.com/mehmetraif/OSD-OS/wiki/Installation#supported-hardware) page. If you have a setup that is working for you and would like to help out others, please tell us in an [issue](https://github.com/mehmetraif/OSD-OS/issues) so it can go in the wiki.
@@ -195,7 +195,7 @@ However, if you already have Raspberry Pi OS set up and working for your TV then
     **Optional** 
     - You will get an option at the end of the install script that asks: `Install systemd autostart service? [y/N]` 
     - If you type `Y` and press enter it will set up OSD/OS to autostart when your Raspberry Pi boots to create a simple appliance experience (bascially a dedicated OSD/OS device).
-    - If you choose that option please make sure to enter your primary user for the pi at the next prompt.  If you don't provide one it will set it up for the `Pi` user.
+    - If you choose that option please make sure to enter your primary user for the pi at the next prompt.  If you don't provide one it will set it up for the `pi` user.
     - If you ever need to inspect the autostart logs later, use `sudo journalctl -u osdos -f`
 
 At this point you can type `osdos` at any time to start up the app.  And if you installed the autostart service then the next time you boot your Pi it will boot directly into OSD/OS.
@@ -204,7 +204,7 @@ At this point you can type `osdos` at any time to start up the app.  And if you 
 
 **Modules**
 
-- The Local Files module will be enabled by default and you can open settings to enable any other modules you would like to display.  
+- The Local Files and Playlists modules will be enabled by default and you can open settings to enable any other modules you would like to display.  
 - Please see the [Modules](https://github.com/mehmetraif/OSD-OS/wiki/Modules) pages in the wiki for details on any additional set up that may be needed for the modules you'd like to use.
 
 **CRT Ouput**
@@ -244,7 +244,7 @@ At this point you can type `osdos` at any time to start up the app.  And if you 
                 audio-device=alsa/default:CARD=your-card-id
                 ```
             - Run `mpv --audio-device=help` to see the exact device strings mpv will accept and copy the one that matches your audio output device. `default:CARD=` is ALSA's own way to the card: `plughw:` can't feed the Pi's HDMI under full KMS, which takes its samples framed as IEC958.
-    - In both options the change applies the next time playback starts and will cover every mpv instance that OSD/OS launches, as long as Settings → Audio Output is on Auto.  Please see [ARCHITECTURE.md → How mpv flags are layered](ARCHITECTURE.md#how-mpv-flags-are-layered-the-precedence-cascade) for how the two layer.
+    - In both options the change applies the next time playback starts, as long as Settings → Audio Output is on Auto. Option 1 reaches everything that plays sound; Option 2 every mpv OSD/OS starts for a video, but not the menu music's (which runs mpv without a config) or the player inside the window under Transparent Background (libmpv, which reads no `mpv.conf`).  Please see [ARCHITECTURE.md → How mpv flags are layered](ARCHITECTURE.md#how-mpv-flags-are-layered-the-precedence-cascade) for how the two layer.
 
 **Exit to Terminal and Restart**
 
@@ -276,20 +276,20 @@ At this point you can type `osdos` at any time to start up the app.  And if you 
 
 ### Uninstall
 
-1) If you'd like to remove OSD/OS and continue to use your SD card for other things then you can run the following commands via terminal or over SSH:
+1) If you installed the autostart service, stop and remove it first (stopping it from outside leaves the Pi on):
+
+    ```bash
+    sudo systemctl disable --now osdos.service
+    sudo systemctl unmask getty@tty1.service autovt@.service
+    sudo rm -f /etc/systemd/system/osdos.service /etc/systemd/system/osdos-terminal.service /usr/local/bin/osdos-stop
+    sudo systemctl daemon-reload
+    ```
+
+2) Then remove OSD/OS itself, and the udev rule the installer added, via terminal or over SSH. Your SD card is then free for other things:
 
     ```bash
     sudo rm -rf /opt/osdos
-    sudo rm /usr/local/bin/osdos
-    ```
-
-2) If you installed the autostart service and want to remove it then please run the running the following commands:
-
-    ```bash
-    sudo systemctl unmask getty@tty1.service autovt@.service
-    sudo systemctl disable osdos.service
-    sudo rm -f /etc/systemd/system/osdos.service /etc/systemd/system/osdos-terminal.service /usr/local/bin/osdos-stop
-    sudo systemctl daemon-reload
+    sudo rm -f /usr/local/bin/osdos /etc/udev/rules.d/99-osdos-tty.rules
     ```
 
 ## On macOS (ARM)
@@ -312,7 +312,7 @@ If you don't have a Raspberry Pi and would like to try OSD/OS, I also provide a 
 
 **Modules**
 
-- The Local Files module will be enabled by default and you can open settings to enable any other modules you would like to display. 
+- The Local Files and Playlists modules will be enabled by default and you can open settings to enable any other modules you would like to display. 
 - Please see the [Modules](https://github.com/mehmetraif/OSD-OS/wiki/Modules) pages in the wiki for details on any additional set up that may be needed for the modules you'd like to use.
 
 ### Update
@@ -346,13 +346,13 @@ The AppImage carries its own copy of the Wayland client libraries and uses them 
 
 1. Download `OSD-OS-linux-x86_64.AppImage` from the [latest release](https://github.com/mehmetraif/OSD-OS/releases/latest).
 2. In your file manager, right-click the file → **Properties → Permissions** → tick *Is executable* (or run `chmod +x` on it from terminal).
-3. Double-click to launch. The Local Files module is enabled by default; open Settings to enable others (see the [Modules](https://github.com/mehmetraif/OSD-OS/wiki/Modules) pages in the wiki for details on each).
+3. Double-click to launch. The Local Files and Playlists modules are enabled by default; open Settings to enable others (see the [Modules](https://github.com/mehmetraif/OSD-OS/wiki/Modules) pages in the wiki for details on each).
 
 ### Post Install
 
 **Modules**
 
-- The Local Files module will be enabled by default and you can open settings to enable any other modules you would like to display. 
+- The Local Files and Playlists modules will be enabled by default and you can open settings to enable any other modules you would like to display. 
 - Please see the [Modules](https://github.com/mehmetraif/OSD-OS/wiki/Modules) pages in the wiki for details on any additional set up that may be needed for the modules you'd like to use.
 
 **SteamOS Gaming Mode**
@@ -364,9 +364,9 @@ The AppImage carries its own copy of the Wayland client libraries and uses them 
 
 ### Update
 
-- **From within the app (recommended):** go to `Settings → Update`, check for updates, download, and choose Apply & Relaunch. 
+- **From within the app (recommended):** go to `Settings → Update`, check for updates, download, and choose **Quit & Apply on Next Launch**. 
 - The app verifies the download, swaps the new `.AppImage` over your current one in place (keeping a `.bak` of the previous version until the new one launches cleanly). 
-- In **Gaming Mode** the app needs to close after applying; so simply relaunch it from your Steam library to pick up the new version (the file path is unchanged, so your existing shortcut will still work). 
+- In Desktop Mode the app then starts again on the new version by itself. In **Gaming Mode** the app needs to close after applying; so simply relaunch it from your Steam library to pick up the new version (the file path is unchanged, so your existing shortcut will still work). 
 - Your settings in `~/.local/share/OSD-OS/` are retained.
 - If the app is stored in a read-only location the in-app update can't write to then the update screen simply point you at the [Releases page](https://github.com/mehmetraif/OSD-OS/releases/latest) to download and replace the `.AppImage` manually.
 

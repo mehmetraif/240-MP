@@ -70,7 +70,7 @@ Every part is optional. A part left out, or whose picture can't be used, is draw
 
 A pixel at least half opaque is light when it is at least half bright, else dark. Any other pixel is clear. A drawing in other colors works too, but white, black and transparent show what you will get.
 
-**Art pixels.** Each pixel of a picture is an art pixel, a pixel of a 240-line picture, drawn as a square of screen pixels without smoothing: 2×2 at 480 lines, 4×4 at 1080. The bars are only a few art pixels tall: at 480 lines, the hint bar is about 10, a selected line 12 and the title bar 14. A `border` of 2 to 4 at the top and the bottom leaves room for the text.
+**Art pixels.** Each pixel of a picture is an art pixel, a pixel of a 240-line picture, drawn as a square of screen pixels without smoothing: 2×2 at 480 lines, 4×4 at 1080. The bars are only a few art pixels tall: at 480 lines, the hint bar 9 to 11, a selected line 12 in the trees and 14 in Settings, and the title bar 14. A `border` of 2 to 4 at the top and the bottom leaves room for the text.
 
 **Nine slices.** `border` cuts a picture into nine. The four corners are drawn as they are, the four edges stretch (or repeat) between them, and the middle fills the rest. Here is the window's 9×9 picture with its `"border": 4`, cut apart:
 
@@ -101,4 +101,4 @@ The log says which skin was read, `[AppCore] skin <folder>: <path>`, and what in
 
 - **A picture that isn't usable**, that is, not a PNG, GIF or BMP in the skin's folder: that part is drawn as OSD/OS draws it. A path or a link out of the folder is refused. An icon's name is letters, digits, `-` and `_`, in any case; one with anything else is left out.
 - **A `border` that isn't a number or four of them**: the picture is stretched whole.
-- **A `skin.json` that isn't JSON**: the skin isn't listed in Settings.
+- **A `skin.json` that isn't JSON**: the skin isn't listed in Settings (in a folder named like one of OSD/OS's own skins, that one is listed in its place).

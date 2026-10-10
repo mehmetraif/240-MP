@@ -44,13 +44,13 @@ The [feature list](https://github.com/mehmetraif/OSD-OS/wiki/Features) has the r
 - **The OSD/OS image**, the whole system for a Raspberry Pi: download `OSD-OS-<version>-raspberry-pi.img.xz` from the [latest release](https://github.com/mehmetraif/OSD-OS/releases/latest) and [flash it](os/README.md#flashing). OSD/OS is on screen from the moment the Pi is switched on, and films go on the card's own partition.
 - **As an app** on [Raspberry Pi OS](INSTALL.md#on-a-raspberry-pi), [macOS (ARM)](INSTALL.md#on-macos-arm) or [SteamOS and other Linux x86_64](INSTALL.md#on-steamos--linux-x86_64).
 
-Tested on the Raspberry Pi 4. On another board? Tell us how it went in an [issue](https://github.com/mehmetraif/OSD-OS/issues).
+Tested on a Raspberry Pi 4 and a Raspberry Pi 5 (8 GB). On another board? Tell us how it went in an [issue](https://github.com/mehmetraif/OSD-OS/issues).
 
 ## Learn more
 
-- **[The wiki](https://github.com/mehmetraif/OSD-OS/wiki)**: [the OSD/OS image](https://github.com/mehmetraif/OSD-OS/wiki/The-OSD-OS-Image) and how it works, the [modules](https://github.com/mehmetraif/OSD-OS/wiki/Modules), [themes](https://github.com/mehmetraif/OSD-OS/wiki/Themes), [effects](https://github.com/mehmetraif/OSD-OS/wiki/Effects), [menu music](https://github.com/mehmetraif/OSD-OS/wiki/Menu-Music) and [skins](https://github.com/mehmetraif/OSD-OS/wiki/Skins), and the [FAQ](https://github.com/mehmetraif/OSD-OS/wiki/FAQ).
+- **[The wiki](https://github.com/mehmetraif/OSD-OS/wiki)**, all of it in detail: [installing](https://github.com/mehmetraif/OSD-OS/wiki/Installation) and [using it](https://github.com/mehmetraif/OSD-OS/wiki/Using-OSD-OS), [every setting](https://github.com/mehmetraif/OSD-OS/wiki/Settings), [the OSD/OS image](https://github.com/mehmetraif/OSD-OS/wiki/The-OSD-OS-Image), the [display](https://github.com/mehmetraif/OSD-OS/wiki/Display-Output) and [audio](https://github.com/mehmetraif/OSD-OS/wiki/Audio-Output) outputs, the [modules](https://github.com/mehmetraif/OSD-OS/wiki/Modules), [themes](https://github.com/mehmetraif/OSD-OS/wiki/Themes), [effects](https://github.com/mehmetraif/OSD-OS/wiki/Effects), [menu music](https://github.com/mehmetraif/OSD-OS/wiki/Menu-Music) and [skins](https://github.com/mehmetraif/OSD-OS/wiki/Skins), [troubleshooting](https://github.com/mehmetraif/OSD-OS/wiki/Troubleshooting) and the [FAQ](https://github.com/mehmetraif/OSD-OS/wiki/FAQ).
 - **[The screen tour](docs/TOUR.md)**: every screen, module by module.
-- **For developers**: [building](BUILDING.md), [architecture](ARCHITECTURE.md) and [contributing](CONTRIBUTING.md).
+- **For developers**: [how it works](https://github.com/mehmetraif/OSD-OS/wiki/How-It-Works), [writing a module](https://github.com/mehmetraif/OSD-OS/wiki/Writing-a-Module), [building](BUILDING.md), [architecture](ARCHITECTURE.md) and [contributing](CONTRIBUTING.md).
 
 ## Credits and license
 

@@ -37,11 +37,13 @@ body:
     attributes:
       label: Platform
       options:
+        - Raspberry Pi 5
         - Raspberry Pi 4
         - Raspberry Pi 3B+
         - Raspberry Pi 3B
         - Other Raspberry Pi model
         - macOS (Apple Silicon)
+        - Linux x86_64 / Steam Deck (AppImage)
     validations:
       required: true
   - type: dropdown
