@@ -257,6 +257,9 @@ if [[ "${AUTOSTART_REPLY}" =~ ^[Yy]$ ]]; then
 [Unit]
 Description=OSD/OS Media Player
 After=multi-user.target sound.target
+StartLimitIntervalSec=120
+StartLimitBurst=3
+OnFailure=osdos-terminal.service
 
 [Service]
 Type=simple
@@ -272,7 +275,8 @@ ExecStartPre=+-/usr/bin/systemctl stop osdos-terminal.service
 ExecStart=${LAUNCHER}
 Restart=on-failure
 RestartSec=5s
-RestartPreventExitStatus=10 12 20 21 22 23 24 25 26 27 28 29
+RestartMode=direct
+SuccessExitStatus=10 12 20 21 22 23 24 25 26 27 28 29 129 130 143
 ExecStopPost=+/usr/local/bin/osdos-stop
 StandardOutput=journal
 StandardError=journal
@@ -281,19 +285,23 @@ StandardError=journal
 WantedBy=multi-user.target
 UNIT
 
-    # ExecStopPost helper: normal quit (exit 0) or a crash powers the Pi off as
-    # before; exit 10 means the user chose "Exit to Terminal", so instead spawn a
-    # login shell on tty1 (see views/Settings.qml). RestartPreventExitStatus=10
-    # keeps Restart=on-failure from relaunching the app over that shell.
-    # Exit 12 is the quit menu's "Restart": reboot (kept out of Restart=on-failure
-    # the same way, so the app isn't started again on the way down).
-    # Exit 20-29 is Settings → Display Output on the OSD/OS image: a display
-    # preset written, then a reboot, kept out of Restart=on-failure as well.
+    # ExecStopPost helper: the user's Quit → Power Off (exit 0) powers the Pi off;
+    # exit 10 means the user chose "Exit to Terminal", so instead spawn a login
+    # shell on tty1 (see views/Settings.qml). Exit 12 is the quit menu's
+    # "Restart": reboot. Exit 20-29 is Settings → Display Output on the OSD/OS
+    # image: a display preset written, then a reboot. SuccessExitStatus= counts
+    # those as no failure, so Restart=on-failure doesn't start the app again
+    # over the shell or on the way down, and OnFailure= stays out of it.
     # Exit 11 is "Apply & Restart" from the in-app updater (views/Update.qml):
     # do nothing here — it's a failure status, so Restart=on-failure relaunches
     # through the launcher, which applies the staged update before exec.
     # A stop or restart from outside (systemctl stop/restart, a shutdown) ends the
     # app by signal — it exits 128+signal, or dies of it — and leaves the Pi on.
+    # So does a crash or an error exit: Restart=on-failure starts the app again,
+    # and when it has failed three times in two minutes (StartLimitBurst=),
+    # OnFailure= puts the login prompt on the screen in its place. Without
+    # RestartMode=direct (systemd 254 or later), every failure on the way
+    # would bring that prompt up for the five seconds before the restart.
     sudo tee /usr/local/bin/osdos-stop > /dev/null << 'STOP_HELPER'
 #!/usr/bin/env bash
 # Called by osdos.service ExecStopPost. systemd sets $EXIT_STATUS to the app's
@@ -325,18 +333,22 @@ DISPLAY_PRESETS=(hdmi crt-ntsc crt-pal crt-gpio-ntsc crt-gpio-pal
                  scart-rgb-ntsc scart-rgb-pal scart-rgb-240p scart-rgb-288p previous)
 
 case "${EXIT_STATUS:-}" in
+    0)  systemctl poweroff ;;  # Quit → Power Off, or Ctrl+Q
     10) systemctl start osdos-terminal.service ;;
     11) : ;;  # in-app update restart — Restart=on-failure brings the app back up
     12) systemctl reboot ;;  # the quit menu's Restart
     2[0-9]) display_output "${DISPLAY_PRESETS[EXIT_STATUS - 20]}"; systemctl reboot ;;
-    129|130|143|HUP|INT|TERM|KILL) : ;;  # stopped from outside, not by the user
-    *)  systemctl poweroff ;;
+    # Anything else leaves the Pi on: a stop from outside (129, 130, 143, or the
+    # signal itself), and a crash or an error exit, after which systemd starts
+    # the app again (Restart=on-failure), or brings up a login prompt.
+    *)  : ;;
 esac
 STOP_HELPER
     sudo chmod +x /usr/local/bin/osdos-stop
 
     # On-demand login shell for "Exit to Terminal". Not enabled (no boot race with
-    # osdos.service); getty@tty1 stays masked. Started only by osdos-stop, and
+    # osdos.service); getty@tty1 stays masked. Started only by osdos-stop, or by
+    # osdos.service's OnFailure= once the app has failed three times running, and
     # stopped again by osdos.service's ExecStartPre when the app comes back.
     sudo tee /etc/systemd/system/osdos-terminal.service > /dev/null << 'TERMINAL_UNIT'
 [Unit]

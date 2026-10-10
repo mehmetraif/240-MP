@@ -409,7 +409,7 @@ How you read logs depends on whether you installed the autostart service:
     journalctl -u osdos -b        # logs from this boot
     journalctl -u osdos -f        # follow live
     ```
-    Heads-up: the autostart service runs `ExecStopPost=osdos-stop`, which **powers the Pi off when you quit** (exit 0), and on a crash or any exit code it doesn't know — the console disappears with it. Stopping or restarting the service with `systemctl` leaves the Pi on (installs set up before this changed need the installer re-run once). To debug without powering off, either pick **Exit to Terminal** in the Quit dialog (drops to a login shell on `tty1` without removing the service — `sudo systemctl start osdos` or `sudo reboot` to return to the service), or stop the service and run the binary directly:
+    Heads-up: the autostart service runs `ExecStopPost=osdos-stop`, which **powers the Pi off when you quit** (exit 0). A crash or an error exit leaves the Pi on: systemd starts the app again five seconds later, and when it has failed three times in two minutes, puts a login prompt on `tty1` in its place (`OnFailure=osdos-terminal.service`); `journalctl -u osdos -b` then shows why. Stopping or restarting the service with `systemctl` leaves the Pi on too (installs set up before either changed need the installer re-run once). To debug without powering off, either pick **Exit to Terminal** in the Quit dialog (drops to a login shell on `tty1` without removing the service — `sudo systemctl start osdos` or `sudo reboot` to return to the service), or stop the service and run the binary directly:
     ```bash
     sudo systemctl stop osdos
     osdos

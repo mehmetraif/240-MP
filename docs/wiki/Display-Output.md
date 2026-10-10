@@ -125,7 +125,7 @@ The codes, in `DisplayOutput.cpp`'s `kPresets` and `osdos-stop`'s `DISPLAY_PRESE
 | 28 | `scart-rgb-288p` |
 | 29 | `previous`: the output before, to go back |
 
-The service lists them all in `RestartPreventExitStatus`, so systemd doesn't start OSD/OS again on the way down. Just before it exits, OSD/OS logs a line like `[DisplayOutput] hdmi -> crt-pal: exit 22 for osdos-stop` (`journalctl -b -1 -u osdos | grep DisplayOutput` shows it, where the journal keeps the boot before).
+The service lists them all in `SuccessExitStatus`, so systemd counts them as no failure and doesn't start OSD/OS again on the way down. Just before it exits, OSD/OS logs a line like `[DisplayOutput] hdmi -> crt-pal: exit 22 for osdos-stop` (`journalctl -b -1 -u osdos | grep DisplayOutput` shows it, where the journal keeps the boot before).
 
 ## Keep or go back
 

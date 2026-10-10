@@ -132,7 +132,9 @@ int main(int argc, char *argv[]) {
             // 128 + signal number, the shell convention for "ended by a signal".
             // It lets the autostart service's stop helper (osdos-stop) tell a
             // `systemctl stop`/`restart` apart from the user choosing Quit
-            // (exit 0), which is the only one that should power the Pi off.
+            // (exit 0), the only exit that powers the Pi off, and the service
+            // count it as no failure (SuccessExitStatus=), not one to start
+            // the app again after.
             app.exit(128 + g_termSignal);
         }
     });

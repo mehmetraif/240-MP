@@ -422,7 +422,7 @@ The service starts OSD/OS after the rest of the system (`multi-user.target`), as
 | 12 | Quit → Restart | The Pi reboots |
 | 20–29 | Settings → Display Output (the OSD/OS image) | A display preset is written, then the Pi reboots |
 | 129, 130, 143 (SIGHUP, SIGINT, SIGTERM, which OSD/OS turns into these), or SIGKILL | `systemctl stop` / `restart`, a shutdown | Nothing: the Pi stays on |
-| Anything else: a crash (SIGSEGV, SIGABRT…), an error exit such as 1 | | The Pi powers off |
+| Anything else: a crash (SIGSEGV, SIGABRT…), an error exit such as 1 | | Nothing: the Pi stays on, and systemd starts OSD/OS again five seconds later. After three starts in two minutes it gives up and starts `osdos-terminal.service`: a login prompt on `tty1`, where `sudo systemctl reset-failed osdos` and `sudo systemctl start osdos` try again |
 
 From a shell, `sudo systemctl start osdos` brings OSD/OS back after Exit to Terminal. To run it by hand while debugging, stop the service first, so the two don't fight over the screen; run by hand, quitting just returns to the shell:
 
