@@ -30,6 +30,9 @@ FocusScope {
     property var labelOf: function(item) { return item.name }
     // A trail saved by trailState(), to reopen on creation.
     property var savedTrail: []
+    // Local browsing can expose complete sibling contents, plus the selected
+    // folder's child folders. Remote catalogues retain their compact previews.
+    property bool expandedFolderPreviews: false
 
     signal activated(var item)
     signal optionsRequested(var item)
@@ -250,6 +253,8 @@ FocusScope {
         for (var i = 0; i < trail.count; ++i) {
             var l = listing(trail.get(i).path)
             var w = l.width
+            if (expandedFolderPreviews && !l.leaf)
+                w = Math.min(w, (rightEdge - leftEdge - 2 * branchGap) / 3)
             if (i === trail.count - 1 && l.leaf) {
                 // The cursor's box reaches a pad past the column.
                 var room = rightEdge - leftEdge - pad - (i > 0 ? ws[i - 1] + gap : 0)
@@ -274,12 +279,19 @@ FocusScope {
         var right = Math.max(activeLeft + columnW[active], branchRight)
         var parentAtEdge = leftEdge - (active > 0 ? columnX[active - 1] : 0)
         var stripX = right + parentAtEdge <= rightEdge ? parentAtEdge : leftEdge - activeLeft
+        if (expandedFolderPreviews)
+            stripX = Math.min(leftEdge, Math.max(leftEdge - activeLeft, rightEdge - right))
         stripTarget = stripX
         strip.x = stripX
         // Only the parent stays named, and only while it is at the edge.
         firstShown = Math.max(0, active - 1)
         if (active > 0 && stripX !== parentAtEdge)
             firstShown = active
+        if (expandedFolderPreviews) {
+            firstShown = 0
+            while (firstShown < active && columnX[firstShown] + stripX < leftEdge)
+                firstShown++
+        }
         folderName = active > 0 ? (trail.get(active).name || baseName(trail.get(active).path)) : ""
     }
 
@@ -290,14 +302,23 @@ FocusScope {
     // file picker's USE THIS FOLDER, in every folder).
     function blockFor(path, around) {
         var l = listing(path, true)
-        var items = around >= 0 ? l.items : l.items.filter(function(item) { return !item.branchHidden })
+        var items = expandedFolderPreviews || around < 0
+            ? l.items.filter(function(item) { return !item.branchHidden }) : l.items
+        if (expandedFolderPreviews && around >= 0) {
+            var selected = l.items[Math.min(around, l.items.length - 1)]
+            around = Math.max(0, items.indexOf(selected))
+        }
         var rows = []
         var offset = 0
         if (items.length === 0) {
-            if (around < 0) return null
+            if (around < 0 && !expandedFolderPreviews) return null
             // A branch's glance its source wouldn't fetch: there is more,
             // to be seen once it is opened.
             rows.push({ label: !l.pending ? "(empty)" : l.previewOnly ? "\u2026" : "loading\u2026" })
+        } else if (expandedFolderPreviews) {
+            for (var n = 0; n < items.length; ++n)
+                rows.push({ label: displayName(items[n]), item: items[n] })
+            offset = around >= 0 ? Math.min(around, items.length - 1) : 0
         } else if (around >= 0) {
             var r = Math.min(around, items.length - 1)
             var first = Math.max(0, Math.min(r - Math.floor(anchorRows / 2), items.length - anchorRows))
@@ -376,7 +397,7 @@ FocusScope {
                 }
                 // One that would cross the area's edge is left out with its
                 // line, and so is every one further out.
-                if (b.top < bandTop || b.top + h > bandBottom)
+                if (!expandedFolderPreviews && (b.top < bandTop || b.top + h > bandBottom))
                     break
                 limit = sides[s].up ? b.top - blockGap : b.top + h + blockGap
                 level.blocks.push(b)
@@ -428,7 +449,11 @@ FocusScope {
         var x1 = colX + colW + branchGap
         if (reachRight - x1 < minBranchWidth)
             parents = []
-        var first = branchLevel(parents, colX + colW, x1, reachRight - x1)
+        var selected = items[col.sel]
+        var twoLevels = expandedFolderPreviews && selected && selected.isFolder
+            && !listing(selected.path, true).leaf
+        var firstRoom = twoLevels ? (reachRight - x1 - branchGap) / 2 : reachRight - x1
+        var first = branchLevel(parents, colX + colW, x1, firstRoom)
         var all = first.blocks.slice()
         var lines = first.wires.slice()
         var right = first.blocks.length > 0 ? x1 + first.width : 0
@@ -439,6 +464,10 @@ FocusScope {
             for (var k = 0; k < a.rows.length; ++k) {
                 var entry = a.rows[k].item
                 if (!entry || !entry.isFolder) continue
+                var parentY = a.top + (k + 0.5) * rowHeight
+                // Full geometry, but only visible parents cause filesystem reads.
+                if (expandedFolderPreviews && (parentY < bandTop - rowHeight || parentY > bandBottom + rowHeight))
+                    continue
                 next.push({
                     path: entry.path,
                     y: a.top + (k + 0.5) * rowHeight,
@@ -456,6 +485,13 @@ FocusScope {
         blocks = all
         wires = lines
         branched = true
+    }
+
+    // Keep the complete layout, creating text objects only for visible rows.
+    function visibleRows(block) {
+        var first = Math.max(0, Math.ceil((bandTop - block.top) / rowHeight))
+        var last = Math.min(block.rows.length, Math.floor((bandBottom - block.top) / rowHeight))
+        return { first: first, rows: block.rows.slice(first, Math.max(first, last)) }
     }
 
     function clearBranches() {
@@ -810,7 +846,8 @@ FocusScope {
                         var oy = tree.spine - c / 2
                         function dots(gx0, gx1, gy0, gy1) {
                             for (var gx = Math.min(gx0, gx1); gx <= Math.max(gx0, gx1); ++gx)
-                                for (var gy = Math.min(gy0, gy1); gy <= Math.max(gy0, gy1); ++gy)
+                                for (var gy = Math.max(Math.min(gy0, gy1), Math.floor(-oy / c));
+                                     gy <= Math.min(Math.max(gy0, gy1), Math.ceil((height - oy) / c)); ++gy)
                                     if ((gx + gy) % 2 === 0)
                                         ctx.fillRect(gx * c - ox, gy * c + oy, c, c)
                         }
@@ -845,9 +882,10 @@ FocusScope {
                         id: block
                         required property var modelData
                         x: modelData.x
-                        y: tree.spine + modelData.top
+                        readonly property var visiblePart: tree.visibleRows(modelData)
+                        y: tree.spine + modelData.top + visiblePart.first * tree.rowHeight
                         Repeater {
-                            model: block.modelData.rows
+                            model: block.visiblePart.rows
                             Text {
                                 required property var modelData
                                 width: Math.min(implicitWidth, block.modelData.width)

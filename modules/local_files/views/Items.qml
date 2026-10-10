@@ -100,6 +100,7 @@ FocusScope {
     }
 
     TreeBrowser {
+        expandedFolderPreviews: true
         id: tree
         anchors.fill: parent
         focus: true
