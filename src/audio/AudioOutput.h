@@ -45,7 +45,7 @@ public:
     static void applyTo(QProcessEnvironment &env);
 
 signals:
-    // Another card was chosen.
+    // Settings → Audio Output was saved (another card, or the same again).
     void cardChanged();
 
 private:

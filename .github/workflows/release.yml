@@ -462,7 +462,7 @@ jobs:
             fi
             echo "- Steam Deck / Linux (x86_64): download \`OSD-OS-linux-x86_64.AppImage\`, make it executable (\`chmod +x\`) and run it: ${REPO}/blob/${TAG}/INSTALL.md#on-steamos--linux-x86_64"
             echo
-            echo "Only the Raspberry Pi 4 has been tested so far."
+            echo "Tested on a Raspberry Pi 4 and a Raspberry Pi 5 (8 GB)."
             echo
             echo "## Updating"
             echo

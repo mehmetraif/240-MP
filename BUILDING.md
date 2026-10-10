@@ -40,7 +40,7 @@ A MIDI file is played by FluidSynth with a SoundFont, which Homebrew's FluidSynt
 brew install yt-dlp deno
 ```
 
-mpv's ytdl hook uses `yt-dlp` to resolve YouTube URLs at playback time, and the YouTube module's Search runs it too. Two optional files in the data directory add to the module's tree (`#` comments allowed in both; each file only gates its own entries): `youtube_subscriptions.txt` (one channel ID per line — adds Subscriptions/Channels; see [INSTALL.md](INSTALL.md)) and `youtube_playlists.txt` (one playlist URL or ID per line, optional `My Name | <url>` display-name prefix — adds Playlists; contents are fetched by running `yt-dlp` directly).
+mpv's ytdl hook uses `yt-dlp` to resolve YouTube URLs at playback time, and the YouTube module's Search runs it too. Two optional files in the data directory add to the module's tree (`#` comments allowed in both; each file only gates its own entries): `youtube_subscriptions.txt` (one channel ID per line — adds Subscriptions/Channels; see the wiki's [YouTube](https://github.com/mehmetraif/OSD-OS/wiki/YouTube#channels-and-subscriptions) page) and `youtube_playlists.txt` (one playlist URL or ID per line, optional `My Name | <url>` display-name prefix — adds Playlists; contents are fetched by running `yt-dlp` directly).
 
 For full YouTube support, current yt-dlp versions also use an external JavaScript runtime. Deno is the recommended runtime. See yt-dlp's [EJS setup guide](https://github.com/yt-dlp/yt-dlp/wiki/EJS) for the currently supported runtimes and versions.
 
@@ -92,10 +92,12 @@ On macOS all user configuration is stored at:
 ```
 ~/Library/Application Support/OSD-OS/
   config.json       ← app and module settings
-  lists.json        ← each module's recently watched and favorites
+  lists.json        ← the modules' favorites and recently watched (YouTube keeps its history in youtube_history.json)
   plex_auth.json    ← plex auth
   input.cfg         ← optional gamepad mapping overrides (see Gamepad input below)
 ```
+
+Those are the main ones; the wiki's [Configuration files](https://github.com/mehmetraif/OSD-OS/wiki/Configuration-Files) page lists every file the app keeps there.
 
 This directory is created automatically on first run. It is separate from the app itself, so deleting or rebuilding the app will not wipe your settings.
 
@@ -108,16 +110,18 @@ Run on the Pi with RPi OS Trixie (Debian 13):
 ```bash
 sudo apt-get update
 sudo apt-get install -y \
-  build-essential cmake \
+  build-essential cmake pkgconf \
   qt6-base-dev qt6-declarative-dev \
   qml6-module-qtquick qml6-module-qtquick-controls \
-  qml6-module-qtquick-window \
+  qml6-module-qtquick-window qml6-module-qtquick-effects \
   libqt6svg6 qt6-svg-dev qt6-svg-plugins qt6-wayland \
   qt6-shadertools-dev \
   libdrm-dev libxkbcommon-dev libssl-dev \
-  libsdl2-dev \
+  libsdl2-dev libpcsclite-dev libmpv-dev \
   mpv
 ```
+
+`libmpv-dev` builds in Transparent Background and `libpcsclite-dev` the NFC Reader's PC/SC readers; without either, the build goes on without that part.
 
 `mpv` is the playback engine — OSD/OS launches it as a subprocess. No libmpv build dependency is required. `libmpv-dev` is optional: with its headers the Transparent Background setting is built in, which plays video inside the app's window through libmpv (`libmpv2`, opened at run time; `install.sh` and the OS image install it).
 
@@ -208,10 +212,12 @@ On Raspberry Pi OS all user configuration is stored at:
 ```
 ~/.local/share/OSD-OS/
   config.json      ← app and module settings
-  lists.json       ← each module's recently watched and favorites
+  lists.json       ← the modules' favorites and recently watched (YouTube keeps its history in youtube_history.json)
   plex_auth.json   ← plex auth
   input.cfg        ← optional gamepad mapping overrides (see Gamepad input below)
 ```
+
+Those are the main ones; the wiki's [Configuration files](https://github.com/mehmetraif/OSD-OS/wiki/Configuration-Files) page lists every file the app keeps there.
 
 This directory is created automatically on first run. It is separate from the app itself, so deleting or rebuilding the app will not wipe your settings.
 
@@ -226,7 +232,7 @@ The app itself is architecture-agnostic — the same C++/QML builds on x86_64 un
 On a Debian/Ubuntu x86_64 build host:
 
 ```bash
-sudo apt-get install -y build-essential cmake \
+sudo apt-get install -y build-essential cmake pkgconf \
   libdrm-dev libssl-dev libsdl2-dev libpcsclite-dev \
   libgl1-mesa-dev libxkbcommon-dev mpv
 ```
@@ -277,7 +283,7 @@ chmod +x OSD-OS-linux-x86_64.AppImage
 
 Configuration lives at `~/.local/share/OSD-OS/` (same as the Pi). See [INSTALL.md](INSTALL.md) for the Steam Deck end-user flow (Desktop Mode + adding it to Steam for Gaming Mode).
 
-`yt-dlp` is deliberately **not** bundled (it needs to be updatable independently of app releases). For the YouTube module on an immutable distro, drop a copy at `~/.local/share/OSD-OS/bin/yt-dlp` (`chmod +x`, update with `yt-dlp -U`); the app resolves it there first, then a `yt-dlp` sibling of the binary, then `PATH`, and hands the chosen path to mpv's ytdl hook via `--script-opts=ytdl_hook-ytdl_path=…` so both use the same copy. See [INSTALL.md](INSTALL.md#youtube-yt-dlp).
+`yt-dlp` is deliberately **not** bundled (it needs to be updatable independently of app releases). For the YouTube module on an immutable distro, drop a copy at `~/.local/share/OSD-OS/bin/yt-dlp` (`chmod +x`, update with `yt-dlp -U`); the app resolves it there first, then a `yt-dlp` sibling of the binary, then `PATH`, and hands the chosen path to mpv's ytdl hook via `--script-opts=ytdl_hook-ytdl_path=…` so both use the same copy. See the wiki's [YouTube](https://github.com/mehmetraif/OSD-OS/wiki/YouTube#how-osdos-finds-yt-dlp) page.
 
 ## Gamepad input (input.cfg)
 
@@ -316,7 +322,7 @@ rightshoulder            none         # unbind a default
 lefty-                   up           # axes take a +/- suffix
 triggerright+            play_pause
 label south B                         # force the footer label to display "B" for the south button
-label east  A                         # force the footer label to display "B" for the east button
+label east  A                         # force the footer label to display "A" for the east button
 ```
 
 Any bad lines are skipped with a warning in the log (line number included)
@@ -329,7 +335,7 @@ OSD/OS detects your device at startup and attempts to launch with the most effic
 
 **Overriding the decode flags**
 
-If you find the need to tune for your hardware, you can add an `mpv_video_args` string under `"app"` in `config.json`.  It accepts a a space-separated list of mpv flags to replace the auto-detected `--vo` / `--hwdec` params that OSD/OS sets.
+If you find the need to tune for your hardware, you can add an `mpv_video_args` string under `"app"` in `config.json`.  It accepts a a space-separated list of mpv flags to replace the auto-detected `--vo` / `--hwdec` params that OSD/OS sets (and, on a Pi 5, the `--drm-*` ones that point mpv at the display preset's output).
 
 ```json
 {
@@ -341,13 +347,9 @@ If you find the need to tune for your hardware, you can add an `mpv_video_args` 
 
 This config is read at each playback event, so a change applies on the next playback (no rebuild or restart needed). Only set video-output/decode flags here though; the app owns the rest (the IPC control channel, OSC, input) and for other mpv preferences (things like deinterlace, cache, subtitle styling, audio output device...) please just create a standard `~/.config/mpv/mpv.conf`. MPV will read that automatically every launch. Please check out [ARCHITECTURE.md → How mpv flags are layered](ARCHITECTURE.md#how-mpv-flags-are-layered-the-precedence-cascade) if you are interested in the background on this approach.
 
-**Enabling crop on a Pi 3** — the Pi 3 default uses a zero-copy overlay path for performance, and a hardware overlay plane can't zoom/crop, so the OSC crop button blanks the video there. To allow crop to work on the Pi3 you can override to the copy path (so frames go through the scaler, where crop works):
+**Enabling crop on a Pi 3** — the Pi 3 default uses a zero-copy overlay path for performance, and a hardware overlay plane can't zoom/crop (`--panscan` blanks the video there), so the app doesn't offer crop on it. To allow crop on the Pi 3, set Settings → **1080p Playback** to Off (`smooth_playback`): mpv then takes the copy path, `--vo=drm --hwdec=v4l2m2m-copy`, so frames go through the scaler, where crop works. Setting those flags through `mpv_video_args` alone isn't enough, because whether the app offers crop follows the setting (`MpvController::cropUnavailable()`).
 
-```json
-"mpv_video_args": "--vo=drm --hwdec=v4l2m2m-copy"
-```
-
-The trade-off with this approach: the copy path didn't look like it could reliabilty play back 1080p on the Pi 3 in my testing. I found it can easily peg the CPU and cause stuttering. So enabling crop on a Pi 3 means keeping your source content to **720p and below**. Ultimately its your call: smooth 1080p without crop (keep the default), or enable crop with a 720p ceiling using --hwdec=v4l2m2m-copy.
+The trade-off with this approach: the copy path didn't look like it could reliabilty play back 1080p on the Pi 3 in my testing. I found it can easily peg the CPU and cause stuttering. So enabling crop on a Pi 3 means keeping your source content to **720p and below**. Ultimately its your call: smooth 1080p without crop (keep the default), or enable crop with a 720p ceiling (1080p Playback Off).
 
 ## Choosing the display (display_index)
 
@@ -382,7 +384,7 @@ Notes:
 
 ## Debugging & logs
 
-OSD/OS logs to **stdout/stderr** via Qt's `qDebug` / `qWarning` (used throughout `AppCore`, `MpvController`, and the module backends). The trick is knowing where that output goes depending on how you launched the app.
+OSD/OS logs to **stdout/stderr** via Qt's `qDebug` / `qWarning` (used throughout `AppCore`, `MpvController`, and the module backends). A Release build (every release, the image, the AppImage) defines `QT_NO_DEBUG_OUTPUT`, so only `qWarning` and `qInfo` lines show there; build with `-DCMAKE_BUILD_TYPE=Debug` to see the `qDebug` ones. The trick is knowing where that output goes depending on how you launched the app.
 
 ### Option 1: Running from source
 
@@ -407,7 +409,7 @@ How you read logs depends on whether you installed the autostart service:
     journalctl -u osdos -b        # logs from this boot
     journalctl -u osdos -f        # follow live
     ```
-    Heads-up: the autostart service runs `ExecStopPost=osdos-stop`, which **powers the Pi off when you quit** (exit 0) — the console disappears with it. Stopping or restarting the service with `systemctl` leaves the Pi on (installs set up before this changed need the installer re-run once). To debug without powering off, either pick **Exit to Terminal** in the Quit dialog (drops to a login shell on `tty1` without removing the service — `sudo systemctl start osdos` or `sudo reboot` to return to the service), or stop the service and run the binary directly:
+    Heads-up: the autostart service runs `ExecStopPost=osdos-stop`, which **powers the Pi off when you quit** (exit 0), and on a crash or any exit code it doesn't know — the console disappears with it. Stopping or restarting the service with `systemctl` leaves the Pi on (installs set up before this changed need the installer re-run once). To debug without powering off, either pick **Exit to Terminal** in the Quit dialog (drops to a login shell on `tty1` without removing the service — `sudo systemctl start osdos` or `sudo reboot` to return to the service), or stop the service and run the binary directly:
     ```bash
     sudo systemctl stop osdos
     osdos
@@ -415,7 +417,7 @@ How you read logs depends on whether you installed the autostart service:
 
 ### mpv playback logs
 
-During playback the app hands off to mpv as a subprocess (see [ARCHITECTURE.md → Playback Hand-off](ARCHITECTURE.md#playback-hand-off-mpvcontroller)). `MpvController` writes mpv's own output to a log file in the temp dir alongside its IPC socket (`/tmp/osdos-mpv.sock`) — useful when a video won't play or transcoding misbehaves.
+During playback the app hands off to mpv as a subprocess (see [ARCHITECTURE.md → Playback Hand-off](ARCHITECTURE.md#playback-hand-off-mpvcontroller)). mpv keeps its own log in the temp dir, `/tmp/osdos-mpv.log` (`--log-file`), next to its IPC socket (`/tmp/osdos-mpv.sock`), and what mpv prints goes into the app's own log as `[mpv]` lines — both useful when a video won't play or transcoding misbehaves.
 
 ### Qt / QML debugging knobs
 

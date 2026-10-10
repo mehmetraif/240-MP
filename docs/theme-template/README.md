@@ -1,6 +1,6 @@
 # Theme template
 
-A theme to copy and make your own. A theme is the whole look in one folder: the colors, the [skin](../skin-template/) that dresses the window, the effects (on the text, behind the menus, round the selected line, over the screen, between windows) and the menu music. This one brings every part, each of its own, so each can be seen at work and changed.
+A theme to copy and make your own. A theme is the whole look in one folder: the colors, the [skin](../skin-template/) that dresses the window, the effects (on the text, behind the menus, round the selected line, over the screen, between windows) and the menu music. This one brings every part, each of its own, so each can be seen at work and changed. One shows only once you change it: a theme's own screen shader (here `tube.frag.qsb`) takes the place of OSD/OS's, which is what draws the text effects, so the Shimmer and Glow it sets show without that shader, or with one that draws them too ([Shaders](https://github.com/mehmetraif/OSD-OS/wiki/Shaders#keeping-the-text-effects) shows how).
 
 ![The template theme](../screenshots/theme-template.png)
 
@@ -94,7 +94,7 @@ A shader is a small program the GPU runs once for every pixel it draws, each tim
 |---|---|---|
 | `resolution` | `vec2` | The screen, in its pixels |
 | `px` | `float` | Screen pixels to an art pixel, a pixel of a 240-line picture: 2 at 480 lines, 4 at 1080 |
-| `time` | `float` | Seconds, counting up while `animate` is `true` |
+| `time` | `float` | Seconds, counting up while `animate` is `true`, or while another effect moves |
 | `scanlines`, `curvature`, `glow`, `bleed`, `noise`, `vignette` | `float` | The effect's numbers, 0 when left out |
 | `rainbow`, `shimmer`, `flicker`, `inkGlow` | `float` | The text effect's numbers (`inkGlow` is its `glow`) |
 | `ink`, `paper` | `vec4` | The colors, `primary` and `surface` |
@@ -124,7 +124,7 @@ The log says which theme was read, `[AppCore] theme <folder>: <path>`, and what 
 
 - **Colors that aren't two `#rrggbb`** are drawn as Video 1.
 - **A file that isn't in the theme's folder** (a path or a link out of it) is refused: a picture's part is drawn as OSD/OS draws it, an effect without its shader, and no music.
-- **A shader that won't load**, one not compiled with `qsb`, or by a newer Qt: the log says `[Effect] … can't be used`. A screen effect's numbers then drive OSD/OS's own shader; a background goes without. A shader that loads but leaves the screen unreadable: take its `.qsb` out of the theme's folder, or the folder out of `themes`, and restart OSD/OS.
+- **A shader that won't load**, one not compiled with `qsb`, or by a newer Qt: the log says `[Effect] … can't be used`. A screen effect's numbers then drive OSD/OS's own shader; a background goes without. One compiled without the variant your Qt draws with (OpenGL ES on a Pi) isn't caught that way: Qt logs that it found no shader code, and the effect draws nothing, so a screen shader leaves the screen blank. Compile with the `qsb` line in `tube.frag`. A shader that loads but leaves the screen unreadable: take its `.qsb` out of the theme's folder, or the folder out of `themes`, and restart OSD/OS.
 - **No music**: the log says why (`[MenuMusic] …`): a MIDI file without FluidSynth or a SoundFont, a module neither mpv nor openmpt123 can play, a file mpv can't play.
-- **A `theme.json` that isn't JSON**: the theme isn't listed in Settings.
+- **A `theme.json` that isn't JSON**: the theme isn't listed in Settings (in a folder named like one of OSD/OS's own themes, that one is listed in its place).
 - **No Text, Background or Screen Effect in Settings**: the build has no Qt Shader Tools (see [BUILDING.md](../../BUILDING.md)), or Qt draws without a GPU. The theme's colors, skin, selector effect, transitions (but Ripple, Wave and Drop) and music work all the same.

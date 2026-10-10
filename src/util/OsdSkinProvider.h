@@ -1,7 +1,7 @@
 #pragma once
 #include <QQuickImageProvider>
 
-// A theme's picture of one of the window's parts (Settings → Theme: its frame,
+// A skin's picture of one of the window's parts (Settings → Skin: its frame,
 // the title and hint bars, the selected line) in the colour scheme's two
 // colours, so a theme gives the window its shape and the scheme its colours:
 //

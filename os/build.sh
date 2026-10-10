@@ -29,7 +29,7 @@
 #   IMG_NAME          default "osdos"
 #   WPA_COUNTRY, LOCALE_DEFAULT, KEYBOARD_KEYMAP, KEYBOARD_LAYOUT,
 #   TIMEZONE_DEFAULT, PUBKEY_SSH_FIRST_USER, PUBKEY_ONLY_SSH,
-#   DEPLOY_COMPRESSION      passed to pi-gen as-is when set
+#   DEPLOY_COMPRESSION      passed to pi-gen; xz when unset
 #   OSDOS_NATIVE=1    run pi-gen's build.sh directly (a Debian host, as root)
 #                     instead of build-docker.sh
 #   OSDOS_PREPARE_ONLY=1  set up the pi-gen tree and config, then stop

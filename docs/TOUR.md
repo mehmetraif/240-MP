@@ -17,7 +17,7 @@ Every screen below is the app itself, running at 640×480. The film and YouTube 
 <table>
 <tr><th width="50%">Recently Watched</th><th width="50%">Favorites</th></tr>
 <tr><td><img src="screenshots/local-files.png" width="100%" alt="Recently Watched" /></td><td><img src="screenshots/favorites.png" width="100%" alt="Favorites" /></td></tr>
-<tr><td>The tree opens on what you played last, then Favorites, Search and your folders. The entry under the cursor branches out to its first few items.</td><td>Files, folders and playlists you marked from their options.</td></tr>
+<tr><td>The tree opens on what you played last, then Favorites, Search and your folders. The entry under the cursor branches out to its first few items.</td><td>Files and playlists you marked from their options.</td></tr>
 </table>
 
 <table>
@@ -29,7 +29,7 @@ Every screen below is the app itself, running at 640×480. The film and YouTube 
 <table>
 <tr><th width="50%">Search results</th><th width="50%">Options</th></tr>
 <tr><td><img src="screenshots/search-results.png" width="100%" alt="Search results" /></td><td><img src="screenshots/options.png" width="100%" alt="Options" /></td></tr>
-<tr><td>Names that match anywhere under the media folder.</td><td>► on any entry: Add to Favorites (or Remove), Play at Startup, and Add to Playlist.</td></tr>
+<tr><td>Names that match anywhere under the media folder and on the USB drives plugged in.</td><td>► on a file: Add to Favorites (or Remove), Play at Startup, and Add to Playlist.</td></tr>
 </table>
 
 ### Playing
@@ -43,7 +43,7 @@ Every screen below is the app itself, running at 640×480. The film and YouTube 
 <table>
 <tr><th width="33%">The video's menu</th><th width="33%">Back to the menus</th><th width="33%">Main menu</th></tr>
 <tr><td><img src="screenshots/player-menu.png" width="100%" alt="The video's menu" /></td><td><img src="screenshots/menus-over-video.png" width="100%" alt="Back to the menus" /></td><td><img src="screenshots/main-menu-over-video.png" width="100%" alt="Main menu" /></td></tr>
-<tr><td>With Transparent Background, back during a Local Files or YouTube video opens its menu over the picture, which plays on, here at 40% solid. ◄ ► change its module's settings for it, at once or as you go back to it. Close Video goes to the main menu; back, to the video.</td><td>Browse in that menu, or back from any other module's video, returns to the module's menus, the video playing on behind them. Choose it again to watch it full screen from where it is.</td><td>The main menu leads with the video, the cursor on it: select takes it back to full screen where it is. Play/pause stops it (<code>[SPACE]:STOP</code>), and playing anything else replaces it.</td></tr>
+<tr><td>With Transparent Background, back during a Local Files, YouTube or Playlists video opens its menu over the picture, which plays on, here at 40% solid. ◄ ► change its module's settings for it, at once or as you go back to it. Close Video goes to the main menu; back, to the video.</td><td>Browse in that menu, or back from any other module's video, returns to the module's menus, the video playing on behind them. Choose it again to watch it full screen from where it is.</td><td>For a Local Files, YouTube or Playlists video, the main menu leads with it, the cursor on it: select takes it back to full screen where it is. Play/pause stops it (<code>[SPACE]:STOP</code>), and playing anything else replaces it.</td></tr>
 </table>
 
 ### Netflix, Prime Video and YouTube
@@ -145,7 +145,7 @@ Once signed in, each opens on the server's Continue Watching and its libraries. 
 <table>
 <tr><th width="50%">Controls</th><th width="50%">Update</th></tr>
 <tr><td><img src="screenshots/controls.png" width="100%" alt="Controls" /></td><td><img src="screenshots/update.png" width="100%" alt="Update" /></td></tr>
-<tr><td>One more button for each action, from any keyboard, remote or gamepad.</td><td>Checks for a newer release and installs it.</td></tr>
+<tr><td>One more button for each action, from any keyboard or remote (a gamepad's buttons go in <code>input.cfg</code>).</td><td>Checks for a newer release and installs it.</td></tr>
 </table>
 
 <table>
@@ -168,7 +168,7 @@ Once signed in, each opens on the server's Continue Watching and its libraries. 
 
 ### Themes
 
-Settings → Theme sets the whole look at once: the color scheme, the skin, the effects and the menu music. Each part has its row under Theme, to change or turn off. None of it ever lies over a video: the effects and the music rest while one plays, loads or has its menu open.
+Settings → Theme sets the whole look at once: the color scheme, the skin, the effects and the menu music. Each part has its row under Theme, to change, and all but the color scheme to turn off. None of it ever lies over a video: the effects and the music rest while one plays, loads or has its menu open.
 
 <table>
 <tr><th width="50%">Trinitron</th><th width="50%">Late Show</th></tr>

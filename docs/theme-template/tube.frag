@@ -1,8 +1,8 @@
 #version 440
-// The skin template's own effect: a picture tube's phosphor stripes, a hum
+// The theme template's own effect: a picture tube's phosphor stripes, a hum
 // bar rolling slowly down the picture, and the effect's scanlines.
 //
-// After a change, compile it again into the .qsb that skin.json names:
+// After a change, compile it again into the .qsb that theme.json names:
 //
 //     qsb --glsl "100 es,120,150" --hlsl 50 --msl 12 -o tube.frag.qsb tube.frag
 //

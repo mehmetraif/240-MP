@@ -33,7 +33,7 @@ const char *kNwsPointsUrl = "https://api.weather.gov/points";
 
 // api.weather.gov answers 403 to requests without a User-Agent, and asks for
 // contact information in it. Qt sends none by default.
-const char *kNwsUserAgent = "OSD-OS/" APP_VERSION " (https://github.com/anthonycaccese/240-MP)";
+const char *kNwsUserAgent = "OSD-OS/" APP_VERSION " (https://github.com/mehmetraif/OSD-OS)";
 
 // Open-Meteo publishes data roughly every 15 minutes.
 constexpr int kRefreshMs = 10 * 60 * 1000;

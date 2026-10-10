@@ -19,8 +19,8 @@ Compared with flashing Raspberry Pi OS Lite and running `scripts/install.sh` ([I
 
 - **The app comes first.** `osdos.service` starts as soon as the display driver is up (after `basic.target`), not after every other service (`multi-user.target`).
 - **The rest waits for it.** Wi-Fi (NetworkManager), Bluetooth, mDNS (`avahi-daemon`) and, if enabled, SSH hold back until the app has drawn its first frame. Then they start one after another, in that order.
-- **The boot screen.** While those services start, the app shows a pixel-art VHS cassette, the owner's drawing (made with ChatGPT) with OSD/OS on its label (`assets/images/cassette.png`, drawn by `views/Components/VhsCassette.qml`): its reels turn, and the tape winds off the left reel onto the right one as the progress bar fills, plus a line per service (`[ OK ] WI-FI`, …). It ends with a check that the network is actually online. The startup module opens once it is done, so modules that need the network find it ready. Keys do nothing while it is up.
-- **A quiet boot.** There is no rainbow splash, no one-second firmware delay (`boot_delay=0`), no kernel text, logo or cursor on `tty1`, and no login prompt on `tty1`.
+- **The boot screen.** While those services start, the app shows a pixel-art VHS cassette, the owner's drawing (made with ChatGPT) with OSD/OS on its label (`assets/images/cassette.png`, drawn by `views/Components/VhsCassette.qml`): its reels turn, and the tape winds off the left reel onto the right one as the progress bar fills, plus a line per service (`[ OK ] WI-FI`, …). It ends with a check that the network is actually online. The startup module opens once it is done, so modules that need the network find it ready. No key does anything while it is up but Ctrl+Q, which quits, and so powers the Pi off.
+- **A quiet boot.** There is no rainbow splash, no one-second firmware delay (`boot_delay=0`) and no kernel text, logo or cursor on `tty1`.
 - **Less running.** The image has:
   - no apt, man-db, e2scrub or dpkg-backup timers (they wake the SD card at random times, mid-movie included);
   - no cron;
@@ -36,9 +36,7 @@ Compared with flashing Raspberry Pi OS Lite and running `scripts/install.sh` ([I
 - **Menu music in any format.** FluidSynth with a small General MIDI SoundFont (TimGM6mb, about 6 MB) plays a theme's or your own MIDI file, and openmpt123 a tracker's module mpv can't play itself (XM, MOD, S3M, IT).
 - **Films go on the card.** On the first boot the system keeps 8 GiB of the card, and the rest becomes a partition of its own in exFAT, labelled **OSD-OS**, which Windows and macOS open too. Local Files opens it, and offline playlists download into it. See [Films on the card](#films-on-the-card).
 - **USB drives mount by themselves.** A USB stick or disk plugged in is mounted read-only and shows up in Local Files under its label. See [USB drives](#usb-drives).
-- **Stopping isn't powering off.** `systemctl stop` and `systemctl restart` leave the Pi on. Quit in the app still powers it off, Restart reboots it, and Exit to Terminal still drops to a login shell, as with `install.sh`.
-- **Bluetooth from the app.** The user the app runs as is in the `bluetooth` group, so Settings → Bluetooth can search for and pair a keyboard, gamepad or remote through BlueZ.
-  - Bluetooth is unblocked (`rfkill unblock bluetooth`) as bluetoothd starts, so the app's switch is the only one.
+- **Bluetooth switches on from the app.** Bluetooth is unblocked (`rfkill unblock bluetooth`) as bluetoothd starts, so Settings → Bluetooth's switch is the only one. (The user the app runs as is in the `bluetooth` group, as with `install.sh`.)
   - Raspberry Pi OS starts every radio blocked, so that Wi-Fi stays off until its country is set (`rfkill.default_state=0`), and then unblocks Bluetooth only on the adapters pi-gen knows by device path. The Pi 4 this was found on wasn't one of them: its adapter stayed blocked, and BlueZ couldn't turn it on.
 
 Everything else (the launcher, in-app updates, Exit to Terminal, the data directory in `~/.local/share/OSD-OS`) is the same as a manual install. The launcher, stop helper and terminal unit are taken from `scripts/install.sh` at build time.
@@ -49,7 +47,7 @@ Everything else (the launcher, in-app updates, Exit to Terminal, the data direct
 2. Raspberry Pi Imager 2 skips OS customisation for an image chosen with **Use custom**: it can't tell which kind the image takes. For Wi-Fi, a user, SSH, the locale and the keyboard, open the image through a local manifest instead, one that gives it `"init_format": "cloudinit-rpi"` ([Imager's notes on it](https://github.com/raspberrypi/rpi-imager/tree/main/doc/local_json)). Imager 1 seems to apply it, but on Trixie its settings never take effect. Without one, Wi-Fi can be set up by hand: before the first boot, add it to `network-config` on the boot partition, following the example in that file. With Ethernet there is nothing to do.
 3. The image's own user is `pi` (or whatever `FIRST_USER_NAME` was at build time), and the app runs as that user. Logging in is only needed for Exit to Terminal or SSH:
    - If the image was built with a password (`FIRST_USER_PASS`), you can log in as `pi`. The OS image workflow takes it from the repository secret `OS_FIRST_USER_PASS`, if there is one.
-   - If it was built without one, the `pi` account has no password to log in with. Exit to Terminal then logs `pi` in by itself: whoever is at the keyboard could take the card out anyway. That shell has no root, though: `sudo` asks for the password `pi` doesn't have. For `sudo`, build the image with a password. SSH needs a key (`PUBKEY_SSH_FIRST_USER`) or the user Imager's customisation creates.
+   - If it was built without one, the `pi` account has no password to log in with. Exit to Terminal then logs `pi` in by itself: whoever is at the keyboard could take the card out anyway. That shell has no root, though: `sudo` asks for the password `pi` doesn't have. For `sudo`, build the image with a password. SSH needs an image built with `ENABLE_SSH=1` and a key (`PUBKEY_SSH_FIRST_USER`): a key alone doesn't turn it on. Or Imager's customisation, which can turn SSH on with the user it creates.
 
 ### Films on the card
 
@@ -167,10 +165,14 @@ The image lands in `os/work/pi-gen/deploy/`. `os/build.sh` fetches pi-gen at a p
 | `ENABLE_SSH` | `0` | `1` enables SSH (it then also waits for the app, after mDNS). |
 | `TARGET_HOSTNAME` | `osdos` | |
 | `IMG_NAME` | `osdos` | |
-| `WPA_COUNTRY`, `LOCALE_DEFAULT`, `KEYBOARD_KEYMAP`, `KEYBOARD_LAYOUT`, `TIMEZONE_DEFAULT`, `PUBKEY_SSH_FIRST_USER`, `PUBKEY_ONLY_SSH`, `DEPLOY_COMPRESSION` | pi-gen's | Passed through to pi-gen. |
+| `WPA_COUNTRY`, `LOCALE_DEFAULT`, `KEYBOARD_KEYMAP`, `KEYBOARD_LAYOUT`, `TIMEZONE_DEFAULT`, `PUBKEY_SSH_FIRST_USER`, `PUBKEY_ONLY_SSH` | pi-gen's | Passed through to pi-gen. |
+| `DEPLOY_COMPRESSION` | `xz` | Passed through to pi-gen, which would otherwise zip the image. |
+| `OSDOS_TARBALL` | — | The OSD/OS release tarball to build the image with; the first argument, when given, wins. |
 | `OSDOS_NATIVE` | `0` | `1` runs pi-gen's `build.sh` directly (a Debian host, as root) instead of in Docker. |
 | `OSDOS_PREPARE_ONLY` | `0` | `1` sets up the pi-gen tree and its config, then stops. |
 | `PI_GEN_REF` | pinned | pi-gen commit to build from. |
+| `PI_GEN_REPO` | `https://github.com/RPi-Distro/pi-gen` | The pi-gen repository to fetch it from. |
+| `WORK` | `os/work` | Where pi-gen is fetched and the image is built. |
 
 ## How the boot works
 
