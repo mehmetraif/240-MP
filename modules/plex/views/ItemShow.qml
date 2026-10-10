@@ -235,7 +235,7 @@ FocusScope {
         anchors.topMargin: root.sh * 0.25 //120
         anchors.leftMargin: root.sw * 0.115625 //74
         width: root.sw * 0.76875 //492
-        height: root.sh * 0.525 //252
+        height: root.sh * 0.525 + root.hintRoom //252
         clip: true
 
         Row {
@@ -399,7 +399,7 @@ FocusScope {
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.topMargin: root.sh * 0.0145833 //7
-            height: root.sh * 0.175 //84
+            height: root.sh * 0.175 + root.hintRoom //84
             clip: true
 
             delegate: Item {

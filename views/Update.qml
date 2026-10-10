@@ -193,7 +193,7 @@ FocusScope {
             Rectangle {
                 visible: updateRoot.releaseNotes !== ""
                 width: parent.width
-                height: root.sh * 0.3291667 //158
+                height: root.sh * 0.3291667 + root.hintRoom //158
                 color: "transparent"
                 border.width: root.px
                 border.color: root.primaryColor

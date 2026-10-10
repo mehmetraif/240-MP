@@ -13,6 +13,7 @@ ctest --test-dir build-tests --output-on-failure
   - Only the branch off the folder under the cursor, and its line, are drawn in full; every other is faint, expanded or compact.
   - No two blocks in a column overlap; of a thousand entries only the rows on the screen are drawn.
   - A folder opened again comes back with its cursor where it was; the compact branches keep to a few rows.
+  - With Settings' Hint Bar off, the area reaches the content box's foot and shows more rows, the spine where it was.
   - A picture of it is saved as `tree-browser-preview.png`, which CI keeps.
 - **storage_search** (`storage_search_test.cpp`):
   - Local Files' search keeps the first 200 matches by name.

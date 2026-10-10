@@ -136,7 +136,11 @@ FocusScope {
     readonly property real rightEdge: root.sw * 0.875 //560
     readonly property real treeTop: root.sh * 0.2083333 //100
     readonly property real treeBottom: root.sh * 0.8333333 //400
-    // The spine, in tree-area coordinates.
+    // Where the area ends: over the hint bar, or with Settings' Hint Bar off,
+    // at the content box's foot, more rows showing under the spine.
+    readonly property real areaBottom: root.hintBar ? treeBottom : root.contentBox.y + root.contentBox.height //400, 430
+    // The spine, in tree-area coordinates: midway down the area over the hint
+    // bar, wherever the area ends.
     readonly property real spine: Math.round((treeBottom - treeTop) / 2)
     // Room a host keeps under the tree for a line of its own (a HelpLine
     // while it shows): the area stops short of it, the spine stays put.
@@ -144,7 +148,7 @@ FocusScope {
     // How far the area reaches above and below the spine: only rows wholly
     // inside it are drawn, so none is cut in half by its edge.
     readonly property real bandTop: -spine
-    readonly property real bandBottom: treeBottom - treeTop - reservedBottom - spine
+    readonly property real bandBottom: areaBottom - treeTop - reservedBottom - spine
     onBandBottomChanged: if (ready && branched) layoutBranches(true)
     // Branches: the gap before each level leaves room for the lanes their
     // lines turn in, one a line's width apart from the next.
@@ -800,7 +804,7 @@ FocusScope {
     Item {
         y: tree.treeTop
         width: parent.width
-        height: tree.treeBottom - tree.treeTop - tree.reservedBottom
+        height: tree.areaBottom - tree.treeTop - tree.reservedBottom
         clip: true
 
         Item {

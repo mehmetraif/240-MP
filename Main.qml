@@ -511,6 +511,17 @@ Window {
         return Qt.rect(left, top, right - left, bottom - top)
     }
     function snapPx(v) { return Math.round(v / px) * px }
+    // The room Settings' Hint Bar and Help Line leave when they are off, which
+    // the content takes; the window stays as it is. A menu's list grows a row
+    // (menuRowHeight) for the hint bar (hintRoom) and, over a help line, a row
+    // for it (helpRoom): ten rows at most, its ▼ inside the content box. A help
+    // line moves down into the hint bar's place (helpLineMargin), a tree
+    // reaches the content box's foot (TreeBrowser's areaBottom), a dialog
+    // centres in the taller space (PromptScreen).
+    readonly property real menuRowHeight: sh * 0.0583333 //28
+    readonly property real hintRoom: hintBar ? 0 : menuRowHeight
+    readonly property real helpRoom: helpLine ? 0 : menuRowHeight
+    readonly property real helpLineMargin: hintBar ? sh * 0.1583333 : sh * 0.1041667 //76, or the hint bar's 50
 
     // A time as the players show it: h:mm:ss, or m:ss under an hour.
     function formatTime(ms) {

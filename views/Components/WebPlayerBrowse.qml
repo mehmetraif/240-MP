@@ -74,7 +74,8 @@ FocusScope {
         anchors.fill: parent
         focus: true
         rootPath: "home"
-        reservedBottom: problemLine.visible ? treeBottom - problemLine.y : 0
+        // The problem line's room, while it shows (Help Line on).
+        reservedBottom: problemLine.visible && problemLine.shown ? areaBottom - problemLine.y : 0
         preview: browse.infoSetting !== "off"
         previewDelay: (parseInt(browse.infoSetting) || 0) * 1000
         savedTrail: browse.navListState.trail || []
@@ -138,7 +139,7 @@ FocusScope {
         text: browse.catalog ? browse.catalog.problem : ""
         anchors.bottom: parent.bottom
         anchors.left: parent.left
-        anchors.bottomMargin: root.sh * 0.1583333 //76
+        anchors.bottomMargin: root.helpLineMargin
         anchors.leftMargin: root.sw * 0.125 //80
     }
 

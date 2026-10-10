@@ -27,7 +27,8 @@ Item {
     anchors.topMargin: root.sh * 0.25 //120
     anchors.leftMargin: root.sw * 0.115625 //74
     width: root.sw * 0.76875 //492
-    height: root.sh * 0.4666667 //224
+    // A row more for each bar that is off (Main.qml's helpRoom, hintRoom).
+    height: root.sh * 0.4666667 + root.helpRoom + root.hintRoom //224
 
     function isSection(i) {
         var row = view.model[i]

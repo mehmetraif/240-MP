@@ -141,9 +141,10 @@ FocusScope {
         visible: !licensePage.visible
         focus: !licensePage.visible
         // Under the wordmark: six lines, the rest on ▼, and room above them
-        // for the ▲ clear of the tagline.
+        // for the ▲ clear of the tagline; a seventh with the hint bar off (its
+        // help line stays, Help Line or not: these lines are the page).
         anchors.topMargin: root.sh * 0.375 //180
-        height: root.sh * 0.35 //168
+        height: root.sh * 0.35 + root.hintRoom //168
 
         delegate: MenuRow {
             width: list.width
@@ -176,7 +177,7 @@ FocusScope {
         text: row ? row.description : ""
         anchors.bottom: parent.bottom
         anchors.left: parent.left
-        anchors.bottomMargin: root.sh * 0.1583333 //76
+        anchors.bottomMargin: root.helpLineMargin
         anchors.leftMargin: root.sw * 0.125 //80
     }
 
@@ -237,8 +238,10 @@ FocusScope {
             x: root.sw * 0.125 //80
             y: root.sh * 0.25 //120
             width: root.sw * 0.75 //480
-            // Down to just above the hint bar, the help line's room included.
-            height: root.sh * 0.575 //276
+            // Down to just above the hint bar, the help line's room included;
+            // with the hint bar off, down to where its ▼ ends at the content
+            // box's foot.
+            height: root.sh * 0.575 + (root.hintBar ? 0 : root.sh * 0.0416667) //276, 296
             color: "transparent"
             border.width: root.px
             border.color: root.primaryColor

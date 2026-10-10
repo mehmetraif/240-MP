@@ -315,7 +315,7 @@ FocusScope {
         Rectangle {
             visible: launchRoot.phase === "failed" && launchRoot.output !== ""
             width: parent.width
-            height: root.sh * 0.25 //120
+            height: root.sh * 0.25 + root.hintRoom //120
             color: "transparent"
             border.width: root.px
             border.color: root.primaryColor
