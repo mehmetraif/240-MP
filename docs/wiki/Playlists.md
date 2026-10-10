@@ -6,7 +6,7 @@ The module is in [modules/playlists](https://github.com/mehmetraif/OSD-OS/tree/m
 
 <table>
 <tr><th width="50%">Playlists</th><th width="50%">An offline playlist</th></tr>
-<tr><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/playlists.png" width="100%" alt="Playlists: New Online Playlist, New Offline Playlist, then Saturday Morning 3/5 Offline, Road Trip 3/3 Offline and Evening Mix 6 Online" /></td><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/playlist.png" width="100%" alt="The page of the offline playlist Saturday Morning: Retry Downloads, Delete Playlist, then its videos, Ready, 20% or Not Allowed" /></td></tr>
+<tr><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/playlists.png" width="100%" alt="Playlists: New Online Playlist, New Offline Playlist, then Martial Arts Night 2/5 Offline, Anime Night 3/3 Offline and Sunday Matinee 6 Online" /></td><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/playlist.png" width="100%" alt="The page of the offline playlist Martial Arts Night: Retry Downloads, Delete Playlist, then its videos, Ready, 29%, Queued or Not Allowed" /></td></tr>
 <tr><td>Online playlists play each video from where it lives; offline ones, from the device, with how many of their videos are on it.</td><td>Each video downloads once, in the background: ready, under way, or why not (a server that doesn't let you download it).</td></tr>
 </table>
 
@@ -60,7 +60,7 @@ Each video's line shows its title and, against the right edge, a value:
 | `NOT ALLOWED` | Offline lists | The server doesn't let your user download it |
 | `MISSING` | Both | A Local Files file that isn't there any more (moved, deleted, or on a USB drive that is out), or, on an online list, a Jellyfin or Emby video while you are signed out of that server |
 
-The help line under the list shows the full title of the video under the cursor, and for a failed download the reason after it: `The Last Starfighter: the server doesn't let this user download it`, `…: no yt-dlp`, `…: signed out`, `…: can't write to /media/OSD-OS/Playlists`, or yt-dlp's own error.
+The help line under the list shows the full title of the video under the cursor, and for a failed download the reason after it: `Street Fighter (1994): the server doesn't let this user download it`, `…: no yt-dlp`, `…: signed out`, `…: can't write to /media/OSD-OS/Playlists`, or yt-dlp's own error.
 
 Select on a video opens its choices:
 
@@ -78,7 +78,7 @@ A video can go on any number of playlists, but on each only once: a second time 
 
 <table>
 <tr><th width="50%">Adding videos</th><th width="50%">Add to Playlist</th></tr>
-<tr><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/playlist-add.png" width="100%" alt="Add to Saturday Morning: Jellyfin's Continue Watching, Next Up, Movies and Shows, Movies open on its films" /></td><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/add-to-playlist.png" width="100%" alt="Add to playlist? for MTV Station IDs 1983: Saturday Morning (Offline), Road Trip (Offline), Evening Mix, New Online Playlist, New Offline Playlist" /></td></tr>
+<tr><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/playlist-add.png" width="100%" alt="Add to Martial Arts Night: Jellyfin's Continue Watching, Next Up and Movies, Movies open on its films" /></td><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/add-to-playlist.png" width="100%" alt="Add to playlist? for Mortal Kombat (1995).mp4: Martial Arts Night (Offline), Anime Night (Offline), Sunday Matinee, New Online Playlist, New Offline Playlist" /></td></tr>
 <tr><td>Local Files, YouTube, Jellyfin and Emby in one tree, down to a show's episodes. Select adds a video and stays, for the next.</td><td>From a module itself: a video's options (►), or ► on PLAY in Jellyfin and Emby.</td></tr>
 </table>
 
@@ -111,7 +111,7 @@ Each opens **Add to playlist?** with the video's title under it: every playlist 
 
 | Source | Its title on the list |
 |---|---|
-| Local Files | The file's name, with its extension (`Night of the Comet (1984).mkv`) |
+| Local Files | The file's name, with its extension (`Bloodsport (1988).mp4`) |
 | YouTube | The video's title |
 | Jellyfin, Emby | The item's name; an episode as `SHOW - EPISODE`, to tell one show's "Pilot" from another's |
 
@@ -223,9 +223,9 @@ Inside it each source has a folder of its own, made as needed, and each file car
 ├── YouTube/
 │   └── Saturday Morning Commercials 1985 [aBcD3fGh1jK].mp4
 ├── Jellyfin/
-│   └── The Wonder Years - Pilot [5f1c0a8e9b2d4c6f8a1e3b5d7c9f0a2b].mkv
+│   └── Kickboxer (1989) [5f1c0a8e9b2d4c6f8a1e3b5d7c9f0a2b].mkv
 └── Emby/
-    └── Flight of the Navigator [20731].mp4
+    └── Double Impact (1991) [20731].mp4
 ```
 
 Names follow exFAT's rules (Windows'): characters it forbids (`\ / : * ? " < > |`) are replaced, and the title is cut at 80 characters (YouTube: 80 bytes). The default folder is an ordinary folder inside Local Files' media folder, so Local Files lists it too and its videos also play from there. A video copied into it by hand doesn't count: only what the module downloaded is on its lists.
@@ -364,7 +364,7 @@ A file with one offline and one online playlist, in the form OSD/OS writes it (f
         },
         "jellyfin:5f1c0a8e9b2d4c6f8a1e3b5d7c9f0a2b": {
             "bytes": 734003200,
-            "path": "/media/OSD-OS/Playlists/Jellyfin/The Wonder Years - Pilot [5f1c0a8e9b2d4c6f8a1e3b5d7c9f0a2b].mkv",
+            "path": "/media/OSD-OS/Playlists/Jellyfin/Kickboxer (1989) [5f1c0a8e9b2d4c6f8a1e3b5d7c9f0a2b].mkv",
             "state": "done"
         },
         "youtube:aBcD3fGh1jK": {
@@ -394,16 +394,16 @@ A file with one offline and one online playlist, in the form OSD/OS writes it (f
                     "source": {
                         "itemId": "5f1c0a8e9b2d4c6f8a1e3b5d7c9f0a2b"
                     },
-                    "title": "The Wonder Years - Pilot"
+                    "title": "Kickboxer (1989)"
                 },
                 {
                     "id": "c7e5b3a1-8f6d-4b2e-9a0c-5d4e3f2a1b0c",
-                    "key": "local:/media/OSD-OS/Films/Night of the Comet (1984).mkv",
+                    "key": "local:/media/OSD-OS/Martial Arts/Bloodsport (1988).mp4",
                     "module": "com.osdos.local_files",
                     "source": {
-                        "path": "/media/OSD-OS/Films/Night of the Comet (1984).mkv"
+                        "path": "/media/OSD-OS/Martial Arts/Bloodsport (1988).mp4"
                     },
-                    "title": "Night of the Comet (1984).mkv"
+                    "title": "Bloodsport (1988).mp4"
                 },
                 {
                     "id": "5a3c1e9b-7d2f-4c8a-b6e4-2f1d0c9b8a7e",
@@ -412,11 +412,11 @@ A file with one offline and one online playlist, in the form OSD/OS writes it (f
                     "source": {
                         "itemId": "20733"
                     },
-                    "title": "The Last Starfighter"
+                    "title": "Street Fighter (1994)"
                 }
             ],
             "kind": "offline",
-            "name": "SATURDAY MORNING",
+            "name": "MOVIE NIGHT",
             "order": "inorder",
             "resume": {
                 "itemId": "9d4a1f3e-2b7c-4e6a-8f5d-0c1b2a3e4d5f",
@@ -428,12 +428,12 @@ A file with one offline and one online playlist, in the form OSD/OS writes it (f
             "items": [
                 {
                     "id": "2c4e6a8b-1d3f-4b5a-9c7e-8f0a2b4c6d8e",
-                    "key": "local:/media/OSD-OS/Films/Night of the Comet (1984).mkv",
+                    "key": "local:/media/OSD-OS/Martial Arts/Bloodsport (1988).mp4",
                     "module": "com.osdos.local_files",
                     "source": {
-                        "path": "/media/OSD-OS/Films/Night of the Comet (1984).mkv"
+                        "path": "/media/OSD-OS/Martial Arts/Bloodsport (1988).mp4"
                     },
-                    "title": "Night of the Comet (1984).mkv"
+                    "title": "Bloodsport (1988).mp4"
                 },
                 {
                     "id": "7f9b1d3c-5e2a-4f6b-8d0c-3a5e7c9b1d2f",
@@ -442,18 +442,18 @@ A file with one offline and one online playlist, in the form OSD/OS writes it (f
                     "source": {
                         "itemId": "20733"
                     },
-                    "title": "The Last Starfighter"
+                    "title": "Street Fighter (1994)"
                 }
             ],
             "kind": "online",
-            "name": "EVENING MIX",
+            "name": "SUNDAY MATINEE",
             "order": "shuffle"
         }
     ]
 }
 ```
 
-Here the offline list stopped 12 minutes 34 seconds into The Wonder Years, its YouTube and Jellyfin videos are on the card, its Local Files film plays from where it is, and the Emby film can't be downloaded by this user. The online list streams the same Emby film from the server.
+Here the offline list stopped 12 minutes 34 seconds into Kickboxer, its YouTube and Jellyfin videos are on the card, its Local Files film plays from where it is, and the Emby film can't be downloaded by this user. The online list streams the same Emby film from the server.
 
 Edit it only with OSD/OS stopped (`sudo systemctl stop osdos` on the image), and keep it valid JSON: a file that can't be read is taken as no playlists at all, and the next change writes it afresh.
 
@@ -463,9 +463,9 @@ Each time a list starts, it is written into `playlists/<playlist id>-<n>.m3u` in
 
 ```text
 #EXTM3U
-#EXTINF:-1,Night of the Comet (1984).mkv
-/media/OSD-OS/Films/Night of the Comet (1984).mkv
-#EXTINF:-1,The Last Starfighter
+#EXTINF:-1,Bloodsport (1988).mp4
+/media/OSD-OS/Martial Arts/Bloodsport (1988).mp4
+#EXTINF:-1,Street Fighter (1994)
 http://192.168.1.30:8096/Videos/20733/stream?static=true&api_key=<token>
 ```
 

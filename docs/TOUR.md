@@ -23,7 +23,7 @@ Every screen below is the app itself, running at 640×480. The film and YouTube 
 <table>
 <tr><th width="50%">Folders</th><th width="50%">Search</th></tr>
 <tr><td><img src="screenshots/tree.png" width="100%" alt="Folders" /></td><td><img src="screenshots/keyboard.png" width="100%" alt="Search" /></td></tr>
-<tr><td>The open folders run along the line through the middle. The folder under the cursor branches out once more: TV Shows › Twin Peaks › its seasons › their episodes.</td><td>An on-screen keyboard: the arrows move, select types.</td></tr>
+<tr><td>The open folders run along the line through the middle. The folder under the cursor branches out once more: Action › Rambo Movies › its films.</td><td>An on-screen keyboard: the arrows move, select types.</td></tr>
 </table>
 
 <table>

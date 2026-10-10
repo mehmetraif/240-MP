@@ -6,7 +6,7 @@ The module is in [modules/plex](https://github.com/mehmetraif/OSD-OS/tree/main/m
 
 <table>
 <tr><th width="50%">Signing in</th><th width="50%">Resume</th></tr>
-<tr><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/plex-sign-in.png" width="100%" alt="Plex sign in: a code, and Visit plex.tv/link and enter the code above" /></td><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/resume.png" width="100%" alt="Resume playback? Resume from 0:30, or start from the beginning" /></td></tr>
+<tr><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/plex-sign-in.png" width="100%" alt="Plex sign in: a code, and Visit plex.tv/link and enter the code above" /></td><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/resume.png" width="100%" alt="Resume playback? Resume from 1:12:34, or start from the beginning" /></td></tr>
 <tr><td>Sign in with a code at plex.tv/link.</td><td>Carry on from Plex's own resume point, or start from the beginning.</td></tr>
 </table>
 

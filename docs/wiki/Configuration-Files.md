@@ -196,8 +196,8 @@ The `config.json` of an OSD/OS image on a Pi 4 that has been used for a while: a
         "skin": "",
         "startup_favorite": {
             "module": "com.osdos.local_files",
-            "name": "Saturday Morning.m3u",
-            "path": "/media/OSD-OS/Cartoons/Saturday Morning.m3u"
+            "name": "Rambo Marathon.m3u",
+            "path": "/media/OSD-OS/Rambo Marathon.m3u"
         },
         "startup_from": "Resume",
         "startup_module": "com.osdos.local_files",

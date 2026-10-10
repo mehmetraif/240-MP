@@ -82,7 +82,7 @@ Each card has a text file in the tags folder: `nfc_tags` in the data folder (`~/
 
 A tag file:
 
-- is named after what the card plays: the file name, without `.txt`, is the title the screen shows (**Playing ►** `Night of the Living Dead (1968)`);
+- is named after what the card plays: the file name, without `.txt`, is the title the screen shows (**Playing ►** `Terminator 2 (1991)`);
 - holds, on its first non-empty line, the card's **UID**, in any form: `04:A2:3B:1C:5D:80:01`, `04a23b1c5d8001` and `04 A2 3B 1C 5D 80 01` are the same card (anything that isn't a hex digit is dropped, and the rest is read in pairs);
 - holds, on its second non-empty line, **what the card plays** (below);
 - may hold, on a third, a **mode**: `shuffle`, which Plex show, season, collection and playlist cards understand;
@@ -94,9 +94,9 @@ Only files ending in `.txt` count. If two files hold the same UID, the one that 
 
 | Second line | Plays |
 |---|---|
-| An absolute path: `/media/OSD-OS/Films/Night of the Living Dead (1968).mp4` | That file, in mpv. On the image, `/media/OSD-OS` is the card's film partition, and USB drives are under `/media/usb/<label>`. |
+| An absolute path: `/media/OSD-OS/Sci-Fi/Terminator 2 (1991).mp4` | That file, in mpv. On the image, `/media/OSD-OS` is the card's film partition, and USB drives are under `/media/usb/<label>`. |
 | A relative path: `films/Fireplace.mp4` | That file in OSD/OS's own folder if it is there, otherwise in the data folder. |
-| A playlist file: `/media/OSD-OS/Playlists/Saturday Morning.m3u` | The list, in mpv. Resume remembers which video it was on. |
+| A playlist file: `/media/OSD-OS/Rambo Marathon.m3u` | The list, in mpv. Resume remembers which video it was on. |
 | A stream URL: `http://…` or `https://…` | That stream, in mpv. |
 | A YouTube URL: `https://www.youtube.com/watch?v=Eg8tK1LpLS8` | The video, through yt-dlp, at the module's YouTube Video Resolution. A playlist URL (`https://www.youtube.com/playlist?list=…`) plays the playlist, and resume remembers which video it was on. |
 | A Plex guid: `plex://movie/…`, `plex://show/…`, `plex://season/…`, `plex://episode/…` | Handed to the Plex module, which finds it on your server and plays it. See [Card hand-off](https://github.com/mehmetraif/OSD-OS/wiki/NFC-Reader#card-hand-off-to-another-module). |
@@ -106,11 +106,11 @@ YouTube and stream URLs are played by the NFC module itself, with mpv's yt-dlp h
 
 ### Examples
 
-A film on the card's film partition, `Night of the Living Dead (1968).txt`:
+A film on the card's film partition, `Terminator 2 (1991).txt`:
 
 ```text
 04:A2:3B:1C:5D:80:01
-/media/OSD-OS/Films/Night of the Living Dead (1968).mp4
+/media/OSD-OS/Sci-Fi/Terminator 2 (1991).mp4
 ```
 
 A YouTube video, `Laserdisc An Introduction.txt`:
@@ -127,11 +127,11 @@ A YouTube playlist, `The Story of Laserdisc.txt`:
 https://www.youtube.com/playlist?list=PLv0jwu7G_DFUoByWSHHoSTlUIxY7VkJLi
 ```
 
-A playlist file on a USB stick labelled `CARTOONS`, `Saturday Morning.txt`:
+A playlist file on a USB stick labelled `KINGSTON`, `Rambo Marathon.txt`:
 
 ```text
 04:9C:0E:41:B2:63:80
-/media/usb/CARTOONS/Saturday Morning.m3u
+/media/usb/KINGSTON/Rambo Marathon.m3u
 ```
 
 Plex cards are best written by the [card writer](https://github.com/mehmetraif/OSD-OS/wiki/NFC-Reader#writing-a-card-from-plex), which looks the item up for you. By hand, the guid and the ratingKey are in Plex Web's **Get Info → View XML** for the item (its `guid` and `ratingKey` attributes); replace the `<…>` below with them.
