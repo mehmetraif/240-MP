@@ -60,11 +60,30 @@ Rectangle {
         function test_completeSiblingContents() {
             compare(block("/projects").rows.length, 7)
             compare(block("/films").rows.length, 4)
-            verify(block("/empty") !== null)
+            // An empty folder off the spine has no block: "(empty)" beside a
+            // folder read as if it held nothing.
+            compare(block("/empty"), null)
             verify(block("/projects/source") !== null)
             verify(block("/projects/tests") !== null)
             verify(block("/projects/assets") !== null)
             verify(block("/projects/docs") !== null)
+        }
+        function test_onlyTheCursorsFolderInFull() {
+            // The folder under the cursor (projects) in full, every other
+            // branch faint, its own second level included.
+            verify(!block("/projects").faint)
+            verify(block("/films").faint)
+            verify(block("/projects/source").faint)
+            var spine = 0
+            for (var i = 0; i < browser.wires.length; i++) {
+                var w = browser.wires[i]
+                if (!w.faint) {
+                    spine++
+                    compare(w.y0, 0)
+                    compare(w.y1, 0)
+                }
+            }
+            compare(spine, 1)
         }
         function test_noOverlappingBlocks() {
             for (var i = 0; i < browser.blocks.length; i++) {
@@ -101,6 +120,10 @@ Rectangle {
             browser.relayout()
             verify(browser.blockFor("/projects", 0).rows.length <= 5)
             verify(browser.blockFor("/films", -1).rows.length <= 3)
+            // Every tree, compact or not, shows only the cursor's folder in full.
+            verify(browser.blocks.length > 1)
+            for (var i = 0; i < browser.blocks.length; i++)
+                compare(!!browser.blocks[i].faint, browser.blocks[i].path !== "/projects")
         }
         function test_referencePreview() {
             wait(250)
