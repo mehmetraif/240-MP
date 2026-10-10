@@ -7,6 +7,9 @@ namespace {
 // About thirty frames a second: smooth enough for sparks, light on the Pi.
 constexpr int kFrameMs = 33;
 constexpr float kFrame = kFrameMs / 1000.0f;
+// Its clock starts over every hour, as root.fxTime does: a float counting
+// up for days stops counting (0.033 is lost on 2^20), and the bursts with it.
+constexpr float kClockWraps = 3600;
 
 // The rainbow's bands, top to bottom.
 const QRgb kRainbow[6] = { qRgb(255, 48, 48), qRgb(255, 144, 0), qRgb(255, 232, 0),
@@ -256,6 +259,10 @@ void SelectorFx::drawRainbow(const QRectF &b) {
 
 void SelectorFx::tick() {
     m_time += kFrame;
+    if (m_time >= kClockWraps) {
+        m_time -= kClockWraps;
+        m_nextBurst -= kClockWraps;
+    }
     const int cols = qCeil(width() / m_pixel);
     const int rows = qCeil(height() / m_pixel);
     if (cols <= 0 || rows <= 0)

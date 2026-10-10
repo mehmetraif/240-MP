@@ -188,9 +188,11 @@ Window {
     readonly property var backgroundEffect: effectOf(backgroundEffectSetting, themeEffects.background, backgroundPresets)
     readonly property string selectorEffect: nameOf(selectorEffectSetting, themeEffects.selector, selectorPresets)
     readonly property string transition: nameOf(transitionSetting, themeEffects.transition, transitionPresets)
-    // The menu music in force: Settings' file, the theme's, or none.
+    // The menu music in force: Settings' file (a path as it is: "file://"
+    // before it would make a # or ? in its name a URL's), the theme's (a
+    // URL), or none.
     readonly property string music: musicSetting === "Off" ? ""
-                                  : musicSetting === "File" ? (musicFile !== "" ? "file://" + musicFile : "")
+                                  : musicSetting === "File" ? musicFile
                                   : (theme.music || "")
 
     // The shaders: the effects' as a URL each, "" where the build has none
@@ -876,13 +878,15 @@ Window {
         // The software renderer draws no shaders.
         readonly property bool gpu: GraphicsInfo.api !== GraphicsInfo.Software
         // The shader: the theme's own, unless it won't compile, else the
-        // built-in one; none once that won't either.
+        // built-in one; none once that won't either. A theme's own that
+        // wouldn't is tried again once it is chosen again.
+        readonly property string ownShader: root.screenEffect.shader || ""
         property bool ownShaderFailed: false
+        onOwnShaderChanged: ownShaderFailed = false
         property bool shaderFailed: false
-        readonly property string shader: root.screenEffect.shader && !ownShaderFailed ? root.screenEffect.shader
-                                                                                      : root.effectShader
+        readonly property string shader: ownShader !== "" && !ownShaderFailed ? ownShader : root.effectShader
         readonly property bool shaded: gpu && shader !== "" && !shaderFailed && !root.effectsRest
-            && (!!root.screenEffect.shader
+            && (ownShader !== ""
                 || ["scanlines", "curvature", "glow", "bleed", "noise", "vignette"]
                        .some(function(knob) { return root.screenEffect[knob] > 0 })
                 || ["rainbow", "shimmer", "flicker", "glow"]

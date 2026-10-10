@@ -32,6 +32,19 @@ const char *const kSystemSoundFonts[] = {
     "/opt/homebrew/share/soundfonts/default.sf2",
     "/usr/local/share/soundfonts/default.sf2",
 };
+
+// Calls `over` once the process is over, with its exit code, -1 if it
+// crashed or couldn't be started at all (which emits no finished()).
+template <typename Over>
+void whenOver(QProcess *process, QObject *context, Over over) {
+    QObject::connect(process, &QProcess::finished, context, [over](int code, QProcess::ExitStatus status) {
+        over(status == QProcess::NormalExit ? code : -1);
+    });
+    QObject::connect(process, &QProcess::errorOccurred, context, [over](QProcess::ProcessError error) {
+        if (error == QProcess::FailedToStart)
+            over(-1);
+    });
+}
 } // namespace
 
 MenuMusic::MenuMusic(const QString &dataRoot, QObject *parent) : QObject(parent), m_dataRoot(dataRoot) {
@@ -188,8 +201,9 @@ void MenuMusic::render(const QString &file) {
         play(out);
         return;
     }
-    // Made under another name, and named once whole.
-    const QString part = out.left(out.size() - 4) + QStringLiteral(".part.wav");
+    // Made under another name, its own (one stopped but slow to go mustn't
+    // take the next one's with it), and named once whole.
+    const QString part = out.left(out.size() - 4) + QStringLiteral(".%1.part.wav").arg(++m_renders);
     QString program;
     QStringList args;
     if (kindOf(file) == Kind::Midi) {
@@ -219,9 +233,9 @@ void MenuMusic::render(const QString &file) {
     QDir().mkpath(dir);
     auto *process = new QProcess(this);
     process->setProcessChannelMode(QProcess::MergedChannels);
-    connect(process, &QProcess::finished, this,
-            [this, process, file, part, out, dir](int code, QProcess::ExitStatus status) {
-        const QByteArray said = process->readAll().trimmed().right(300);
+    whenOver(process, this, [this, process, file, part, out, dir](int code) {
+        const QByteArray output = process->readAll().trimmed().right(300);
+        const QByteArray said = output.isEmpty() && code == -1 ? process->errorString().toUtf8() : output;
         process->deleteLater();
         // Stopped (stopNow(): it is no longer m_render): what it made so far
         // goes.
@@ -230,7 +244,7 @@ void MenuMusic::render(const QString &file) {
             return;
         }
         m_render = nullptr;
-        if (status != QProcess::NormalExit || code != 0 || QFileInfo(part).size() <= 0) {
+        if (code != 0 || QFileInfo(part).size() <= 0) {
             qWarning("[MenuMusic] %s couldn't be made into a WAV (exit %d): %s", qPrintable(file), code,
                      said.constData());
             QFile::remove(part);
@@ -271,35 +285,41 @@ void MenuMusic::play(const QString &file) {
          << file;
     auto *process = new QProcess(this);
     process->setProcessChannelMode(QProcess::ForwardedErrorChannel);
-    auto *clock = new QElapsedTimer;
-    clock->start();
-    connect(process, &QProcess::finished, this, [this, process, clock](int code, QProcess::ExitStatus) {
-        // Over on its own (killed by stopNow(), it is no longer m_process): a
-        // file it couldn't play isn't tried again until the source changes.
-        if (process == m_process) {
-            m_process = nullptr;
-            emit playingChanged();
-            if (clock->elapsed() < kFailedWithinMs) {
-                if (kindOf(path()) == Kind::Module && !m_renderModule
-                        && !QStandardPaths::findExecutable(QStringLiteral("openmpt123")).isEmpty()) {
-                    // mpv's ffmpeg without libopenmpt: openmpt123 makes it a WAV.
-                    m_renderModule = true;
-                    start();
-                } else {
-                    qWarning("[MenuMusic] mpv couldn't play %s (exit %d)", qPrintable(path()), code);
-                    m_failed = m_source;
-                }
-            }
-        }
-        delete clock;
+    QElapsedTimer clock;
+    clock.start();
+    whenOver(process, this, [this, process, clock](int code) {
         process->deleteLater();
+        // Killed by stopNow(): it is no longer m_process.
+        if (process != m_process)
+            return;
+        // Over on its own: its socket isn't waited for any more.
+        m_process = nullptr;
+        m_connect.stop();
+        m_ipc.abort();
+        emit playingChanged();
+        if (clock.elapsed() >= kFailedWithinMs)
+            return;
+        // A file it couldn't play isn't tried again until the source changes.
+        if (kindOf(path()) == Kind::Module && !m_renderModule
+                && !QStandardPaths::findExecutable(QStringLiteral("openmpt123")).isEmpty()) {
+            // mpv's ffmpeg without libopenmpt: openmpt123 makes it a WAV.
+            m_renderModule = true;
+            start();
+        } else {
+            const QString why = code == -1 ? process->errorString() : QStringLiteral("exit %1").arg(code);
+            qWarning("[MenuMusic] mpv couldn't play %s (%s)", qPrintable(path()), qPrintable(why));
+            m_failed = m_source;
+        }
     });
     m_process = process;
     QFile::remove(m_socketPath);
-    process->start(bin, args);
-    m_connect.start();
     qInfo("[MenuMusic] playing %s", qPrintable(file));
-    emit playingChanged();
+    process->start(bin, args);
+    // Unless it couldn't even be started, and is over already.
+    if (m_process == process) {
+        m_connect.start();
+        emit playingChanged();
+    }
 }
 
 void MenuMusic::stopNow() {

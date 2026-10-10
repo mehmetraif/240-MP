@@ -93,6 +93,8 @@ private:
     QPointer<QProcess> m_render;
     // A module mpv couldn't play: openmpt123 makes it into a WAV instead.
     bool m_renderModule = false;
+    // WAVs begun, each made under a name of its own.
+    int m_renders = 0;
     QLocalSocket m_ipc;
     QString m_socketPath;
     QTimer m_startDelay;

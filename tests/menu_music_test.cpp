@@ -10,6 +10,7 @@
 #include <QElapsedTimer>
 #include <QFile>
 #include <QRegularExpression>
+#include <QScopeGuard>
 #include <QTemporaryDir>
 #include <QtTest>
 
@@ -278,6 +279,40 @@ private slots:
         QVERIFY(renders().first().endsWith(QStringLiteral("-- ") + other));
         QVERIFY(starts().at(2).contains(QStringLiteral(".wav ")));
         QVERIFY(m_music->playing());
+    }
+
+    // A name with a ? or a # in it, which a URL would take for its query or
+    // fragment, and a %: played as it is, given as a path or as a URL.
+    void oddNames() {
+        const QString odd = m_dir.path() + QStringLiteral("/why?#1%25.ogg");
+        QVERIFY(writeFile(odd, "OggS"));
+        m_music->setSource(odd);
+        m_music->setWanted(true);
+        QTRY_COMPARE_WITH_TIMEOUT(starts().size(), 1, 3000);
+        QVERIFY(starts().at(0).startsWith(QStringLiteral("start why?#1%25.ogg ")));
+        m_music->setSource(QUrl::fromLocalFile(odd).toString());
+        QTRY_COMPARE_WITH_TIMEOUT(starts().size(), 2, 3000);
+        QVERIFY(starts().at(1).startsWith(QStringLiteral("start why?#1%25.ogg ")));
+    }
+
+    // An mpv that can't even be started (FailedToStart, no finished()): said
+    // once, nothing of it left behind, and not tried again until the source
+    // changes.
+    void unstartable() {
+        const QString mpv = m_dir.path() + QStringLiteral("/bin/mpv");
+        QVERIFY(writeScript(mpv, "#!/nonexistent/sh\n"));
+        const auto restore = qScopeGuard([mpv] { writeScript(mpv, kStandIn); });
+        QTest::ignoreMessage(QtWarningMsg, QRegularExpression(QStringLiteral("^\\[MenuMusic\\] mpv couldn't play .*/tune\\.ogg")));
+        QTest::failOnWarning(QRegularExpression(QStringLiteral("couldn't play")));
+        m_music->setSource(m_tune);
+        m_music->setWanted(true);
+        QTest::qWait(1500);
+        QVERIFY(!m_music->playing());
+        MenuMusic::hold(QStringLiteral("x"));
+        MenuMusic::release(QStringLiteral("x"));
+        QTest::qWait(1500);
+        QVERIFY(!m_music->playing());
+        QTRY_VERIFY_WITH_TIMEOUT(m_music->findChildren<QProcess *>().isEmpty(), 1000);
     }
 
     // No file there: nothing started.
