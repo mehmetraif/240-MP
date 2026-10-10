@@ -6,9 +6,17 @@
 
 namespace {
 
-// The source rendered at a given size, as straight (not premultiplied) ARGB.
+// The source rendered at a given size, as straight (not premultiplied) ARGB:
+// a vector drawn at that size, a picture of pixels (a skin's icon) scaled, its
+// pixels kept square and sharp as it grows.
 QImage render(const QString &path, const QSize &size) {
     QImageReader reader(path);
+    if (!reader.format().startsWith("svg")) {
+        const QImage image = reader.read();
+        const bool grows = size.width() >= image.width() && size.height() >= image.height();
+        return image.scaled(size, Qt::IgnoreAspectRatio, grows ? Qt::FastTransformation : Qt::SmoothTransformation)
+                    .convertToFormat(QImage::Format_ARGB32);
+    }
     reader.setScaledSize(size);
     return reader.read().convertToFormat(QImage::Format_ARGB32);
 }

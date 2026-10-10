@@ -55,32 +55,34 @@ public:
     Q_INVOKABLE QVariant get_installed_modules();
     Q_INVOKABLE QVariantMap getCustomColorScheme() const;
     Q_INVOKABLE QVariantMap getCustomColorSchemes() const;
-    // Settings → Theme, apart from the colour scheme: the themes there are,
-    // [{ id, name }] by name. A theme is a folder with a theme.json, the app's
-    // own (assets/themes) or the data folder's (themes), one there in place of
-    // the app's of the same name; its id is the folder's name.
-    Q_INVOKABLE QVariantList themes() const;
-    // One theme read for QML (Main.qml's root.theme): { id, name, window,
-    // titleBar, hintBar, selection }, a picture of each of the window's parts
-    // it dresses ({ source URL, border, tile }), only those it has that can
-    // be used; empty for none, or for one gone or unreadable.
-    Q_INVOKABLE QVariantMap theme(const QString &id) const;
-    // Settings → Skin: the colour scheme, the theme and the effect in one
-    // folder with a skin.json, the app's own (assets/skins) or the data
-    // folder's (skins), as themes are. The skins there are, [{ id, name,
-    // sets }] by name, sets naming what each sets of "colors", "theme" and
-    // "effect": Settings hides those rows while it is chosen.
+    // Settings → Skin: how the window is dressed, apart from the colours: the
+    // skins there are, [{ id, name }] by name. A skin is a folder with a
+    // skin.json, the app's own (assets/skins) or the data folder's (skins),
+    // one there in place of the app's of the same name; its id is the
+    // folder's name. One from before skins had their name, a theme.json of
+    // window pictures in the data folder's themes, is a skin too.
     Q_INVOKABLE QVariantList skins() const;
-    // One skin read for QML (Main.qml's root.skin): { id, name } and what it
-    // sets, each in place of Settings' own row: colors, a scheme's name or
-    // { primary, surface }; theme, as theme() reads one; effect, a preset's
-    // name or { scanlines, curvature, glow, bleed, noise, vignette (0 to 1),
-    // animate, shader (a .qsb of its own, as a URL) }. Empty for none, or for
-    // one gone or unreadable.
+    // One skin read for QML (Main.qml's root.skin): { id, name, window,
+    // titleBar, hintBar, selection, icons }, a picture of each of the
+    // window's parts it dresses ({ source URL, border, tile }) and icons
+    // ({ name: URL }) in place of OSD/OS's of those names, only those it has
+    // that can be used; empty for none, or for one gone or unreadable.
     Q_INVOKABLE QVariantMap skin(const QString &id) const;
-    // Settings → Effect: the effect's shader (shaders/effects.frag) as a URL,
-    // "" in a build without it (one made without Qt Shader Tools).
-    Q_INVOKABLE QString effectShader() const;
+    // Settings → Theme: the whole look in one folder with a theme.json, found
+    // as skins are (assets/themes, the data folder's themes). The themes
+    // there are, [{ id, name }] by name.
+    Q_INVOKABLE QVariantList themes() const;
+    // One theme read for QML (Main.qml's root.theme): { id, name, colors,
+    // skin, effects: { text, background, selector, screen, transition },
+    // music }, those it has. colors is a scheme's name or { primary, surface
+    // }; skin as skin() reads one; each effect a preset's name or its own
+    // ({ its numbers, 0 to 1; animate; shader, a .qsb of its own }); music a
+    // sound file's URL. Empty for none, or for one gone or unreadable.
+    Q_INVOKABLE QVariantMap theme(const QString &id) const;
+    // One of the effects' shaders built into the app (shaders/<name>.frag),
+    // as a URL; "" in a build without them (one made without Qt Shader
+    // Tools).
+    Q_INVOKABLE QString effectShader(const QString &name) const;
     // The file picker's (views/FilePicker.qml) places, the folders its tree
     // starts from: home, where drives and partitions are mounted (/media,
     // /run/media/<user>, /Volumes) and the root, those there are, as
@@ -160,12 +162,12 @@ private:
     // manifest default (an "enabled" setting whose default is "OFF"), else true.
     bool isModuleEnabled(const ModuleEntry &m, const QJsonObject &modulesConfig) const;
     QVariantMap importColorScheme(QJsonObject &obj) const;
-    // The folder of the theme or the skin (kind: "theme", "skin") with this
-    // id whose theme.json or skin.json reads, the data folder's before the
+    // The folder of the skin or the theme (kind: "skin", "theme") with this
+    // id whose skin.json or theme.json reads, the data folder's before the
     // app's, and that JSON; empty when there is none (or the id isn't a
     // folder's name).
     QString lookDir(const QString &kind, const QString &id, QJsonObject *json) const;
-    // The themes or the skins there are, id → its JSON, the first found of
+    // The skins or the themes there are, id → its JSON, the first found of
     // each id.
     QMap<QString, QJsonObject> looks(const QString &kind) const;
 

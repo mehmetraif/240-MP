@@ -1,7 +1,19 @@
 {
     "name": "Template",
-    "window":    { "image": "window.png", "border": 4 },
-    "titleBar":  { "image": "titlebar.png", "border": [2, 2, 5, 2] },
-    "hintBar":   { "image": "hintbar.png", "border": 3, "tile": "repeat" },
-    "selection": { "image": "selection.png", "border": 3 }
+    "colors": { "primary": "#F2E6C9", "surface": "#1B2A4A" },
+    "skin": {
+        "window":    { "image": "window.png", "border": 4 },
+        "titleBar":  { "image": "titlebar.png", "border": [2, 2, 5, 2] },
+        "hintBar":   { "image": "hintbar.png", "border": 3, "tile": "repeat" },
+        "selection": { "image": "selection.png", "border": 3 },
+        "icons":     { "logo": "logo.png" }
+    },
+    "effects": {
+        "text":       { "shimmer": 0.6, "glow": 0.4 },
+        "background": { "shader": "plasma.frag.qsb" },
+        "selector":   "Sparkles",
+        "screen":     { "shader": "tube.frag.qsb", "animate": true, "scanlines": 0.4 },
+        "transition": "Drop"
+    },
+    "music": "tune.mid"
 }

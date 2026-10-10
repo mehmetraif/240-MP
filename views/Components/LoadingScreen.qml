@@ -23,6 +23,13 @@ import OSDOS.Video
 Item {
     id: tape
 
+    // A video starting: the theme's effects and menu music rest meanwhile,
+    // the playing as plain as it always is (Main.qml's root.effectsRest).
+    readonly property bool resting: visible
+    onRestingChanged: root.restFor(tape, resting)
+    Component.onCompleted: if (resting) root.restFor(tape, true)
+    Component.onDestruction: root.restFor(tape, false)
+
     // Under SLP ▶: what plays, a module's name say.
     property string source: "SOURCE"
     // TAPE A's counter: where the video is, in milliseconds; while it loads,

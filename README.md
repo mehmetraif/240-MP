@@ -39,8 +39,10 @@ As an app ([Install](#install)), OSD/OS is the same on screen, on top of whateve
 - **Audio Output** in Settings: the Pi's AV jack, HDMI or a USB sound card, for a Pi 5's sound on a CRT too, as it has no jack. It changes at once, for a video playing behind the menus too, and a card unplugged is passed over until it is back.
 - **A mouse pointer** (a mouse, or a keyboard's touchpad) that shows while the mouse moves and hides again after 5 seconds (Settings → Mouse Pointer).
 - **OSD Background** in Settings: the color scheme's background all over (Full), none, the menus on black like a deck's on-screen display (Off), or a framed window of it behind the menus, black around it (Window). Over a video behind the menus, a window lies over the picture, which shows whole around it. Settings → Window Frame, offered with Window, frames it with a line, with nothing, or with a line and a DOS window's shadow.
-- **Themes** in Settings, apart from the color scheme: the shapes of the window's frame, the title and hint bars and the selected line, drawn in the color scheme's colors. Two come with it, DOS and Rounded, and a new one is a folder of pictures ([Themes](#themes)).
-- **Effects and skins** in Settings. Effect draws a picture tube over the whole screen on the GPU: scanlines, a curved face and glow (CRT), or a tape's color bleed and noise (VHS). A skin sets the color scheme, the theme and the effect at once: Trinitron, Late Show and Green Screen come with it, and a new one is a folder, with a shader of its own if you like ([Skins and effects](#skins-and-effects)).
+- **Themes** in Settings, the whole look at once: the color scheme, the skin, the effects and the menu music. Eight come with it, from a Trinitron's tube to Matrix rain, a fire under the window and a demo's starfield; each part stays the theme's until you pick another, or Off, in its own row; and a new one is a folder ([Themes](#themes)).
+- **Effects**, never over a video: text that runs through the rainbow, shimmers, glows or flickers; Matrix rain, pixel fire, stars or snow behind the menus; sparkles, a welder's sparks, lightning or a dripping pixel rainbow round the selected line; a tube's or a tape's look over the screen; and windows that turn over like a cube, fade, ripple, ride a wave in from a corner or spread from a drop ([Effects](#effects)).
+- **Menu music** under the menus and never over anything else: the theme's, or a file of your own, an MP3, WAV, OGG or FLAC, a MIDI file or a tracker's XM, MOD, S3M or IT ([Menu music](#menu-music)).
+- **Skins** in Settings, apart from the color scheme: the shapes of the window's frame, the title and hint bars and the selected line, and icons of their own, drawn in the color scheme's colors. Two come with it, DOS and Rounded, and a new one is a folder of pictures ([Skins](#skins)).
 - **A tape loading** while a video starts: VHS noise in the color scheme's colours and a dubbing deck's display, with where the video is and, once known, how long it is. Settings → Loading Effect turns the noise off.
 - **Hint Bar** and **Help Line** in Settings: the key hints at the foot of every screen and the line about the selected row under a menu, each on or off once the keys are second nature.
 - **About** in Settings: what OSD/OS is, who makes it, what it is made of and under which license, with the license's text to read on the device.
@@ -275,9 +277,85 @@ YouTube without the YouTube app: your subscriptions, channels and playlists, sea
 
 ## Themes
 
-Settings → **Theme** dresses the window, apart from the color scheme: the shapes of OSD Background's window frame, the title and hint bars, and the selected line. A theme gives only shapes. They are drawn in the color scheme's two colors, so every theme goes with every scheme. Two come with OSD/OS: **DOS**, a double line round the window, and **Rounded**, round corners on the window, the bars and the selected line.
+Settings → **Theme** sets the whole look at once: the color scheme, the skin, the effects and the menu music. Each of those has its row under Theme, saying THEME while it is the theme's: change one, or turn it Off, and it stays as you set it until another theme is picked. Eight come with OSD/OS:
 
-A theme is a folder in the data folder's `themes` (`~/.local/share/OSD-OS/themes/` on Linux and the OSD/OS image, `~/Library/Application Support/OSD-OS/themes/` on macOS), holding a `theme.json` and its pictures. To make one, start from the **[theme template](docs/theme-template/)**: it dresses every part and uses every option, and its script draws the pictures from text drawings. A theme's `theme.json` looks like this:
+| Theme | Colors | Skin | Effects | Music |
+|---|---|---|---|---|
+| **Trinitron** | Video 1 | Rounded | a CRT tube; Cube | a calm arpeggio |
+| **Late Show** | Late Night | DOS | a VHS tape, flickering text; Fade | a slow, swung tune with a record's crackle |
+| **Green Screen** | phosphor green | DOS | a glowing tube, glowing text; Wave | none |
+| **Matrix** | green on black | DOS | Matrix rain, glowing text, Lightning; Ripple | a pulsing minor tune |
+| **Inferno** | amber on brown | Rounded | Fire under the window, Welding; Cube | a driving tune |
+| **Arcade** | Synthwave | Rounded | Stars, Rainbow text, a Rainbow drip; Cube | a bouncy chiptune |
+| **Winter** | ice on night blue | Rounded | Snow, Shimmer, Sparkles; Drop | a music box |
+| **Demoscene** | gold on purple | DOS | Stars, glowing text, Sparkles; Cube Left | a tracker's XM |
+
+<table>
+<tr><th width="50%">Matrix</th><th width="50%">Inferno</th></tr>
+<tr><td><img src="docs/screenshots/theme-matrix.png" width="100%" alt="Theme: Matrix" /></td><td><img src="docs/screenshots/theme-inferno.png" width="100%" alt="Theme: Inferno" /></td></tr>
+<tr><td>Matrix rain behind the menus, glowing text, and lightning crackling out of the selected line.</td><td>Pixel flames burning up from under the window, and a welder's sparks bursting from the selected line's corners.</td></tr>
+</table>
+
+The [tour](docs/TOUR.md#themes) shows them all.
+
+A theme is a folder in the data folder's `themes` (`~/.local/share/OSD-OS/themes/` on Linux and the OSD/OS image, `~/Library/Application Support/OSD-OS/themes/` on macOS), holding a `theme.json` and its files. To make one, start from the **[theme template](docs/theme-template/)**: every part of its own, its effects' shaders and a MIDI tune. A `theme.json` names what OSD/OS has, or brings its own:
+
+```json
+{
+    "name": "Inferno",
+    "colors": { "primary": "#FFC860", "surface": "#1C0500" },
+    "skin": "rounded",
+    "effects": {
+        "background": "Fire",
+        "selector": "Welding",
+        "transition": "Cube"
+    },
+    "music": "inferno.ogg"
+}
+```
+
+- **Every part is optional**: one left out is drawn without it (the colors Video 1's).
+- **`colors`** is a color scheme's name (`"Video 1"`), or the two colors everything is drawn in: `primary`, the text, the lines and the selection, and `surface`, the background.
+- **`skin`** is a skin's name (its folder's: `"dos"`), or a skin of its own: its parts as in a `skin.json`, its pictures in the theme's folder.
+- **`effects`** gives any of `text`, `background`, `selector`, `screen` and `transition` an effect's name ([Effects](#effects)) or `"Off"`. A text, background or screen effect can be its own: numbers, or a shader (see the template).
+- **`music`** is a file in its folder ([Menu music](#menu-music)).
+- **One of OSD/OS's own** is replaced by a folder of the same name in the data folder. The log says which theme was read, and what in it could not be used.
+
+## Effects
+
+Each in its row in Settings, or the theme's:
+
+- **Text Effect**, what the text, the lines and the bars do: **Rainbow** runs them through the colors, **Shimmer** sweeps a glint across them now and then, **Glow** gives them a halo, **Flicker** fails like a neon sign.
+- **Background Effect**, what goes on behind the menus, in the window: **Matrix**, a rain of glyphs; **Fire**, pixel flames burning up from under the window; **Stars**, a starfield drifting by; **Snow**, snow falling.
+- **Selector Effect**, what goes on round the selected line: **Sparkles** fly off its four corners, left and right; **Welding** sparks burst from its corners and scatter, white hot, then yellow, orange and red; **Lightning** crackles out of it; **Rainbow**, a pixel rainbow, runs down from under it and fades away.
+- **Screen Effect**, a picture tube's or a tape's look over the whole screen: **Scanlines**; **CRT**, a tube's curved face with scanlines, glow and darker corners; **VHS**, a tape's color bleed and noise.
+- **Transition**, how one window gives way to the next: **Fade**; **Cube**, the window turning over like a cube's face with the next on another, which one at random, or always one way (**Cube Left**, **Cube Right**, **Cube Up**, **Cube Down**); **Ripple**, the old rippling out as the new ripples in; **Wave**, a wave running out from a corner and dying away, the new window behind it; **Drop**, a drop falling in a corner, the new window inside its spreading ring.
+
+<table>
+<tr><th width="50%">Cube</th><th width="50%">Drop</th></tr>
+<tr><td><img src="docs/images/transition-cube.gif" width="100%" alt="Transition: Cube" /></td><td><img src="docs/images/transition-drop.gif" width="100%" alt="Transition: Drop" /></td></tr>
+<tr><td>YouTube on the main menu: the window turns over, YouTube on the next face.</td><td>A drop falls in a corner, and its ring spreads the next window across the screen.</td></tr>
+</table>
+
+**Never over a video.** The effects and the menu music rest while a video plays, in the window, behind the menus or in mpv's own; while it loads; while its menu is open; and while a player's screen is up. A window changes without its transition into or out of a player: a video is always shown as it is.
+
+The GPU draws the text, background and screen effects and the Ripple, Wave and Drop transitions: they need a build with Qt Shader Tools, as the releases and the OSD/OS image are ([BUILDING.md](BUILDING.md)), and Settings offers them only where Qt draws with a GPU. The selector effects, Fade and the cubes work everywhere. A screen effect has the GPU draw the screen twice, into a picture and then through the effect. Menus at rest aren't drawn again, so they cost nothing more; moving effects draw them about 30 times a second. At a CRT's 480 or 576 lines that is a sixth of the work of 1080p.
+
+## Menu music
+
+Settings → **Menu Music** plays a tune under the menus, over and over: the theme's (**Theme**), a file of your own (**File**, picked on the file browser), or none (**Off**). **Music Volume** sets how loud. It never plays over anything else: it stops the moment a video, a module's own music, a script or a web player is about to play, and starts again from the beginning back in the menus. Seven of the themes have their own, made by [make-menu-music.py](scripts/make-menu-music.py).
+
+- **MP3, WAV, OGG, Opus, FLAC, M4A or AAC**, played by mpv as it is.
+- **A tracker's module, XM, MOD, S3M or IT**, played by mpv through ffmpeg's libopenmpt, or made into a WAV by openmpt123 where mpv can't play it. Demoscene's is an XM.
+- **A MIDI file**, played by FluidSynth into a WAV once (kept in the cache folder) with a SoundFont: one beside it of the same name (`tune.sf2` beside `tune.mid`), else the first in the data folder's `soundfonts`, else the system's General MIDI one.
+
+The OSD/OS image comes with FluidSynth, a small General MIDI SoundFont and openmpt123; elsewhere, install them for MIDI files ([BUILDING.md](BUILDING.md)).
+
+## Skins
+
+Settings → **Skin** dresses the window, apart from the color scheme: the shapes of OSD Background's window frame, the title and hint bars and the selected line, and icons of its own. A skin gives only shapes. They are drawn in the color scheme's two colors, so every skin goes with every scheme. Two come with OSD/OS: **DOS**, a double line round the window, and **Rounded**, round corners on the window, the bars and the selected line.
+
+A skin is a folder in the data folder's `skins` (`~/.local/share/OSD-OS/skins/` on Linux and the OSD/OS image, `~/Library/Application Support/OSD-OS/skins/` on macOS), holding a `skin.json` and its pictures. To make one, start from the **[skin template](docs/skin-template/)**: it dresses every part, draws an icon and uses every option, and its script draws the pictures from text drawings. A skin's `skin.json` looks like this:
 
 ```json
 {
@@ -292,38 +370,8 @@ A theme is a folder in the data folder's `themes` (`~/.local/share/OSD-OS/themes
 - **Every part is optional**: one left out is drawn as OSD/OS draws it. `window` is the frame of OSD Background's window (Window, with Window Frame On or Shadow).
 - **A picture has two colors**, a PNG (or GIF, BMP): white where the color scheme's color goes, black where its background goes, transparent where nothing is drawn (round the window's frame, what is around the window shows). Each of its pixels is an art pixel, a pixel of a 240-line picture, scaled up to the screen without blurring.
 - **`border`** is how many of the picture's pixels at each edge are its frame: one number, or `[left, top, right, bottom]`. The corners stay as drawn, the edges stretch along the part, and the middle fills the rest. `"tile": "repeat"` repeats the edges instead of stretching them (for a dotted line).
-- **One of OSD/OS's own** is replaced by a folder of the same name in the data folder. The log says which theme was read, and what in it could not be used.
-
-## Skins and effects
-
-Settings → **Effect** draws a picture tube's look over the whole screen, on the GPU: **Scanlines**, dark lines between the picture's; **CRT**, a tube's curved face with scanlines, glow and darker corners; **VHS**, a tape's color bleed and noise. It covers all the app draws, a video playing in its window (Transparent Background) too. A video in mpv's own window is mpv's, and goes without.
-
-Settings → **Skin** sets the color scheme, the theme and the effect at once, and hides those rows while it is chosen; **None** brings them back as they were. Three come with OSD/OS: **Trinitron** (Video 1, Rounded, CRT), **Late Show** (Late Night, DOS, VHS) and **Green Screen** (a phosphor green of its own, DOS, a glowing tube).
-
-<table>
-<tr><th width="50%">Skin: Trinitron</th><th width="50%">Over a video</th></tr>
-<tr><td><img src="docs/screenshots/skin-trinitron.png" width="100%" alt="Skin: Trinitron" /></td><td><img src="docs/screenshots/skin-video.png" width="100%" alt="Trinitron over a video" /></td></tr>
-<tr><td>Video 1 in Rounded windows, on a tube's curved face.</td><td>The tube covers a video playing behind the menus too.</td></tr>
-</table>
-
-A skin is a folder in the data folder's `skins` (`~/.local/share/OSD-OS/skins/` on Linux and the OSD/OS image, `~/Library/Application Support/OSD-OS/skins/` on macOS), holding a `skin.json`. To make one, start from the **[skin template](docs/skin-template/)**: colors, a theme and an effect all of its own, the effect a shader. A `skin.json` names a scheme, a theme or an effect OSD/OS has, or brings its own:
-
-```json
-{
-    "name": "Green Screen",
-    "colors": { "primary": "#4AF626", "surface": "#001A00" },
-    "theme": "dos",
-    "effect": { "scanlines": 0.6, "glow": 0.6, "curvature": 0.3, "vignette": 0.5 }
-}
-```
-
-- **Every part is optional**: one left out is as Settings has it.
-- **`colors`** is a color scheme's name (`"Video 1"`), or the two colors everything is drawn in: `primary`, the text, the lines and the selection, and `surface`, the background.
-- **`theme`** is a theme's name (its folder's: `"dos"`), or a theme of its own: its parts as in a `theme.json`, its pictures in the skin's folder.
-- **`effect`** is an effect's name (`"CRT"`), or `scanlines`, `curvature`, `glow`, `bleed`, `noise` and `vignette`, each from 0 (none) to 1, or a shader of its own (`"shader"`, see the template).
-- **One of OSD/OS's own** is replaced by a folder of the same name in the data folder. The log says which skin was read, and what in it could not be used.
-
-An effect has the GPU draw the screen twice, into a picture and then through the effect. Menus at rest aren't drawn again, so they cost nothing more; noise draws the screen 20 times a second, and a video playing in the window as often as its frames come. At a CRT's 480 or 576 lines that is a sixth of the work of 1080p: if a video stutters on a Pi with an effect on, try it without. Effects need a build with Qt Shader Tools, as the releases and the OSD/OS image are ([BUILDING.md](BUILDING.md)).
+- **`icons`** draws icons of its own in place of OSD/OS's, by name: a module's by its folder's name (`"youtube"`), the main menu's `"logo"`, any other by its file's name (`"settings"`), as in `"icons": { "logo": "tv.png" }`. An icon is drawn in the title bar's color, from its shape.
+- **One of OSD/OS's own** is replaced by a folder of the same name in the data folder. The log says which skin was read, and what in it could not be used. A skin made before skins had their name, a `theme.json` of these parts in the data folder's `themes`, is read as one.
 
 ## Install
 - **The OSD/OS image**, the whole system for a Raspberry Pi: download `OSD-OS-<version>-raspberry-pi.img.xz` from the [latest release](https://github.com/mehmetraif/OSD-OS/releases/latest) and flash it ([how](os/README.md#flashing))

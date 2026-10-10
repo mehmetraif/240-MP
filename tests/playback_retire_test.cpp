@@ -4,6 +4,7 @@
 // starts, is told to quit (SIGTERM) and exits, and whether an earlier one was
 // still alive as it started.
 #include "player/MpvController.h"
+#include "audio/MenuMusic.h"
 #include <QDir>
 #include <QElapsedTimer>
 #include <QFile>
@@ -133,6 +134,24 @@ private slots:
         QTest::qWait(500);
         QCOMPARE(ended.count(), 1);
         QVERIFY(!happened("start B"));
+    }
+
+    // Menu music playing as a video is asked for: it is gone before the
+    // video's player starts, so the sound card is free for it.
+    void menuMusicStopsFirst() {
+        const QString tune = m_dir.path() + QStringLiteral("/tune.ogg");
+        QFile(tune).open(QIODevice::WriteOnly);
+        MenuMusic music;
+        music.setSource(tune);
+        music.setWanted(true);
+        QTRY_VERIFY_WITH_TIMEOUT(happened("start tune.ogg"), 5000);
+        play("A");
+        QTRY_VERIFY_WITH_TIMEOUT(happened("start A"), 5000);
+        QVERIFY(!overlapped());
+        QVERIFY(!music.playing());
+        // It stays off while the video plays.
+        QTest::qWait(1200);
+        QCOMPARE(events().filter(QStringLiteral("start tune.ogg")).size(), 1);
     }
 
     // Stopped, then another asked for straight away: that one plays, and

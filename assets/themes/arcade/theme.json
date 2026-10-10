@@ -1,0 +1,12 @@
+{
+    "name": "Arcade",
+    "colors": "Synthwave",
+    "skin": "rounded",
+    "effects": {
+        "background": "Stars",
+        "text": "Rainbow",
+        "selector": "Rainbow",
+        "transition": "Cube"
+    },
+    "music": "arcade.ogg"
+}

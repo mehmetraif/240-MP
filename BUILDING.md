@@ -16,7 +16,7 @@ brew install cmake
 
 - Download from [qt.io/download](https://qt.io/download) or `brew install qt@6`.
 - Install to `~/Qt/`
-- With the installer, add **Qt Shader Tools** (under Additional Libraries; Homebrew's Qt includes it): it compiles the screen's effects into the app. Optional: without it Settings → Effect is left out, and a skin's effect with it.
+- With the installer, add **Qt Shader Tools** (under Additional Libraries; Homebrew's Qt includes it): it compiles the effects' shaders into the app. Optional: without it Settings leaves out the text, background and screen effects and the Ripple, Wave and Drop transitions, and a theme's with them.
 
 **Install mpv (required for playback):**
 
@@ -25,6 +25,14 @@ brew install mpv
 ```
 
 Note: OSD/OS uses mpv as an external subprocess for video playback. It does not link against libmpv at build time, so mpv only needs to be on your `PATH` when running the app. The Transparent Background setting (video played inside the app's window) opens Homebrew's libmpv at run time; it is built in when `pkg-config` finds mpv's headers, which `brew install mpv pkgconf` provides.
+
+**Install FluidSynth and libopenmpt (optional, for menu music in MIDI or a tracker's module):**
+
+```bash
+brew install fluid-synth libopenmpt
+```
+
+A MIDI file is played by FluidSynth with a SoundFont, which Homebrew's FluidSynth doesn't bring: put a General MIDI `.sf2` (FluidR3_GM, TimGM6mb, …) in the data directory's `soundfonts` folder. Homebrew's mpv may not play XM, MOD, S3M or IT itself; libopenmpt's `openmpt123` makes them into a WAV for it.
 
 **Install yt-dlp and Deno (optional, required only for the YouTube module):**
 
@@ -113,7 +121,9 @@ sudo apt-get install -y \
 
 `mpv` is the playback engine — OSD/OS launches it as a subprocess. No libmpv build dependency is required. `libmpv-dev` is optional: with its headers the Transparent Background setting is built in, which plays video inside the app's window through libmpv (`libmpv2`, opened at run time; `install.sh` and the OS image install it).
 
-`qt6-shadertools-dev` is optional too: it compiles the screen's effects (`shaders/`) into the app, for Settings → Effect and a skin's effect; without it they are left out. Nothing of it is needed at run time.
+`qt6-shadertools-dev` is optional too: it compiles the effects' shaders (`shaders/`) into the app, for the text, background and screen effects and the Ripple, Wave and Drop transitions; without it they are left out. Nothing of it is needed at run time. To compile a theme's own shader, `qt6-shader-baker` brings `qsb` (`/usr/lib/qt6/bin/qsb`; see the [theme template](docs/theme-template/)).
+
+The menu music plays MIDI files with FluidSynth and a SoundFont, and a tracker's module mpv can't play with openmpt123, at run time only: `sudo apt install fluidsynth timgm6mb-soundfont openmpt123` (`install.sh` and the OS image install them). Without them those files don't play; recordings (MP3, OGG, FLAC, WAV …) need only mpv.
 
 For the NFC Reader module, `libpcsclite-dev` is optional and only needed for PC/SC readers such as the ACR122U — it is detected automatically at configure time. A PN532 USB reader needs no build dependency at all.
 

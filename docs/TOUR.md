@@ -121,31 +121,13 @@ Once signed in, each opens on the server's Continue Watching and its libraries. 
 <table>
 <tr><th width="50%">Settings</th><th width="50%">Modules</th></tr>
 <tr><td><img src="screenshots/settings.png" width="100%" alt="Settings" /></td><td><img src="screenshots/settings-modules.png" width="100%" alt="Modules" /></td></tr>
-<tr><td>Laid out like a camcorder's menu. Transparent Background is a slider, the deck's tape bar, from TRANSPARENT to SOLID. Hint Bar takes the key hints off the foot of every screen, Help Line the box under the menu. Channel Logo puts OSD/OS's logo in a corner of the picture while a video plays.</td><td>Each module is turned on and set up from here.</td></tr>
+<tr><td>Laid out like a camcorder's menu, the look at its top: Theme, then each of its parts (the color scheme, the skin, the effects, the transition and the menu music), each the theme's, Off or one of your own. Further down, Transparent Background is a slider, the deck's tape bar, from TRANSPARENT to SOLID; Hint Bar takes the key hints off the foot of every screen, Help Line the box under the menu; Channel Logo puts OSD/OS's logo in a corner of the picture while a video plays.</td><td>Each module is turned on and set up from here.</td></tr>
 </table>
 
 <table>
 <tr><th width="50%">OSD Background: Window</th><th width="50%">OSD Background: Off</th></tr>
 <tr><td><img src="screenshots/osd-window.png" width="100%" alt="OSD Background: Window" /></td><td><img src="screenshots/osd-off.png" width="100%" alt="OSD Background: Off" /></td></tr>
 <tr><td>The menus in a framed window of the color scheme's background, black around it. Over a video behind the menus, the picture shows whole around the window.</td><td>No background: the menus on black, like a deck's on-screen display with nothing playing, in the scheme's lighter color.</td></tr>
-</table>
-
-<table>
-<tr><th width="50%">Theme: DOS, Window Frame: Shadow</th><th width="50%">Theme: Rounded</th></tr>
-<tr><td><img src="screenshots/theme-dos.png" width="100%" alt="Theme: DOS, Window Frame: Shadow" /></td><td><img src="screenshots/theme-rounded.png" width="100%" alt="Theme: Rounded" /></td></tr>
-<tr><td>Theme dresses the window, apart from the color scheme: DOS gives it a double line. Window Frame, offered with OSD Background's Window, adds a DOS window's shadow, a half tone of the window's color (over a video, it darkens the picture), or takes the frame away.</td><td>Rounded rounds the window's corners and the ends of its bars and of the selected line. A theme gives the shapes; the color scheme still gives the colors.</td></tr>
-</table>
-
-<table>
-<tr><th width="50%">Skin: Trinitron</th><th width="50%">Skin: Green Screen</th></tr>
-<tr><td><img src="screenshots/skin-trinitron.png" width="100%" alt="Skin: Trinitron" /></td><td><img src="screenshots/skin-green-screen.png" width="100%" alt="Skin: Green Screen" /></td></tr>
-<tr><td>A skin sets the color scheme, the theme and the effect at once. Trinitron is Video 1 in Rounded windows on a tube's curved face, its scanlines, glow and darker corners drawn by the GPU over the whole screen (the CRT effect).</td><td>Green Screen brings a phosphor green of its own, DOS windows and a glowing tube. While a skin is chosen, Settings hides the rows it sets, and None brings them back as they were.</td></tr>
-</table>
-
-<table>
-<tr><th width="50%">Skin: Late Show</th><th width="50%">An effect over a video</th></tr>
-<tr><td><img src="screenshots/skin-late-show.png" width="100%" alt="Skin: Late Show" /></td><td><img src="screenshots/skin-video.png" width="100%" alt="An effect over a video" /></td></tr>
-<tr><td>Late Night's white on black in DOS windows, with a tape's color bleed and noise (the VHS effect).</td><td>The effect covers all the app draws: Trinitron's tube over the menus and a video playing behind them (Transparent Background).</td></tr>
 </table>
 
 <table>
@@ -182,4 +164,38 @@ Once signed in, each opens on the server's Continue Watching and its libraries. 
 <tr><th width="50%">Logo Image</th><th width="50%">Picking the picture</th></tr>
 <tr><td><img src="screenshots/channel-logo-custom.png" width="100%" alt="Logo Image" /></td><td><img src="screenshots/logo-picker.png" width="100%" alt="Picking the picture" /></td></tr>
 <tr><td>Settings → Logo Image puts a picture of your own there instead, as tall as OSD/OS's logo.</td><td>Picked on the same file browser: select on a picture, or OSD/OS Logo at the top to go back to it.</td></tr>
+</table>
+
+### Themes
+
+Settings → Theme sets the whole look at once: the color scheme, the skin, the effects and the menu music. Each part has its row under Theme, to change or turn off. None of it ever lies over a video: the effects and the music rest while one plays, loads or has its menu open.
+
+<table>
+<tr><th width="50%">Trinitron</th><th width="50%">Late Show</th></tr>
+<tr><td><img src="screenshots/theme-trinitron.png" width="100%" alt="Theme: Trinitron" /></td><td><img src="screenshots/theme-late-show.png" width="100%" alt="Theme: Late Show" /></td></tr>
+<tr><td>Video 1 in Rounded windows on a tube's curved face: scanlines, glow and darker corners, drawn by the GPU over the whole screen (CRT). Windows turn over like a cube.</td><td>Late Night's white on black in DOS windows, with a tape's color bleed and noise (VHS) and text flickering like a neon sign. Windows fade.</td></tr>
+</table>
+
+<table>
+<tr><th width="50%">Green Screen</th><th width="50%">Matrix</th></tr>
+<tr><td><img src="screenshots/theme-green-screen.png" width="100%" alt="Theme: Green Screen" /></td><td><img src="screenshots/theme-matrix.png" width="100%" alt="Theme: Matrix" /></td></tr>
+<tr><td>A phosphor green of its own, DOS windows, a glowing tube and glowing text. Windows come in on a wave from a corner.</td><td>Green on black: Matrix rain behind the menus, glowing text, and lightning crackling out of the selected line. Windows ripple.</td></tr>
+</table>
+
+<table>
+<tr><th width="50%">Inferno</th><th width="50%">Arcade</th></tr>
+<tr><td><img src="screenshots/theme-inferno.png" width="100%" alt="Theme: Inferno" /></td><td><img src="screenshots/theme-arcade.png" width="100%" alt="Theme: Arcade" /></td></tr>
+<tr><td>Amber on brown: pixel flames burning up from under the window, and a welder's sparks bursting from the selected line's corners.</td><td>Synthwave's colors: a starfield, text running through the rainbow, and a pixel rainbow dripping from under the selected line.</td></tr>
+</table>
+
+<table>
+<tr><th width="50%">Winter</th><th width="50%">Demoscene</th></tr>
+<tr><td><img src="screenshots/theme-winter.png" width="100%" alt="Theme: Winter" /></td><td><img src="screenshots/theme-demoscene.png" width="100%" alt="Theme: Demoscene" /></td></tr>
+<tr><td>Ice on night blue: snow falling, a glint sweeping across the text, and sparkles flying off the selected line. Windows spread from a drop.</td><td>Gold on purple: a starfield, glowing text and sparkles, windows turning left like a demo's cube, and a tracker's XM for its music.</td></tr>
+</table>
+
+<table>
+<tr><th width="50%">Skin: DOS, Window Frame: Shadow</th><th width="50%">Skin: Rounded</th></tr>
+<tr><td><img src="screenshots/skin-dos.png" width="100%" alt="Skin: DOS, Window Frame: Shadow" /></td><td><img src="screenshots/skin-rounded.png" width="100%" alt="Skin: Rounded" /></td></tr>
+<tr><td>A skin dresses the window, apart from the color scheme: DOS gives it a double line. Window Frame, offered with OSD Background's Window, adds a DOS window's shadow, a half tone of the window's color (over a video, it darkens the picture), or takes the frame away.</td><td>Rounded rounds the window's corners and the ends of its bars and of the selected line. A skin gives the shapes, and can draw icons of its own; the color scheme still gives the colors.</td></tr>
 </table>

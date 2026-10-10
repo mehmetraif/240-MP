@@ -1,6 +1,0 @@
-{
-    "name": "Green Screen",
-    "colors": { "primary": "#4AF626", "surface": "#001A00" },
-    "theme": "dos",
-    "effect": { "scanlines": 0.6, "glow": 0.6, "curvature": 0.3, "vignette": 0.5 }
-}

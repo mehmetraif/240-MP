@@ -1,0 +1,12 @@
+{
+    "name": "Demoscene",
+    "colors": { "primary": "#FFD84A", "surface": "#120024" },
+    "skin": "dos",
+    "effects": {
+        "background": "Stars",
+        "text": "Glow",
+        "selector": "Sparkles",
+        "transition": "Cube Left"
+    },
+    "music": "demoscene.xm"
+}

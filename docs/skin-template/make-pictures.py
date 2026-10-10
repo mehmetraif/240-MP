@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Draws this theme's pictures from the drawings below and writes them as PNGs
+"""Draws this skin's pictures from the drawings below and writes them as PNGs
 beside this file (or into the folder given), with nothing but Python's own
 library. Change a drawing, run it again, and copy the folder to the data
-folder's themes.
+folder's skins.
 
 In a drawing every character is one art pixel:
     #   light: drawn in the color scheme's color
@@ -16,7 +16,7 @@ import sys
 import zlib
 
 PICTURES = {
-    # The window's frame, "border": 4 in theme.json: the four 4x4 corners
+    # The window's frame, "border": 4 in skin.json: the four 4x4 corners
     # stay as drawn, the edges (the middle row and column) stretch along the
     # window, and the middle pixel fills it. Clipped corners, a bracket in
     # each, the window's background inside.
@@ -64,6 +64,29 @@ PICTURES = {
         "#######",
         "#ooooo#",
         ".#####.",
+    ],
+    # An icon, "logo" in skin.json's icons: a television in place of OSD/OS's
+    # own logo, in the title bar's corner. An icon is drawn in the color
+    # scheme's color from its shape alone, so only drawn (#) and clear (.)
+    # count. 17 pixels tall, the logo's height in art pixels at 480 lines.
+    "logo.png": [
+        ".....#.......#.....",
+        "......#.....#......",
+        ".......#...#.......",
+        "........#.#........",
+        "###################",
+        "#.................#",
+        "#.###########.###.#",
+        "#.###########.#.#.#",
+        "#.###########.###.#",
+        "#.###########.....#",
+        "#.###########.###.#",
+        "#.###########.#.#.#",
+        "#.###########.###.#",
+        "#.................#",
+        "###################",
+        "..##...........##..",
+        "..##...........##..",
     ],
 }
 

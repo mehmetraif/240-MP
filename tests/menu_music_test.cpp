@@ -1,0 +1,293 @@
+// The menu music (MenuMusic) against a stand-in for mpv: a shell script first
+// on PATH that writes down when it starts and what, and stays until killed
+// (or, told to fail, ends at once, as mpv does on a file it can't play). And
+// stand-ins for FluidSynth and openmpt123, which write down what they were
+// asked to make and make a file of it.
+#include "audio/MenuMusic.h"
+#include <QCoreApplication>
+#include <QDir>
+#include <QDirIterator>
+#include <QElapsedTimer>
+#include <QFile>
+#include <QRegularExpression>
+#include <QTemporaryDir>
+#include <QtTest>
+
+static const char kStandIn[] = R"(#!/bin/sh
+log="$FAKE_MPV_LOG"
+media=""
+for a in "$@"; do media="$a"; done
+echo "start $(basename "$media") $$" >> "$log"
+if [ "$FAKE_MPV_MODE" = fail ]; then exit 2; fi
+case "$media" in *.xm) if [ "$FAKE_MPV_MODULE" = fail ]; then exit 2; fi ;; esac
+i=0
+while [ $i -lt 600 ]; do sleep 0.05; i=$((i+1)); done
+)";
+
+// FluidSynth's (-F file) and openmpt123's (-o file) stand-in: the file it
+// writes follows OUT_FLAG.
+static QByteArray renderer(const char *name, const char *outFlag) {
+    return QByteArray(R"(#!/bin/sh
+out=""
+prev=""
+for a in "$@"; do
+  if [ "$prev" = ")") + outFlag + R"(" ]; then out="$a"; fi
+  prev="$a"
+done
+echo "render )" + name + R"( $*" >> "$FAKE_MPV_LOG"
+if [ "$FAKE_RENDER_MODE" = fail ]; then exit 1; fi
+if [ -n "$FAKE_RENDER_DELAY" ]; then sleep "$FAKE_RENDER_DELAY"; fi
+printf 'RIFF0000WAVEfmt ' > "$out"
+)";
+}
+
+class MenuMusicTest : public QObject {
+    Q_OBJECT
+
+    QTemporaryDir m_dir;
+    QString m_log;
+    QString m_tune;
+    MenuMusic *m_music = nullptr;
+
+    QStringList logged(const QString &what) const {
+        QFile f(m_log);
+        if (!f.open(QIODevice::ReadOnly))
+            return {};
+        QStringList lines = QString::fromUtf8(f.readAll()).split(QLatin1Char('\n'), Qt::SkipEmptyParts);
+        return lines.filter(QRegularExpression(QLatin1Char('^') + what));
+    }
+    QStringList starts() const { return logged(QStringLiteral("start ")); }
+    QStringList renders() const { return logged(QStringLiteral("render ")); }
+    static bool writeFile(const QString &path, const QByteArray &data) {
+        QFile f(path);
+        return f.open(QIODevice::WriteOnly) && f.write(data) == data.size();
+    }
+    static bool writeScript(const QString &path, const QByteArray &script) {
+        QFile f(path);
+        return writeFile(path, script)
+            && f.setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner);
+    }
+    QString cache() const { return m_dir.path() + QStringLiteral("/cache"); }
+    // What the cache holds of the menu music's.
+    QStringList made() const {
+        QStringList files;
+        QDirIterator it(cache(), { QStringLiteral("*.wav") }, QDir::Files, QDirIterator::Subdirectories);
+        while (it.hasNext())
+            files << QFileInfo(it.next()).fileName();
+        return files;
+    }
+    // Whether the last stand-in started is still there.
+    bool lastAlive() const {
+        const QStringList all = starts();
+        if (all.isEmpty())
+            return false;
+        const QString pid = all.last().section(QLatin1Char(' '), 2, 2);
+        QFile stat(QStringLiteral("/proc/%1/stat").arg(pid));
+        return stat.open(QIODevice::ReadOnly) && !QString::fromLatin1(stat.readAll()).contains(QStringLiteral(") Z "));
+    }
+
+private slots:
+    void initTestCase() {
+        QVERIFY(m_dir.isValid());
+        const QString bin = m_dir.path() + QStringLiteral("/bin");
+        QVERIFY(QDir().mkpath(bin));
+        QVERIFY(writeScript(bin + QStringLiteral("/mpv"), kStandIn));
+        QVERIFY(writeScript(bin + QStringLiteral("/fluidsynth"), renderer("fluidsynth", "-F")));
+        QVERIFY(writeScript(bin + QStringLiteral("/openmpt123"), renderer("openmpt123", "-o")));
+        qputenv("PATH", bin.toUtf8() + ':' + qgetenv("PATH"));
+        qputenv("TMPDIR", m_dir.path().toUtf8());
+        qputenv("XDG_CACHE_HOME", cache().toUtf8());
+        m_log = m_dir.path() + QStringLiteral("/mpv.log");
+        qputenv("FAKE_MPV_LOG", m_log.toUtf8());
+        m_tune = m_dir.path() + QStringLiteral("/tune.ogg");
+        QFile tune(m_tune);
+        QVERIFY(tune.open(QIODevice::WriteOnly));
+    }
+
+    void init() {
+        QFile::remove(m_log);
+        QDir(cache()).removeRecursively();
+        qputenv("FAKE_MPV_MODE", "play");
+        qputenv("FAKE_MPV_MODULE", "play");
+        qputenv("FAKE_RENDER_MODE", "make");
+        qputenv("FAKE_RENDER_DELAY", "");
+        m_music = new MenuMusic(m_dir.path() + QStringLiteral("/data"));
+    }
+
+    void cleanup() {
+        delete m_music;
+        m_music = nullptr;
+    }
+
+    // Wanted, with a tune: it plays, a moment later.
+    void playsWhenWanted() {
+        m_music->setSource(QUrl::fromLocalFile(m_tune).toString());
+        m_music->setWanted(true);
+        QTRY_COMPARE_WITH_TIMEOUT(starts().size(), 1, 3000);
+        QVERIFY(starts().first().startsWith(QStringLiteral("start tune.ogg")));
+        QVERIFY(m_music->playing());
+        m_music->setWanted(false);
+        QVERIFY(!m_music->playing());
+        QTRY_VERIFY_WITH_TIMEOUT(!lastAlive(), 1000);
+    }
+
+    // Something about to play sound holds it off: gone by the time hold()
+    // returns, so the sound card is free; back once released.
+    void holdStopsAtOnce() {
+        m_music->setSource(m_tune);
+        m_music->setWanted(true);
+        QTRY_VERIFY_WITH_TIMEOUT(m_music->playing(), 3000);
+        QElapsedTimer held;
+        held.start();
+        MenuMusic::hold(QStringLiteral("video"));
+        QVERIFY(held.elapsed() < 350);
+        QVERIFY(!m_music->playing());
+        QVERIFY(!lastAlive());
+        // Held, it stays quiet however long.
+        QTest::qWait(1200);
+        QCOMPARE(starts().size(), 1);
+        MenuMusic::release(QStringLiteral("video"));
+        QTRY_COMPARE_WITH_TIMEOUT(starts().size(), 2, 3000);
+        QVERIFY(m_music->playing());
+    }
+
+    // A hold and its release in quick turns don't start it in between, and
+    // two holders keep it off until both let go.
+    void holdsAddUp() {
+        m_music->setSource(m_tune);
+        m_music->setWanted(true);
+        QTRY_VERIFY_WITH_TIMEOUT(m_music->playing(), 3000);
+        MenuMusic::hold(QStringLiteral("a"));
+        MenuMusic::hold(QStringLiteral("b"));
+        MenuMusic::release(QStringLiteral("a"));
+        QTest::qWait(1200);
+        QVERIFY(!m_music->playing());
+        QCOMPARE(starts().size(), 1);
+        MenuMusic::release(QStringLiteral("b"));
+        QTRY_VERIFY_WITH_TIMEOUT(m_music->playing(), 3000);
+    }
+
+    // A file mpv can't play isn't tried again and again.
+    void failedFileNotRetried() {
+        qputenv("FAKE_MPV_MODE", "fail");
+        m_music->setSource(m_tune);
+        m_music->setWanted(true);
+        QTRY_COMPARE_WITH_TIMEOUT(starts().size(), 1, 3000);
+        QTRY_VERIFY_WITH_TIMEOUT(!m_music->playing(), 2000);
+        MenuMusic::hold(QStringLiteral("x"));
+        MenuMusic::release(QStringLiteral("x"));
+        QTest::qWait(1500);
+        QCOMPARE(starts().size(), 1);
+        // Another source is tried.
+        qputenv("FAKE_MPV_MODE", "play");
+        m_music->setSource(m_dir.path() + QStringLiteral("/bin/../tune.ogg"));
+        QTRY_COMPARE_WITH_TIMEOUT(starts().size(), 2, 3000);
+    }
+
+    // A MIDI file: FluidSynth makes it into a WAV with the SoundFont beside
+    // it, and mpv plays that; the next time, the WAV made then.
+    void midiMadeIntoWav() {
+        const QString midi = m_dir.path() + QStringLiteral("/song.mid");
+        QVERIFY(writeFile(midi, "MThd"));
+        QVERIFY(writeFile(m_dir.path() + QStringLiteral("/song.sf2"), "sfbk"));
+        m_music->setSource(midi);
+        m_music->setWanted(true);
+        QTRY_COMPARE_WITH_TIMEOUT(starts().size(), 1, 3000);
+        QCOMPARE(renders().size(), 1);
+        QVERIFY(renders().first().startsWith(QStringLiteral("render fluidsynth ")));
+        QVERIFY(renders().first().contains(QStringLiteral("/song.sf2 ")));
+        QVERIFY(renders().first().endsWith(QStringLiteral("/song.mid")));
+        QVERIFY(starts().first().contains(QStringLiteral(".wav ")));
+        QCOMPARE(made().size(), 1);
+        m_music->setWanted(false);
+        m_music->setWanted(true);
+        QTRY_COMPARE_WITH_TIMEOUT(starts().size(), 2, 3000);
+        QCOMPARE(renders().size(), 1);
+    }
+
+    // No SoundFont beside it: the first in the data folder's soundfonts.
+    void dataFolderSoundFont() {
+        const QString fonts = m_dir.path() + QStringLiteral("/data/soundfonts");
+        QVERIFY(QDir().mkpath(fonts));
+        QVERIFY(writeFile(fonts + QStringLiteral("/b.sf2"), "sfbk"));
+        QVERIFY(writeFile(fonts + QStringLiteral("/a.sf2"), "sfbk"));
+        const QString midi = m_dir.path() + QStringLiteral("/lone.mid");
+        QVERIFY(writeFile(midi, "MThd"));
+        m_music->setSource(midi);
+        m_music->setWanted(true);
+        QTRY_COMPARE_WITH_TIMEOUT(starts().size(), 1, 3000);
+        QVERIFY(renders().first().contains(QStringLiteral("/soundfonts/a.sf2 ")));
+    }
+
+    // FluidSynth failing: nothing played, and not tried again until the
+    // source changes.
+    void renderFails() {
+        qputenv("FAKE_RENDER_MODE", "fail");
+        const QString midi = m_dir.path() + QStringLiteral("/bad.mid");
+        QVERIFY(writeFile(midi, "MThd"));
+        QVERIFY(writeFile(m_dir.path() + QStringLiteral("/bad.sf2"), "sfbk"));
+        m_music->setSource(midi);
+        m_music->setWanted(true);
+        QTRY_COMPARE_WITH_TIMEOUT(renders().size(), 1, 3000);
+        MenuMusic::hold(QStringLiteral("x"));
+        MenuMusic::release(QStringLiteral("x"));
+        QTest::qWait(1500);
+        QCOMPARE(renders().size(), 1);
+        QVERIFY(starts().isEmpty());
+        QVERIFY(made().isEmpty());
+    }
+
+    // Held while FluidSynth works: it is stopped, nothing half made is kept,
+    // and it is made again once nothing holds the music.
+    void holdStopsRendering() {
+        qputenv("FAKE_RENDER_DELAY", "1");
+        const QString midi = m_dir.path() + QStringLiteral("/slow.mid");
+        QVERIFY(writeFile(midi, "MThd"));
+        QVERIFY(writeFile(m_dir.path() + QStringLiteral("/slow.sf2"), "sfbk"));
+        m_music->setSource(midi);
+        m_music->setWanted(true);
+        QTRY_COMPARE_WITH_TIMEOUT(renders().size(), 1, 3000);
+        MenuMusic::hold(QStringLiteral("video"));
+        QTest::qWait(1500);
+        QVERIFY(starts().isEmpty());
+        QVERIFY(made().isEmpty());
+        MenuMusic::release(QStringLiteral("video"));
+        QTRY_COMPARE_WITH_TIMEOUT(starts().size(), 1, 5000);
+        QCOMPARE(renders().size(), 2);
+    }
+
+    // A tracker's module plays as it is; one mpv can't play, openmpt123
+    // makes into a WAV for it.
+    void modules() {
+        const QString xm = m_dir.path() + QStringLiteral("/tune.xm");
+        QVERIFY(writeFile(xm, "Extended Module: "));
+        m_music->setSource(xm);
+        m_music->setWanted(true);
+        QTRY_COMPARE_WITH_TIMEOUT(starts().size(), 1, 3000);
+        QVERIFY(starts().first().startsWith(QStringLiteral("start tune.xm ")));
+        QVERIFY(renders().isEmpty());
+
+        qputenv("FAKE_MPV_MODULE", "fail");
+        const QString other = m_dir.path() + QStringLiteral("/other.xm");
+        QVERIFY(writeFile(other, "Extended Module: "));
+        m_music->setSource(other);
+        QTRY_COMPARE_WITH_TIMEOUT(starts().size(), 3, 5000);
+        QVERIFY(starts().at(1).startsWith(QStringLiteral("start other.xm ")));
+        QCOMPARE(renders().size(), 1);
+        QVERIFY(renders().first().startsWith(QStringLiteral("render openmpt123 ")));
+        QVERIFY(renders().first().endsWith(QStringLiteral("-- ") + other));
+        QVERIFY(starts().at(2).contains(QStringLiteral(".wav ")));
+        QVERIFY(m_music->playing());
+    }
+
+    // No file there: nothing started.
+    void missingFile() {
+        m_music->setSource(m_dir.path() + QStringLiteral("/gone.ogg"));
+        m_music->setWanted(true);
+        QTest::qWait(1200);
+        QVERIFY(starts().isEmpty());
+    }
+};
+
+QTEST_GUILESS_MAIN(MenuMusicTest)
+#include "menu_music_test.moc"

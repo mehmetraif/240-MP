@@ -43,11 +43,12 @@ Item {
         width: implicitWidth
         sourceSize.height: appBar.logoHeight
         // Drawn by OsdIconProvider in the bar's colour, from the original at
-        // this height. Resolved here, so a path relative to this file works as
-        // it always has.
+        // this height, or from the skin's icon of its name (Settings → Skin).
+        // Resolved here, so a path relative to this file works as it always
+        // has.
         source: appBar.iconSource.toString() !== "" && appBar.logoHeight > 0
                 ? "image://osdicon/" + root.primaryColor.toString().replace("#", "")
-                  + "/" + Qt.resolvedUrl(appBar.iconSource)
+                  + "/" + root.skinIcon(Qt.resolvedUrl(appBar.iconSource))
                 : ""
     }
 
@@ -56,14 +57,14 @@ Item {
         x: appBar.hasLogo ? logo.x + logo.width + root.px : 0
         width: appBar.width - x
         height: appBar.height
-        // The theme's picture of the bar, when it has one (Settings → Theme).
-        color: themedBar.shown ? "transparent" : root.primaryColor
+        // The skin's picture of the bar, when it has one (Settings → Skin).
+        color: skinnedBar.shown ? "transparent" : root.primaryColor
         antialiasing: false
 
-        ThemeImage {
-            id: themedBar
+        SkinImage {
+            id: skinnedBar
             anchors.fill: parent
-            part: root.theme.titleBar
+            part: root.skin.titleBar
         }
 
         Row {

@@ -29,6 +29,12 @@ import QtQuick
 FocusScope {
     id: menuRoot
 
+    // A video's own menu: the theme's effects and menu music rest while it is
+    // open, the playing as plain as it always is (Main.qml's root.effectsRest).
+    readonly property bool resting: visible
+    onRestingChanged: root.restFor(menuRoot, resting)
+    Component.onDestruction: root.restFor(menuRoot, false)
+
     property string moduleId: ""
     property string iconSource: ""
     property string moduleName: ""

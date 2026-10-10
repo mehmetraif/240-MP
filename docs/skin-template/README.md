@@ -1,15 +1,15 @@
 # Skin template
 
-A skin to copy and make your own. It brings all three things a skin can set, each of its own: its colors, a theme of its own pictures, and an effect drawn by a shader of its own, so each can be seen at work and changed.
+A skin to copy and make your own. A skin dresses the window: it gives the shapes of its frame, the title bar, the hint bar and the selected line, and can draw icons of its own in place of OSD/OS's, all in the color scheme's colors. This one dresses all four parts and draws an icon, and between them it uses every option of `skin.json`, so each can be seen at work and changed. A [theme](../theme-template/) names a skin, or brings one of its own, with its colors, effects and music.
 
-![The template skin](../screenshots/skin-template.png)
+![The template skin, in the Video 1 color scheme](../screenshots/skin-template.png)
 
 | File | What it is |
 |---|---|
-| `skin.json` | The skin: its name, colors, theme and effect |
-| `window.png`, `titlebar.png`, `hintbar.png`, `selection.png` | Its theme's pictures, the [theme template](../theme-template/)'s |
-| `tube.frag` | Its effect's shader: phosphor stripes, a hum bar rolling down the picture, and scanlines |
-| `tube.frag.qsb` | The shader compiled, which is what OSD/OS reads |
+| `skin.json` | The skin: its name, a picture for each part, and its icons |
+| `window.png`, `titlebar.png`, `hintbar.png`, `selection.png` | The pictures, a few pixels each |
+| `logo.png` | An icon: a television, in place of OSD/OS's logo |
+| `make-pictures.py` | Draws the pictures again from the drawings in it (Python 3, nothing to install) |
 
 ## Make it yours
 
@@ -17,87 +17,88 @@ A skin to copy and make your own. It brings all three things a skin can set, eac
    - Linux and the OSD/OS image: `~/.local/share/OSD-OS/skins/<name>/`
    - macOS: `~/Library/Application Support/OSD-OS/skins/<name>/`
 
-   The folder's name is what Settings saves. A folder named like one of OSD/OS's own (`trinitron`, `late-show`, `green-screen`) is used in its place.
+   The folder's name is what Settings saves. A folder named like one of OSD/OS's own (`dos`, `rounded`) is used in its place. A skin made before skins had their name, a `theme.json` of these parts in the data folder's `themes`, is read as a skin too.
 2. **Name it.** `"name"` in `skin.json` is what Settings → Skin shows: 28 characters at most, else the folder's name is shown.
-3. **Change what you like**, or take a part out: what the skin leaves out is as Settings has it.
-4. **Pick it** in Settings → Skin. A new folder is listed the next time Settings opens. While the skin is chosen, Settings hides the rows it sets (Color Scheme, Theme, Effect); None brings them back as they were. The window's frame shows with OSD Background set to Window.
+3. **Draw it**, either way:
+   - in `make-pictures.py`: change the drawings and run `python3 make-pictures.py`, which writes the PNGs beside it. In a drawing `#` is light, `o` dark and `.` clear.
+   - in any pixel editor, in white, black and transparent.
+4. **Pick it** in Settings → Skin. A new folder is listed the next time Settings opens. The window's frame shows with OSD Background set to Window and Window Frame On or Shadow.
 
-To see a picture or a shader you changed in a skin already in use, restart OSD/OS: one already shown stays in memory.
+To see a picture you changed in a skin already in use, restart OSD/OS: a picture already shown stays in memory.
 
 ## skin.json
 
 ```json
 {
     "name": "Template",
-    "colors": { "primary": "#F2E6C9", "surface": "#1B2A4A" },
-    "theme": {
-        "window":    { "image": "window.png", "border": 4 },
-        "titleBar":  { "image": "titlebar.png", "border": [2, 2, 5, 2] },
-        "hintBar":   { "image": "hintbar.png", "border": 3, "tile": "repeat" },
-        "selection": { "image": "selection.png", "border": 3 }
-    },
-    "effect": { "shader": "tube.frag.qsb", "animate": true, "scanlines": 0.4 }
+    "window":    { "image": "window.png", "border": 4 },
+    "titleBar":  { "image": "titlebar.png", "border": [2, 2, 5, 2] },
+    "hintBar":   { "image": "hintbar.png", "border": 3, "tile": "repeat" },
+    "selection": { "image": "selection.png", "border": 3 },
+    "icons":     { "logo": "logo.png" }
 }
 ```
 
-| Key | |
+| Key | The part |
 |---|---|
 | `name` | What Settings shows |
-| `colors` | A color scheme's name, as Settings → Color Scheme lists it (`"Video 1"`, `"Terminal"`), or two colors of its own, each `#rrggbb`: `primary`, the text, the lines and the selection, and `surface`, the background. OSD/OS draws in those two only, like a deck's on-screen display |
-| `theme` | A theme's name, its folder's (`"dos"`, `"rounded"`, or one in the data folder's `themes`), or a theme of its own: its parts as in a `theme.json` (see the [theme template](../theme-template/)), its pictures in the skin's folder. `{}` is OSD/OS's own window, without a theme |
-| `effect` | An effect's name, as Settings → Effect lists it (`"Scanlines"`, `"CRT"`, `"VHS"`, `"Off"`), or one of its own: the keys below |
+| `window` | The frame of OSD Background's window, drawn over the whole window, its middle filling it |
+| `titleBar` | The bar at the top of every screen, behind the title |
+| `hintBar` | The bar at the foot, behind the keys' hints |
+| `selection` | The selected line: menus, the file tree's cursor, a question's answers |
+| `icons` | Icons of its own, below |
 
-### An effect of its own
+Every part is optional. A part left out, or whose picture can't be used, is drawn as OSD/OS draws it without a skin. A part is a picture's file name (`"hintBar": "hintbar.png"`, stretched whole), or:
 
 | Key | |
 |---|---|
-| `scanlines` | Dark lines between the picture's, 0 (none) to 1 |
-| `curvature` | A tube's curved face: the picture bulges, its corners going round, 0 to 1 |
-| `glow` | A halo round light parts, 0 to 1 |
-| `bleed` | A tape's color smeared sideways, red to the left and blue to the right, 0 to 1 |
-| `noise` | Grain, moving, 0 to 1 |
-| `vignette` | The corners darker, 0 to 1 |
-| `animate` | `true` for a shader of its own that moves: `time` counts up for it, the screen drawn 20 times a second |
-| `shader` | A shader of its own, a `.qsb` in the skin's folder, drawn in place of OSD/OS's |
+| `image` | The picture: a PNG, GIF or BMP in the skin's folder |
+| `border` | How many of its pixels at each edge are its frame: one number for all four sides, or `[left, top, right, bottom]`. Without it the picture is stretched whole |
+| `tile` | How the edges and the middle fill the part: `stretch` (the default) stretches them, `repeat` repeats their pattern (the hint bar's dotted line), `round` repeats it scaled so that a whole number fits |
 
-Without `shader`, the numbers drive OSD/OS's own shader, as Settings → Effect's do. Green Screen's is `{ "scanlines": 0.6, "glow": 0.6, "curvature": 0.3, "vignette": 0.5 }`, and CRT is `{ "scanlines": 0.35, "curvature": 0.6, "glow": 0.35, "vignette": 0.5 }`.
+## Icons
 
-With `shader`, the shader draws the whole screen, and does what it likes with the numbers: the template's uses `scanlines` and leaves the rest.
+`icons` draws icons of the skin's own in place of OSD/OS's, by name: a module's by its folder's name (`"youtube"`, `"local_files"`, `"plex"`), the main menu's `"logo"`, any other by its file's name without the extension (`"settings"`). Each is a picture in the skin's folder: a PNG, SVG, GIF, BMP or JPEG. An icon is drawn as OSD/OS draws its own, in the title bar's color, from its shape alone (where it is opaque), trimmed of the clear margin round it and scaled to the logo's height: about 17 art pixels at 480 lines. A drawing of pixels that size stays sharp, its pixels square.
 
-## A shader of its own
+## The pictures
 
-A shader is a small program the GPU runs once for every pixel of the screen, each time it is drawn. OSD/OS draws the screen into a picture and gives it to the shader as `source`; the shader says what color each point of the screen gets. `tube.frag` is one, with a comment on every step.
+**Three kinds of pixel.** A skin gives only shapes: OSD/OS draws it in the color scheme's two colors, so the same skin goes with every scheme. A picture has three kinds of pixel:
 
-It is written in GLSL for Qt's shader tools (`#version 440`), and it takes:
+- **light** (white): the scheme's color
+- **dark** (black): the scheme's background
+- **clear** (transparent): nothing. What is behind shows through: around the window, the black, or a video playing behind the menus.
 
-- **`qt_TexCoord0`**: the point of the screen it runs for, 0 to 1 across and down. It reads `source` there, or anywhere else, and writes `fragColor`.
-- **The uniform block** at binding 0. It starts with `mat4 qt_Matrix` and `float qt_Opacity`, in that order, as every one must; after them come any of these, by name, in any order: only those it uses.
+A pixel at least half opaque is light when it is at least half bright, else dark. Any other pixel is clear. A drawing in other colors works too, but white, black and transparent show what you will get.
 
-| Name | Type | |
-|---|---|---|
-| `resolution` | `vec2` | The screen, in its pixels |
-| `px` | `float` | Screen pixels to an art pixel, a pixel of a 240-line picture: 2 at 480 lines, 4 at 1080 |
-| `time` | `float` | Seconds, counting up while `animate` is `true` |
-| `scanlines`, `curvature`, `glow`, `bleed`, `noise`, `vignette` | `float` | The effect's numbers, 0 when left out |
+**Art pixels.** Each pixel of a picture is an art pixel, a pixel of a 240-line picture, drawn as a square of screen pixels without smoothing: 2×2 at 480 lines, 4×4 at 1080. The bars are only a few art pixels tall: at 480 lines, the hint bar is about 10, a selected line 12 and the title bar 14. A `border` of 2 to 4 at the top and the bottom leaves room for the text.
 
-- **`source`**, a `sampler2D` at binding 1: the screen as OSD/OS drew it.
+**Nine slices.** `border` cuts a picture into nine. The four corners are drawn as they are, the four edges stretch (or repeat) between them, and the middle fills the rest. Here is the window's 9×9 picture with its `"border": 4`, cut apart:
 
-**Compile it** after every change, into the `.qsb` that `skin.json` names, for every graphics API Qt draws with (OpenGL and OpenGL ES on the Pi, Metal on a Mac):
+```
+..##  #  ##..     the top corners, and between them the top edge,
+.#oo  o  oo#.     one column wide, stretched along the window
+#o##  o  ##o#
+#o#o  o  o#o#
 
-```sh
-qsb --glsl "100 es,120,150" --hlsl 50 --msl 12 -o tube.frag.qsb tube.frag
+#ooo  o  ooo#     the left and right edges, one row tall, and the middle
+
+#o#o  o  o#o#
+#o##  o  ##o#     the bottom corners and edge
+.#oo  o  oo#.
+..##  #  ##..
 ```
 
-`qsb` comes with Qt Shader Tools: `sudo apt install qt6-shader-baker` on Debian and Raspberry Pi OS (it is `/usr/lib/qt6/bin/qsb`), or in the `bin` folder of a Qt from Qt's installer. Use the Qt OSD/OS runs on or an older one: a newer Qt's `.qsb` may not load in an older Qt. The template's is compiled with Qt 6.4, the oldest the releases are built with.
+The corners keep their brackets and their clipped tips wherever the window's corners are, and the one-pixel edges and middle become the window's sides and ground.
 
-**Keep it light.** It runs for every pixel each time the screen is drawn: two million at 1080p, a sixth of that at a CRT's 480 lines. Each read of `source` costs; OSD/OS's own reads it seven times at most.
+**What goes where.**
+
+- **The window's frame** is drawn over the whole window, so its middle is the window's ground. Draw the middle dark for the scheme's background, as the template does, or clear for a window to see through. What the corners leave clear shows what is around the window.
+- **The title bar, the hint bar and the selected line** have their text written over them in the dark color. Keep their middles light.
 
 ## When something is wrong
 
 The log says which skin was read, `[AppCore] skin <folder>: <path>`, and what in it couldn't be used. On the OSD/OS image it is `journalctl -u osdos`; elsewhere see [Debugging & logs](../../BUILDING.md#debugging--logs).
 
-- **Colors that aren't two `#rrggbb`** are drawn as Video 1.
-- **A picture or a shader that isn't in the skin's folder** (a path or a link out of it) is refused: that picture's part is drawn as OSD/OS draws it, and the effect without the shader.
-- **A shader that won't load**, one not compiled with `qsb`, or by a newer Qt: the log says `[Effect] … can't be used, OSD/OS's own in its place`, and the effect's numbers drive OSD/OS's shader instead. A shader that loads but leaves the screen unreadable: take its `.qsb` out of the skin's folder, or the folder out of `skins`, and restart OSD/OS. Without the file the effect is drawn by OSD/OS's shader; without the folder, there is no skin.
+- **A picture that isn't usable**, that is, not a PNG, GIF or BMP in the skin's folder: that part is drawn as OSD/OS draws it. A path or a link out of the folder is refused. An icon's name is letters, digits, `-` and `_`, in any case; one with anything else is left out.
+- **A `border` that isn't a number or four of them**: the picture is stretched whole.
 - **A `skin.json` that isn't JSON**: the skin isn't listed in Settings.
-- **No Effect in Settings**: the build has no Qt Shader Tools (see [BUILDING.md](../../BUILDING.md)), or Qt draws without a GPU. A skin's colors and theme work all the same.

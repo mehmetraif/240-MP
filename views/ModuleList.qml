@@ -130,18 +130,11 @@ FocusScope {
                 height: parent.height;
                 clip: true;
 
-                // The selected row's box, or the theme's picture of a selected
-                // line (Settings → Theme).
-                Rectangle {
-                    color: themedRow.shown ? "transparent" : root.accentColor;
+                // The selected row's box, or the skin's picture of a selected
+                // line (Settings → Skin).
+                SelectionBox {
                     anchors.fill: rowText;
                     visible: menuList.currentIndex === index;
-
-                    ThemeImage {
-                        id: themedRow
-                        anchors.fill: parent
-                        part: root.theme.selection
-                    }
                 }
 
                 Text {

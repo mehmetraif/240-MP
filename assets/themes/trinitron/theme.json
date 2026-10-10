@@ -1,0 +1,10 @@
+{
+    "name": "Trinitron",
+    "colors": "Video 1",
+    "skin": "rounded",
+    "effects": {
+        "screen": "CRT",
+        "transition": "Cube"
+    },
+    "music": "trinitron.ogg"
+}

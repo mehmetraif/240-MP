@@ -156,13 +156,12 @@ FocusScope {
                             readonly property bool current: osk.row === keyRow.index && osk.col === index
                             width: keyRow.keyW
                             height: osk.cellH
-                            Rectangle {
+                            SelectionBox {
                                 anchors.centerIn: parent
                                 width: keyText.implicitWidth + 2 * root.sw * 0.009375
                                 height: parent.height
                                 visible: parent.current
-                                color: root.primaryColor
-                                antialiasing: false
+                                skinned: false
                             }
                             Text {
                                 id: keyText

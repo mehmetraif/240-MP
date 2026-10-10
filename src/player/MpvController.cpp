@@ -7,6 +7,7 @@
 #include "../util/DisplayHandoff.h"
 #include "../util/FontconfigOverride.h"
 #include "../util/AtomicFile.h"
+#include "../audio/MenuMusic.h"
 #include "../util/Board.h"
 #include "../util/LegacyNames.h"
 #include <QCoreApplication>
@@ -434,6 +435,9 @@ void MpvController::loadAndPlay(const QString &url, float startSeconds,
                                  const QStringList &subTitles, float imageDurationSec,
                                  bool imageContent, const QStringList &extraArgs, const QString &jellyfinToken,
                                  const QStringList &extraUrls) {
+    // The menu music stops before mpv opens the sound card; it plays again
+    // once the session has ended (main.cpp) and the menus want it.
+    MenuMusic::hold(QStringLiteral("video"));
     // Its player notes the new session afresh (noteSession), or leaves none.
     m_sessionNote.clear();
     m_menuOnExit = false;
