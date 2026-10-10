@@ -78,8 +78,8 @@ Local Files, YouTube, Netflix and Prime Video are all browsed the same way, as a
 
 <table>
 <tr><th width="50%">Recently Watched</th><th width="50%">Folders</th></tr>
-<tr><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/local-files.png" width="100%" alt="Local Files' tree at the top: RECENTLY WATCHED under the cursor, a dotted line to its first entries, then FAVORITES, SEARCH, CARTOONS, COMMERCIALS, HOME VIDEOS" /></td><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/tree.png" width="100%" alt="Local Files, TV SHOWS open: KNIGHT RIDER, MACGYVER, THE A-TEAM and TWIN PEAKS, each branching to its seasons; TWIN PEAKS under the cursor, with its seasons and Season 1's episodes" /></td></tr>
-<tr><td>The tree opens on what you played last, then Favorites, Search and your folders. The entry under the cursor branches out to its first few items.</td><td>The open folders run along the line through the middle. The folder under the cursor branches out once more: TV Shows › Twin Peaks › its seasons › their episodes.</td></tr>
+<tr><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/local-files.png" width="100%" alt="Local Files' tree at the top: RECENTLY WATCHED under the cursor, a dotted line to its first entries, then FAVORITES, SEARCH, ACTION, ADVENTURE, ANIMATION" /></td><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/tree.png" width="100%" alt="Local Files, ACTION open: RAMBO MOVIES under the cursor, branching to its four films, then CLIFFHANGER, COBRA, KILL BILL VOL 1, KILL BILL VOL 2 and TANGO AND CASH" /></td></tr>
+<tr><td>The tree opens on what you played last, then Favorites, Search and your folders. The entry under the cursor branches out to its first few items.</td><td>The open folders run along the line through the middle. The folder under the cursor branches out once more: Action › Rambo Movies › its films.</td></tr>
 </table>
 
 **How it is drawn.** The folders you have opened run from left to right along a line through the middle of the screen, the spine. Each folder's entries are stacked above and below the one the spine runs through, which is the one that leads on. In the folder you are in, every folder branches off to the right, on a dotted line, to its first few entries, and the folder under the cursor shows more of its own and branches once more from each folder in it: you see two levels ahead before opening anything. Folders opened further back slide off to the left, the spine running on from the edge of the screen. The title bar names the folder you are in. A folder still being read shows `loading…`, an empty one `(empty)`. The branches grow once the cursor stops moving.
@@ -113,7 +113,7 @@ In Local Files, the drives plugged in follow, each as `USB: <its label>` (the OS
 
 ## Searching
 
-<img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/keyboard.png" width="100%" alt="The on-screen keyboard: SEARCH LOCAL FILES, S01E01 typed in the box, a grid of letters, digits and - ' . &, and SPACE, DEL and OK, with OK selected" />
+<img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/keyboard.png" width="100%" alt="The on-screen keyboard: SEARCH LOCAL FILES, TERMINATOR typed in the box, a grid of letters, digits and - ' . &, and SPACE, DEL and OK, with OK selected" />
 
 Select on **Search** brings up an on-screen keyboard, for typing with a remote the way a deck's menu spells a title: the letters A to Z, the digits, `-`, `'`, `.` and `&` in a grid, and **SPACE**, **DEL** and **OK** on the last row. What you have typed is in the box above, with a blinking block where the next letter goes.
 
@@ -187,9 +187,9 @@ One favourite can play by itself as OSD/OS starts: straight after the boot scree
 
 ### Resume
 
-<img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/resume.png" width="100%" alt="RESUME PLAYBACK?: the video's name, then RESUME FROM 0:30 and START FROM THE BEGINNING" />
+<img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/resume.png" width="100%" alt="RESUME PLAYBACK?: the video's name, then RESUME FROM 1:12:34 and START FROM THE BEGINNING" />
 
-A video you stopped partway asks **Resume playback?**: **Resume from 0:30** (where you stopped) or **Start from the beginning**. ▲ ▼ choose, select plays, back goes back to the tree. In Local Files:
+A video you stopped partway asks **Resume playback?**: **Resume from 1:12:34** (where you stopped) or **Start from the beginning**. ▲ ▼ choose, select plays, back goes back to the tree. In Local Files:
 
 - a playlist file (`.m3u`) resumes at the video it was on: **Resume video 3 at 12:40**;
 - with Shuffle Playback on Ask, a playlist asks **Start playback?**: **Play in order** or **Shuffle**;
@@ -239,7 +239,7 @@ What back does depends on the module, and on [Transparent Background](https://gi
 
 ### The video's own menu
 
-<img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/player-menu.png" width="100%" alt="Local Files' menu for a video over the picture: AUTO SHOW SUBTITLES ON, SUBTITLE LANGUAGE ANY, LOOP PLAYBACK OFF, SCALING DEFAULT, ADD TO FAVORITES, PLAY AT STARTUP, BROWSE LOCAL FILES, CLOSE VIDEO" />
+<img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/player-menu.png" width="100%" alt="Local Files' menu for a video over the picture: AUTO SHOW SUBTITLES FORCED ONLY, SUBTITLE LANGUAGE ANY, LOOP PLAYBACK OFF, SCALING DEFAULT, ADD TO FAVORITES, PLAY AT STARTUP, BROWSE LOCAL FILES, CLOSE VIDEO" />
 
 Local Files, YouTube and Playlists give a video a menu of its own: first the module's settings that matter while it plays, then what you can do with it, then **Close Video**.
 
@@ -265,7 +265,7 @@ Netflix and Prime Video play in the service's own web player, in Chromium, which
 
 <table>
 <tr><th width="33%">The video's menu</th><th width="33%">Back to the menus</th><th width="33%">Main menu</th></tr>
-<tr><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/player-menu.png" width="100%" alt="The video's menu over the picture" /></td><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/menus-over-video.png" width="100%" alt="Local Files' tree over the playing video" /></td><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/main-menu-over-video.png" width="100%" alt="The main menu over the playing video, led by ► TEST PATTERN (2024), with [SPACE]:STOP in the hint bar" /></td></tr>
+<tr><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/player-menu.png" width="100%" alt="The video's menu over the picture" /></td><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/menus-over-video.png" width="100%" alt="Local Files' tree over the playing video" /></td><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/main-menu-over-video.png" width="100%" alt="The main menu over the playing video, led by ► TERMINATOR 2 (1991), with [SPACE]:STOP in the hint bar" /></td></tr>
 <tr><td>With Transparent Background, back during a Local Files or YouTube video opens its menu over the picture, which plays on, here at 40% solid. ◄ ► change its module's settings for it, at once or as you go back to it. Close Video goes to the main menu; back, to the video.</td><td>Browse in that menu, or back from any other module's video, returns to the module's menus, the video playing on behind them. Choose it again to watch it full screen from where it is.</td><td>The main menu leads with the video, the cursor on it: select takes it back to full screen where it is. Play/pause stops it (<code>[SPACE]:STOP</code>), and playing anything else replaces it.</td></tr>
 </table>
 
@@ -293,7 +293,7 @@ It needs libmpv, which OSD/OS opens as it runs: `libmpv2` on Raspberry Pi OS (on
 
 <table>
 <tr><th width="50%">Logo Image</th><th width="50%">Picking the picture</th></tr>
-<tr><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/channel-logo-custom.png" width="100%" alt="A playing video with a picture of the user's own in place of the OSD/OS logo" /></td><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/logo-picker.png" width="100%" alt="The file picker for Logo Image: OSD/OS LOGO at the top, then the places to look in" /></td></tr>
+<tr><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/channel-logo-custom.png" width="100%" alt="A playing video with a picture of the user's own in place of the OSD/OS logo" /></td><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/logo-picker.png" width="100%" alt="The file picker for Logo Image: the home folder's folders, LOGOS open on its two pictures" /></td></tr>
 <tr><td>Settings → Logo Image puts a picture of your own there instead, as tall as OSD/OS's logo.</td><td>Picked on the same file browser: select on a picture, or OSD/OS Logo at the top to go back to it.</td></tr>
 </table>
 
@@ -345,7 +345,7 @@ Back on the main menu opens Settings, laid out like a camcorder's menu: a line p
 
 <table>
 <tr><th width="50%">A module's settings</th><th width="50%">Picking a folder</th></tr>
-<tr><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/module-settings.png" width="100%" alt="Local Files' settings: its folder, looping, shuffle, resume, subtitles, and its own Scaling" /></td><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/folder-picker.png" width="100%" alt="The folder picker: the places to start from (home, the drives, the root), and USE THIS FOLDER in each folder" /></td></tr>
+<tr><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/module-settings.png" width="100%" alt="Local Files' settings: its folder, looping, shuffle, resume, subtitles, and its own Scaling" /></td><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/folder-picker.png" width="100%" alt="The folder picker open on the films folder: USE THIS FOLDER, then its folders, one for each genre" /></td></tr>
 <tr><td>Local Files: its folder, looping, shuffle, resume, subtitles, and its own Scaling.</td><td>Folders are picked on the same tree Local Files is browsed with, from home, the drives and the root down: USE THIS FOLDER picks the one open, Default Folder the module's own.</td></tr>
 </table>
 

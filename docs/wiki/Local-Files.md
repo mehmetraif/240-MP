@@ -6,7 +6,7 @@ Local Files is on by default. Its code is in [modules/local_files](https://githu
 
 <table>
 <tr><th width="50%">Recently Watched</th><th width="50%">Favorites</th></tr>
-<tr><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/local-files.png" width="100%" alt="Local Files opens on Recently Watched, then Favorites, Search and the folders" /></td><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/favorites.png" width="100%" alt="The Favorites folder branching out to the files and playlists marked as favorites" /></td></tr>
+<tr><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/local-files.png" width="100%" alt="Local Files opens on Recently Watched, then Favorites, Search and the folders" /></td><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/favorites.png" width="100%" alt="The Favorites folder branching out to the films marked as favorites" /></td></tr>
 <tr><td>The tree opens on what you played last, then Favorites, Search and your folders. The entry under the cursor branches out to its first few items.</td><td>Files and playlists you marked from their options.</td></tr>
 </table>
 
@@ -102,8 +102,8 @@ A video playing from a drive that is pulled out ends the way a video that fails 
 
 <table>
 <tr><th width="50%">Folders</th><th width="50%">Back to the menus</th></tr>
-<tr><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/tree.png" width="100%" alt="The open folders run along a line through the middle: TV Shows, Twin Peaks, its seasons and their episodes" /></td><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/menus-over-video.png" width="100%" alt="Local Files' tree over a video playing behind it, with Transparent Background" /></td></tr>
-<tr><td>The open folders run along the line through the middle. The folder under the cursor branches out once more: TV Shows › Twin Peaks › its seasons › their episodes.</td><td>With Transparent Background the tree lies over a video playing on behind it.</td></tr>
+<tr><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/tree.png" width="100%" alt="The open folders run along a line through the middle: Action, then Rambo Movies and its films" /></td><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/menus-over-video.png" width="100%" alt="Local Files' tree over a video playing behind it, with Transparent Background" /></td></tr>
+<tr><td>The open folders run along the line through the middle. The folder under the cursor branches out once more: Action › Rambo Movies › its films.</td><td>With Transparent Background the tree lies over a video playing on behind it.</td></tr>
 </table>
 
 The folders you have opened run left to right along a line through the middle of the screen. Every folder in the one you are in branches off to the right on a dotted line to its first few entries (up to three; two and `…` when there are more), and the folder under the cursor branches once more. The title bar names the open folder.
@@ -142,7 +142,7 @@ The files and playlists you marked, newest first, up to 100. Add or remove one f
 
 <table>
 <tr><th width="50%">Search</th><th width="50%">Search results</th></tr>
-<tr><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/keyboard.png" width="100%" alt="The on-screen keyboard: letters, digits, SPACE, DEL and OK" /></td><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/search-results.png" width="100%" alt="Search results for S01E01: files from several shows" /></td></tr>
+<tr><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/keyboard.png" width="100%" alt="The on-screen keyboard: letters, digits, SPACE, DEL and OK" /></td><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/search-results.png" width="100%" alt="Search results for TERMINATOR: the Terminator films in the Sci-Fi folder" /></td></tr>
 <tr><td>An on-screen keyboard: the arrows move, select types.</td><td>Names that match anywhere under the media folder.</td></tr>
 </table>
 
@@ -151,7 +151,7 @@ Select on **Search** opens the on-screen keyboard, titled **Search Local Files**
 What it searches:
 
 - **Names, not paths.** Every file and folder name under the media folder, then under each USB drive plugged in, at any depth.
-- **Every word must match.** The words you type are split at spaces; a name matches when it contains every one of them, upper or lower case alike. `knight s01` finds `S01E01 Knight of the Phoenix.mkv`.
+- **Every word must match.** The words you type are split at spaces; a name matches when it contains every one of them, upper or lower case alike. `kill vol` finds `Kill Bill Vol 1 (2003).mp4` and `Kill Bill Vol 2 (2004).mp4`.
 - **Folders and media files.** A matching folder is listed (open it to browse it), and so is a matching file of a type Local Files plays. Other files are skipped, and so are hidden ones.
 - **Not through symbolic links.** A symlinked folder inside the media folder can be browsed, but Search doesn't walk into it (a link pointing back up would never end).
 - **The first 200, by name.** It keeps the 200 matches that come first alphabetically. When a search finds more, type more words.
@@ -171,13 +171,13 @@ An `.m3u` or `.m3u8` file is played as one item: mpv plays its entries in turn, 
 
 Lines starting with `#` (`#EXTM3U`, `#EXTINF:…`) are comments to OSD/OS; mpv reads the titles from `#EXTINF` lines. Local Files passes no YouTube support to mpv (its yt-dlp hook is off here), so YouTube links in an m3u don't play: put YouTube videos on a [Playlists](https://github.com/mehmetraif/OSD-OS/wiki/Playlists) list instead.
 
-**A playlist folder.** A folder whose name ends in `.m3u` or `.m3u8`, and that holds a playlist of the same name, shows up as that playlist rather than as a folder: `Saturday Morning.m3u/Saturday Morning.m3u` is listed as `Saturday Morning.m3u`, and select plays it. Keep a playlist's videos in that folder beside it and refer to them by name; the whole set then moves as one folder. See the [example](#a-playlist-folder).
+**A playlist folder.** A folder whose name ends in `.m3u` or `.m3u8`, and that holds a playlist of the same name, shows up as that playlist rather than as a folder: `Anime Night.m3u/Anime Night.m3u` is listed as `Anime Night.m3u`, and select plays it. Keep a playlist's videos in that folder beside it and refer to them by name; the whole set then moves as one folder. See the [example](#a-playlist-folder).
 
 During playback, the deck's menu (▲ or ▼) has **<** and **>** buttons for the previous and next entry whenever the playlist holds more than one.
 
 ### Hide File Extensions
 
-With **Hide File Extensions** on, the tree shows `Back to the Future (1985)` rather than `Back to the Future (1985).mkv`. Folder names are left whole. The player's menu, the resume question and the main menu's row always leave the extension out.
+With **Hide File Extensions** on, the tree shows `Terminator 2 (1991)` rather than `Terminator 2 (1991).mp4`. Folder names are left whole. The player's menu, the resume question and the main menu's row always leave the extension out.
 
 ## Options
 
@@ -197,7 +197,7 @@ The favourite played at startup begins without asking: where it was stopped, or 
 
 <table>
 <tr><th width="50%">Resume</th><th width="50%">Loading</th></tr>
-<tr><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/resume.png" width="100%" alt="Resume playback? Resume from 0:30, or start from the beginning" /></td><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/loading.png" width="100%" alt="The loading screen: a tape loading, TAPE A PLAY and TAPE B LOADING" /></td></tr>
+<tr><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/resume.png" width="100%" alt="Resume playback? Resume from 1:12:34, or start from the beginning" /></td><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/loading.png" width="100%" alt="The loading screen: a tape loading, TAPE A PLAY and TAPE B LOADING" /></td></tr>
 <tr><td>Pick up where you left off, or start from the beginning.</td><td>While a video starts, a tape loads. Settings → Loading Effect turns the noise off.</td></tr>
 </table>
 
@@ -347,12 +347,12 @@ All in the data folder, each written whole (a power cut mid-save leaves the old 
 {
     "com.osdos.local_files": {
         "favorites": [
-            { "isFolder": false, "name": "Saturday Morning.m3u", "path": "/media/OSD-OS/Saturday Morning.m3u" },
-            { "isFolder": false, "name": "Back to the Future (1985).mkv", "path": "/media/OSD-OS/Movies/Back to the Future (1985).mkv" }
+            { "isFolder": false, "name": "Rambo Marathon.m3u", "path": "/media/OSD-OS/Rambo Marathon.m3u" },
+            { "isFolder": false, "name": "Your Name (2016).mp4", "path": "/media/OSD-OS/Anime/Your Name (2016).mp4" }
         ],
         "recent": [
-            { "isFolder": false, "name": "Test Pattern (2024).mp4", "path": "/media/OSD-OS/Test Tapes/Test Pattern (2024).mp4" },
-            { "isFolder": false, "name": "S01E01 Knight of the Phoenix.mkv", "path": "/media/usb/KINGSTON/Knight Rider/S01E01 Knight of the Phoenix.mkv" }
+            { "isFolder": false, "name": "Spirited Away (2001).mp4", "path": "/media/OSD-OS/Anime/Spirited Away (2001).mp4" },
+            { "isFolder": false, "name": "Terminator 2 (1991).mp4", "path": "/media/usb/KINGSTON/Sci-Fi/Terminator 2 (1991).mp4" }
         ]
     }
 }
@@ -362,12 +362,12 @@ All in the data folder, each written whole (a power cut mid-save leaves the old 
 
 ```json
 {
-    "/media/OSD-OS/Movies/Back to the Future (1985).mkv": { "plPos": -1, "pos": 2735000 },
-    "/media/OSD-OS/Saturday Morning.m3u": { "plPos": 2, "pos": 61000 }
+    "/media/OSD-OS/Anime/Spirited Away (2001).mp4": { "plPos": -1, "pos": 4354000 },
+    "/media/OSD-OS/Rambo Marathon.m3u": { "plPos": 2, "pos": 61000 }
 }
 ```
 
-The first resumes 45 minutes 35 seconds in; the second at 1:01 into its third entry (`Resume video 3 at 1:01`). Delete a line to forget a position, or the file to forget them all.
+The first resumes 1 hour 12 minutes 34 seconds in (`Resume from 1:12:34`, as above); the second at 1:01 into its third entry (`Resume video 3 at 1:01`). Delete a line to forget a position, or the file to forget them all.
 
 ## Examples
 
@@ -375,40 +375,40 @@ The first resumes 45 minutes 35 seconds in; the second at 1:01 into its third en
 
 ```text
 /media/OSD-OS/
-├── Cartoons/
-│   ├── DuckTales/
-│   │   └── S01E01 Treasure of the Golden Suns.mkv
-│   └── He-Man/
-│       └── S01E01 Diamond Ray of Disappearance.mkv
-├── Commercials/
-│   └── Cereal Ad (1984).mp4
-├── Movies/
-│   └── Back to the Future (1985).mkv
+├── Action/
+│   ├── Rambo Movies/
+│   │   ├── Rambo - First Blood (1982).mp4
+│   │   ├── Rambo - First Blood Part II (1985).mp4
+│   │   └── Rambo III (1988).mp4
+│   ├── Cliffhanger (1993).mp4
+│   └── Kill Bill Vol 1 (2003).mp4
+├── Anime/
+│   ├── Spirited Away (2001).mp4
+│   └── Your Name (2016).mp4
 ├── Photos/
 │   └── Station Card.png
-├── Saturday Morning.m3u
-└── TV Shows/
-    └── Twin Peaks/
-        ├── Season 1/
-        └── Season 2/
+├── Rambo Marathon.m3u
+└── Sci-Fi/
+    ├── RoboCop (1987).mp4
+    └── Terminator 2 (1991).mp4
 ```
 
 ### An m3u playlist
 
-`/media/OSD-OS/Saturday Morning.m3u`, mixing relative paths (from the playlist's folder), an absolute path, a still image and a `.ts` recording Local Files wouldn't list on its own:
+`/media/OSD-OS/Rambo Marathon.m3u`, mixing relative paths (from the playlist's folder), an absolute path, a still image and a `.ts` recording Local Files wouldn't list on its own:
 
 ```text
 #EXTM3U
 #EXTINF:-1,Station card
 Photos/Station Card.png
-#EXTINF:-1,Cereal Ad (1984)
-Commercials/Cereal Ad (1984).mp4
-#EXTINF:-1,DuckTales
-Cartoons/DuckTales/S01E01 Treasure of the Golden Suns.mkv
-#EXTINF:-1,He-Man
-/media/OSD-OS/Cartoons/He-Man/S01E01 Diamond Ray of Disappearance.mkv
-#EXTINF:-1,Recorded off air
-/media/usb/KINGSTON/Recordings/News 1986-03-01.ts
+#EXTINF:-1,Rambo - First Blood (1982)
+Action/Rambo Movies/Rambo - First Blood (1982).mp4
+#EXTINF:-1,Rambo - First Blood Part II (1985)
+Action/Rambo Movies/Rambo - First Blood Part II (1985).mp4
+#EXTINF:-1,Rambo III (1988)
+/media/OSD-OS/Action/Rambo Movies/Rambo III (1988).mp4
+#EXTINF:-1,Rambo (2008), recorded off air
+/media/usb/KINGSTON/Recordings/Rambo (2008).ts
 ```
 
 Save it as UTF-8 (`.m3u8` is the usual extension for a UTF-8 playlist). The station card shows for Image Duration, then the list moves on; the last entry plays only while the drive is in.
@@ -417,23 +417,23 @@ Save it as UTF-8 (`.m3u8` is the usual extension for a UTF-8 playlist). The stat
 
 ```text
 /media/OSD-OS/
-└── Saturday Morning.m3u/            ← a folder
-    ├── Saturday Morning.m3u         ← the playlist, of the same name
-    ├── 01 Intro.mp4
-    ├── 02 DuckTales.mkv
-    └── 03 He-Man.mkv
+└── Anime Night.m3u/                      ← a folder
+    ├── Anime Night.m3u                   ← the playlist, of the same name
+    ├── 01 My Neighbor Totoro (1988).mp4
+    ├── 02 Kiki's Delivery Service (1989).mp4
+    └── 03 Spirited Away (2001).mp4
 ```
 
-with `Saturday Morning.m3u` inside it reading:
+with `Anime Night.m3u` inside it reading:
 
 ```text
 #EXTM3U
-01 Intro.mp4
-02 DuckTales.mkv
-03 He-Man.mkv
+01 My Neighbor Totoro (1988).mp4
+02 Kiki's Delivery Service (1989).mp4
+03 Spirited Away (2001).mp4
 ```
 
-The tree lists the folder as the playlist `Saturday Morning.m3u`; select plays it, ► offers its options.
+The tree lists the folder as the playlist `Anime Night.m3u`; select plays it, ► offers its options.
 
 ### The module's settings in config.json
 
@@ -471,8 +471,8 @@ The usual way is ► on the file, **Play at Startup**. By hand, the file must be
     "app": {
         "startup_favorite": {
             "module": "com.osdos.local_files",
-            "name": "Saturday Morning.m3u",
-            "path": "/media/OSD-OS/Saturday Morning.m3u"
+            "name": "Rambo Marathon.m3u",
+            "path": "/media/OSD-OS/Rambo Marathon.m3u"
         },
         "startup_from": "Beginning"
     }
@@ -498,7 +498,7 @@ Media Directory, once set, still wins over it.
 
 ## Tips
 
-- **Name files the way you want to read them.** The tree shows names as they are on disk, sorted by name: `S01E01 …` sorts episodes, `Back to the Future (1985)` reads better than `bttf_1985_1080p`. Turn on Hide File Extensions to drop `.mkv`.
+- **Name files the way you want to read them.** The tree shows names as they are on disk, sorted by name: `S01E01 …` sorts episodes, `Kill Bill Vol 1 (2003)` reads better than `Kill.Bill.Vol.1.2003.720p.BluRay`. Turn on Hide File Extensions to drop `.mp4`.
 - **Keep a test pattern** in the media folder: it is the quickest way to set up Scaling and Display Output on a CRT ([Display Output](https://github.com/mehmetraif/OSD-OS/wiki/Display-Output)).
 - **Use a playlist as a channel.** An m3u of cartoons and ads, with Shuffle Playback on Always and Loop Playback on, plays like a station that never ends; make it Play at Startup and the TV turns on into it.
 - **A network share** works when the system mounts it: mount it (fstab or autofs) and point Media Directory at it. Search walks it like any folder, which can take a while on a slow share.

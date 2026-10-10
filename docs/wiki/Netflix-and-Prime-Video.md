@@ -115,7 +115,7 @@ The catalogue is browsed in the same tree as Local Files ([Using OSD/OS](https:/
 | **Series** | The same, for series. |
 | **Netflix Home** / **Prime Video Home** | The service's own home page (`https://www.netflix.com/browse`, `https://www.primevideo.com`). |
 
-A list of titles shows TMDB's first page (20 titles, the most popular first), with **More…** at the end for the next, up to TMDB's limit of 500 pages. Titles are named with their year: `Rewind Club (2018)`. Recently Watched and Favorites are kept in `lists.json`, under the module's id.
+A list of titles shows TMDB's first page (20 titles, the most popular first), with **More…** at the end for the next, up to TMDB's limit of 500 pages. Titles are named with their year: `Spirited Away (2001)`. Recently Watched and Favorites are kept in `lists.json`, under the module's id.
 
 Keys in the tree are those of every tree: ▲ ▼ move, ► or select open a folder, ◄ goes up a level, back goes up a level and, at the top, to the main menu. On a title, select plays it and ► opens its info screen.
 
