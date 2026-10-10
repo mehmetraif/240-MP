@@ -44,6 +44,8 @@ A module is a folder under `modules/` with a `manifest.json` and QML views, plus
 
 4. **(Optional) Contribute main-menu rows** by declaring `Q_INVOKABLE QVariantList get_menu_entries()` on the backend — `AppCore` probes for it and appends `{name, params}` rows to the main menu, with no changes to the app shell. See [Probed, not connected](ARCHITECTURE.md#probed-not-connected).
 
+5. **Describe it for users** in [docs/wiki/Modules.md](docs/wiki/Modules.md), with a short line in the README's list if it is a big one. The wiki's pages live in `docs/wiki` and are published to the [GitHub wiki](https://github.com/mehmetraif/OSD-OS/wiki) when they change on `main`, so they are reviewed with the code.
+
 A pure-QML module needs **no C++ changes** — the shell discovers it from its manifest. `PlexBackend` is the most complete backend and the best one to study.
 
 **If your module hands off the whole screen** to an external program, use `DisplayHandoff` (`src/util/DisplayHandoff.h`) — never re-implement the VT/DRM ioctls. `MpvController` and the scripts module's `ScriptLauncher` are both worked examples; see [Adding a different hand-off target](ARCHITECTURE.md#adding-a-different-hand-off-target) for the traps, all of which end in a black screen with no way back if you get them wrong.

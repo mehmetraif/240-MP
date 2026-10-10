@@ -1,6 +1,6 @@
 # The OSD/OS screen tour
 
-Every screen of OSD/OS, module by module. The [README](../README.md) shows the main ones.
+Every screen of OSD/OS, module by module. The [wiki](https://github.com/mehmetraif/OSD-OS/wiki) tells what each does.
 
 Every screen below is the app itself, running at 640×480. The film and YouTube entries are sample data; the weather is real.
 
@@ -80,7 +80,7 @@ Every screen below is the app itself, running at 640×480. The film and YouTube 
 <tr><td>Sign in with a code at plex.tv/link.</td><td>Connect to a server with Quick Connect.</td><td>A server on your network, or Emby Connect.</td></tr>
 </table>
 
-Once signed in, each opens on the server's Continue Watching and its libraries. See [Modules](../README.md#modules) for everything they do.
+Once signed in, each opens on the server's Continue Watching and its libraries. See [Modules](https://github.com/mehmetraif/OSD-OS/wiki/Modules) for everything they do.
 
 ### Playlists
 
@@ -172,25 +172,25 @@ Settings → Theme sets the whole look at once: the color scheme, the skin, the 
 
 <table>
 <tr><th width="50%">Trinitron</th><th width="50%">Late Show</th></tr>
-<tr><td><img src="screenshots/theme-trinitron.png" width="100%" alt="Theme: Trinitron" /></td><td><img src="screenshots/theme-late-show.png" width="100%" alt="Theme: Late Show" /></td></tr>
+<tr><td><img src="images/theme-trinitron.gif" width="100%" alt="Theme: Trinitron" /></td><td><img src="images/theme-late-show.gif" width="100%" alt="Theme: Late Show" /></td></tr>
 <tr><td>Video 1 in Rounded windows on a tube's curved face: scanlines, glow and darker corners, drawn by the GPU over the whole screen (CRT). Windows turn over like a cube.</td><td>Late Night's white on black in DOS windows, with a tape's color bleed and noise (VHS) and text flickering like a neon sign. Windows fade.</td></tr>
 </table>
 
 <table>
 <tr><th width="50%">Green Screen</th><th width="50%">Matrix</th></tr>
-<tr><td><img src="screenshots/theme-green-screen.png" width="100%" alt="Theme: Green Screen" /></td><td><img src="screenshots/theme-matrix.png" width="100%" alt="Theme: Matrix" /></td></tr>
+<tr><td><img src="images/theme-green-screen.gif" width="100%" alt="Theme: Green Screen" /></td><td><img src="images/theme-matrix.gif" width="100%" alt="Theme: Matrix" /></td></tr>
 <tr><td>A phosphor green of its own, DOS windows, a glowing tube and glowing text. Windows come in on a wave from a corner.</td><td>Green on black: Matrix rain behind the menus, glowing text, and lightning crackling out of the selected line. Windows ripple.</td></tr>
 </table>
 
 <table>
 <tr><th width="50%">Inferno</th><th width="50%">Arcade</th></tr>
-<tr><td><img src="screenshots/theme-inferno.png" width="100%" alt="Theme: Inferno" /></td><td><img src="screenshots/theme-arcade.png" width="100%" alt="Theme: Arcade" /></td></tr>
+<tr><td><img src="images/theme-inferno.gif" width="100%" alt="Theme: Inferno" /></td><td><img src="images/theme-arcade.gif" width="100%" alt="Theme: Arcade" /></td></tr>
 <tr><td>Amber on brown: pixel flames burning up from under the window, and a welder's sparks bursting from the selected line's corners.</td><td>Synthwave's colors: a starfield, text running through the rainbow, and a pixel rainbow dripping from under the selected line.</td></tr>
 </table>
 
 <table>
 <tr><th width="50%">Winter</th><th width="50%">Demoscene</th></tr>
-<tr><td><img src="screenshots/theme-winter.png" width="100%" alt="Theme: Winter" /></td><td><img src="screenshots/theme-demoscene.png" width="100%" alt="Theme: Demoscene" /></td></tr>
+<tr><td><img src="images/theme-winter.gif" width="100%" alt="Theme: Winter" /></td><td><img src="images/theme-demoscene.gif" width="100%" alt="Theme: Demoscene" /></td></tr>
 <tr><td>Ice on night blue: snow falling, a glint sweeping across the text, and sparkles flying off the selected line. Windows spread from a drop.</td><td>Gold on purple: a starfield, glowing text and sparkles, windows turning left like a demo's cube, and a tracker's XM for its music.</td></tr>
 </table>
 

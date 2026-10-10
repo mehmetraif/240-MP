@@ -1,0 +1,54 @@
+name: Wiki
+
+# Publishes docs/wiki to the repository's GitHub wiki, page for page, whenever
+# it changes on main (or by hand). The pages are written in the repository and
+# reviewed in pull requests; an edit made in the wiki itself is replaced at the
+# next publish. GitHub makes a wiki's git repository only once its first page
+# is saved in the web interface, so that has to be done once before this runs.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/wiki/**'
+      - '.github/workflows/wiki.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wiki
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    permissions:
+      # The wiki is pushed to with this workflow's own token.
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+        with:
+          path: repo
+      - name: Checkout the wiki
+        uses: actions/checkout@v7.0.1
+        with:
+          repository: ${{ github.repository }}.wiki
+          path: wiki
+      - name: Publish
+        run: |
+          # The wiki becomes docs/wiki: a page taken out there goes here too.
+          find wiki -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          cp -R repo/docs/wiki/. wiki/
+          cd wiki
+          git add -A
+          if git diff --cached --quiet; then
+            echo "The wiki is up to date."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -q -m "Pages from ${GITHUB_REPOSITORY}@${GITHUB_SHA::7}"
+          git push
