@@ -15,10 +15,10 @@ However, if you already have Raspberry Pi OS set up and working for your TV then
 - A RaspberryPi
     - The [Pi 4](https://www.raspberrypi.com/products/raspberry-pi-4-model-b/) fits in a nice sweet spot of performance + composite out and its the model I use daily so its the model I am most familiar with. It supports 1080p H264/HEVC playback well on both a CRT and over HDMI.
     - The [Pi 3B and 3B+](https://www.raspberrypi.com/products/raspberry-pi-3-model-b/) work well too with some caveats...  
-        - The default configuration for Pi 3 supports smooth 1080p H264 playback at the expense of removing crop functionality.  If crop is important for your use case on a Pi 3 then you can change the video decode settings with the caveat that 1080p H264 playback will no longer be smooth (720p and below  will still work well). The [hardware testing](https://github.com/anthonycaccese/240-MP/wiki/Hardware-Testing#raspberry-pi-3b) page has details on how to make that change.
+        - The default configuration for Pi 3 supports smooth 1080p H264 playback at the expense of removing crop functionality.  If crop is important for your use case on a Pi 3 then you can change the video decode settings with the caveat that 1080p H264 playback will no longer be smooth (720p and below  will still work well). [Playback and mpv](https://github.com/mehmetraif/OSD-OS/wiki/Playback-and-mpv) in the wiki shows how to make that change (`mpv_video_args`).
         - If you choose to boot a Pi 3/3B+ from USB mass storage instead of SD, some USB flash drives can hang during early boot. If that happens, try an SD card or a different USB drive first before assuming the OSD/OS install is the issue.
-    - The [Pi 5](https://www.raspberrypi.com/products/raspberry-pi-5/) also works well but I've only tested over HDMI to a modern TV. The Pi 5 doesn't have a direct composite output port and one can be added through a mod but I don't have the hardware to test that.  I've added details to the [hardware testing](https://github.com/anthonycaccese/240-MP/wiki/Hardware-Testing#raspberry-pi-5) page if you'd like to explore that as an option.
-    - Full details on all models can be found on the [hardware testing](https://github.com/anthonycaccese/240-MP/wiki/Hardware-Testing) page on the wiki.  If you have a setup that is working for you and would like to help out others please add a comment to [this discussion](https://github.com/anthonycaccese/240-MP/discussions/44) so we can add it to the wiki.
+    - The [Pi 5](https://www.raspberrypi.com/products/raspberry-pi-5/) also works well but I've only tested over HDMI to a modern TV. The Pi 5 doesn't have a direct composite output port: its composite output is on two pads on the board, which [Display Output](https://github.com/mehmetraif/OSD-OS/wiki/Display-Output) in the wiki covers, along with SCART RGB.
+    - What is known about each model is in the wiki's [Installation](https://github.com/mehmetraif/OSD-OS/wiki/Installation#supported-hardware) page. If you have a setup that is working for you and would like to help out others, please tell us in an [issue](https://github.com/mehmetraif/OSD-OS/issues) so it can go in the wiki.
 - SD Card (minimum of 4GB) with RaspberryPi OS already set up
     - Note: installed this way, OSD/OS is only an application, not an OS, so you will need to make sure you have an OS setup and working with the display you'd like to use. The [OSD/OS image](os/README.md) is the other way round: it is the whole system.
     - In the below steps I provide an example using Raspberry Pi OS Lite that you can use to create a fresh SD card along with configs I've tested for CRT and HDMI output.
@@ -205,7 +205,7 @@ At this point you can type `osdos` at any time to start up the app.  And if you 
 **Modules**
 
 - The Local Files module will be enabled by default and you can open settings to enable any other modules you would like to display.  
-- Please see the [modules section](https://github.com/anthonycaccese/240-MP/wiki#modules) in the wiki for details on any additional set up that may be needed for the modules you'd like to use.
+- Please see the [Modules](https://github.com/mehmetraif/OSD-OS/wiki/Modules) pages in the wiki for details on any additional set up that may be needed for the modules you'd like to use.
 
 **CRT Ouput**
 
@@ -313,7 +313,7 @@ If you don't have a Raspberry Pi and would like to try OSD/OS, I also provide a 
 **Modules**
 
 - The Local Files module will be enabled by default and you can open settings to enable any other modules you would like to display. 
-- Please see the [modules section](https://github.com/anthonycaccese/240-MP/wiki#modules) in the wiki for details on any additional set up that may be needed for the modules you'd like to use.
+- Please see the [Modules](https://github.com/mehmetraif/OSD-OS/wiki/Modules) pages in the wiki for details on any additional set up that may be needed for the modules you'd like to use.
 
 ### Update
 
@@ -346,14 +346,14 @@ The AppImage carries its own copy of the Wayland client libraries and uses them 
 
 1. Download `OSD-OS-linux-x86_64.AppImage` from the [latest release](https://github.com/mehmetraif/OSD-OS/releases/latest).
 2. In your file manager, right-click the file → **Properties → Permissions** → tick *Is executable* (or run `chmod +x` on it from terminal).
-3. Double-click to launch. The Local Files module is enabled by default; open Settings to enable others (see the [modules section](https://github.com/anthonycaccese/240-MP/wiki#modules) in the wiki for details on each).
+3. Double-click to launch. The Local Files module is enabled by default; open Settings to enable others (see the [Modules](https://github.com/mehmetraif/OSD-OS/wiki/Modules) pages in the wiki for details on each).
 
 ### Post Install
 
 **Modules**
 
 - The Local Files module will be enabled by default and you can open settings to enable any other modules you would like to display. 
-- Please see the [modules section](https://github.com/anthonycaccese/240-MP/wiki#modules) in the wiki for details on any additional set up that may be needed for the modules you'd like to use.
+- Please see the [Modules](https://github.com/mehmetraif/OSD-OS/wiki/Modules) pages in the wiki for details on any additional set up that may be needed for the modules you'd like to use.
 
 **SteamOS Gaming Mode**
 

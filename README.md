@@ -6,6 +6,10 @@
 
 **Smart TV for CRT.** OSD/OS makes a TV, preferably a CRT, a smart TV with the look of a VCR. Flash it to an SD card, plug the Raspberry Pi into the TV, and it starts straight into OSD/OS: nothing to log in to, no desktop. Every screen is drawn like a VCR's on-screen display, in two colors and large type, and works with the arrows, select and back on a remote, a keyboard or a gamepad.
 
+<p align="center"><img src="docs/images/default-look.gif" width="640" alt="OSD/OS as it comes: the main menu, Local Files' tree and Settings, in two colors" /></p>
+
+Out of the box it is plain on purpose, as above: two colors, and nothing moving but the cursor. If you want more, a theme changes the whole look at once, with effects, transitions between windows and music of its own, from a tube's curved glass to Matrix rain and a fire under the window. Eight come with it:
+
 <table>
 <tr>
 <td width="25%"><img src="docs/images/theme-trinitron.gif" width="100%" alt="Theme: Trinitron" /></td>
