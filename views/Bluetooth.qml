@@ -187,8 +187,9 @@ FocusScope {
         anchors.topMargin: root.sh * 0.25 //120
         anchors.leftMargin: root.sw * 0.115625 //74
         width: root.sw * 0.76875 //492
-        // One line short of the space, so the ▼ fits above the help line.
-        height: root.sh * 0.4666667 //224
+        // One line short of the space, so the ▼ fits above the help line; a
+        // line more for each bar that is off (Main.qml's helpRoom, hintRoom).
+        height: root.sh * 0.4666667 + root.helpRoom + root.hintRoom //224
         clip: true
         focus: true
         // Lines come and go as devices answer: no sliding.
@@ -251,7 +252,7 @@ FocusScope {
         visible: text !== ""
         anchors.bottom: parent.bottom
         anchors.left: parent.left
-        anchors.bottomMargin: root.sh * 0.1583333 //76
+        anchors.bottomMargin: root.helpLineMargin
         anchors.leftMargin: root.sw * 0.125 //80
     }
 
@@ -332,7 +333,7 @@ FocusScope {
             anchors.topMargin: root.sh * 0.2166667 //104
             anchors.leftMargin: root.sw * 0.125 //80
             width: root.sw * 0.75 //480
-            height: root.sh * 0.5 //240
+            height: root.sh * 0.5 + root.hintRoom //240
             clip: true
             contentHeight: body.implicitHeight
             boundsBehavior: Flickable.StopAtBounds

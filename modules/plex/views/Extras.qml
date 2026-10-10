@@ -166,7 +166,7 @@ FocusScope {
         anchors.topMargin: root.sh * 0.25
         anchors.leftMargin: root.sw * 0.115625
         width: root.sw * 0.76875
-        height: root.sh * 0.525
+        height: root.sh * 0.525 + (root.hintBar ? 0 : root.sh * 0.075) // a row more with the hint bar off
         clip: true
         focus: true
 

@@ -380,7 +380,7 @@ FocusScope {
             : "The channel's settings, and how many videos it has"
         anchors.bottom: parent.bottom
         anchors.left: parent.left
-        anchors.bottomMargin: root.sh * 0.1583333 //76
+        anchors.bottomMargin: root.helpLineMargin
         anchors.leftMargin: root.sw * 0.125 //80
     }
 
@@ -407,9 +407,9 @@ What each part does, and why it is written so:
 - **Files.** `appCore.folderEntries(path, types)` gives a folder's entries, `[{ name, path, isFolder }]`: its folders, then its files of those types, hidden ones left out. A pure-QML module can list a folder with it.
 - **`MenuList`** is the menu in the place every view has it, under the title bar, with ▲ ▼ when rows are hidden; its cursor steps over rows of `type: "section"` and goes round the ends. The view gives it the rows and a delegate, and handles select and back.
 - **`MenuRow`** draws a line the way a camcorder's menu does, `TEST CARD······MP4`; `heading` makes a group's heading (`CHANNEL ────`); `keepValue` cuts the label short rather than the value.
-- **`HelpLine`** is the box under the menu, scrolling a line too long for it; Settings → Help Line hides every one.
+- **`HelpLine`** is the box under the menu, scrolling a line too long for it; Settings → Help Line hides every one. `root.helpLineMargin` puts it over the hint bar, or in its place while Settings → Hint Bar is off.
 - **`HintBar`**, always at the foot, in the same place on every screen. Its text is built from **`root.hints`**: `[ESC]`, `[ENTER]` and `[▲▼]` on a keyboard, the button's own label once a gamepad was touched. Never type `[ESC]`, and never bind to `inputManager.hints`: as the router swaps views, the old view's context properties go null, while `root` stays.
-- **Sizes** are fractions of the screen, `root.sw` and `root.sh`, with the 640 × 480 pixels in a comment. The title bar starts at `root.sh * 0.125` and `root.sw * 0.125`; the hint bar ends `root.sh * 0.1041667` above the bottom. These keep the view inside a CRT's safe area at any resolution.
+- **Sizes** are fractions of the screen, `root.sw` and `root.sh`, with the 640 × 480 pixels in a comment. The title bar starts at `root.sh * 0.125` and `root.sw * 0.125`; the hint bar ends `root.sh * 0.1041667` above the bottom. These keep the view inside a CRT's safe area at any resolution. A list of your own grows by `root.hintRoom` (and, over a help line, `root.helpRoom`): a row for each bar that Settings turns off, `MenuList` doing it by itself.
 - **Colours and font.** The shared components already draw in `root.primaryColor` on `root.surfaceColor`, in `root.globalFont`, capitals: a view of its own uses the same, so the colour schemes and themes reach it.
 
 ### Detail.qml: a leaf view
@@ -1073,7 +1073,7 @@ FocusScope {
             : "The channel's settings, and how many videos it has"
         anchors.bottom: parent.bottom
         anchors.left: parent.left
-        anchors.bottomMargin: root.sh * 0.1583333 //76
+        anchors.bottomMargin: root.helpLineMargin
         anchors.leftMargin: root.sw * 0.125 //80
     }
 

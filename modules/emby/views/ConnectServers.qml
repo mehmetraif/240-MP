@@ -67,7 +67,7 @@ FocusScope {
         anchors.topMargin: root.sh * 0.25 //120
         anchors.leftMargin: root.sw * 0.115625 //74
         width: root.sw * 0.76875 //492
-        height: root.sh * 0.525 //252
+        height: root.sh * 0.525 + root.hintRoom //252
         clip: true
         focus: true
 
@@ -141,8 +141,10 @@ FocusScope {
         font.capitalization: Font.AllUppercase
         horizontalAlignment: Text.AlignHCenter
         anchors.horizontalCenter: parent.horizontalCenter
-        anchors.bottom: footer.top
-        anchors.bottomMargin: root.sh * 0.0333333 //16
+        // Over the hint bar, or in its place with it off, clear of the list
+        // that grows into its room.
+        anchors.bottom: root.hintBar ? footer.top : footer.bottom
+        anchors.bottomMargin: root.hintBar ? root.sh * 0.0333333 : 0 //16
         width: root.sw * 0.5
         wrapMode: Text.WordWrap
         font.pixelSize: root.sh * 0.0333333 //16

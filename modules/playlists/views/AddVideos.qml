@@ -133,7 +133,8 @@ FocusScope {
         anchors.fill: parent
         focus: !osk.visible
         rootPath: "sources"
-        reservedBottom: treeBottom - helpLine.y
+        // The help line's room, while it shows (Help Line on).
+        reservedBottom: helpLine.shown ? areaBottom - helpLine.y : 0
         fetch: function(path, preview) { return addRoot.fetch(path, preview) }
         onActivated: function(item) {
             if (item.kind === "video") {
@@ -184,7 +185,7 @@ FocusScope {
               : "Choose the videos to add"
         anchors.bottom: parent.bottom
         anchors.left: parent.left
-        anchors.bottomMargin: root.sh * 0.1583333 //76
+        anchors.bottomMargin: root.helpLineMargin
         anchors.leftMargin: root.sw * 0.125 //80
     }
 

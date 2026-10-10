@@ -111,7 +111,7 @@ FocusScope {
         anchors.topMargin: root.sh * 0.0208333 //10
         anchors.leftMargin: root.sw * 0.125 //80
         width: root.sw * 0.75 //480
-        height: root.sh * 0.475 //228
+        height: root.sh * 0.475 + root.hintRoom //228
         // A script that never started has no output of its own; the buffer still
         // holds the LAST run's, and showing that under a "could not start" error
         // would be actively misleading.

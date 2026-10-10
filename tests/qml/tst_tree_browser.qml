@@ -14,6 +14,9 @@ Rectangle {
     property color primaryColor: "white"
     property color surfaceColor: "black"
     property var skin: ({})
+    // Main.qml's: Settings' Hint Bar, and the area the views lay out in.
+    property bool hintBar: true
+    property rect contentBox: Qt.rect(sw * 0.115625, sh * 0.11875, sw * 0.76875, sh * 0.7770833)
     function selectorShown(item, showing) {}
     function folder(name, path) { return { name: name, path: path, isFolder: true } }
     function file(name, path) { return { name: name, path: path, isFolder: false } }
@@ -44,6 +47,7 @@ Rectangle {
                 "/projects/docs": [root.file("guide.md", "/projects/docs/guide.md")],
                 "/empty": []
             }
+            root.hintBar = true
             browser.listings = ({})
             browser.remembered = ({})
             browser.expandedFolderPreviews = true
@@ -114,6 +118,21 @@ Rectangle {
             compare(b.rows.length, 1000)
             verify(browser.visibleRows(b).rows.length <= Math.ceil((browser.bandBottom - browser.bandTop) / browser.rowHeight))
             compare(b.rows[0].label, "item0")
+        }
+        function test_hintBarRoom() {
+            // With the hint bar off, the area reaches the content box's foot:
+            // more of a long folder shows under the spine, which stays put.
+            var list = []
+            for (var i = 0; i < 40; i++) list.push(root.file("item" + i, "/projects/" + i))
+            root.entries["/projects"] = list
+            browser.refresh("/projects")
+            var spine = browser.spine
+            var bottom = browser.bandBottom
+            var shown = browser.visibleRows(block("/projects")).rows.length
+            root.hintBar = false
+            compare(browser.spine, spine)
+            compare(browser.bandBottom, bottom + root.contentBox.y + root.contentBox.height - browser.treeBottom)
+            verify(browser.visibleRows(block("/projects")).rows.length > shown)
         }
         function test_compactModePreserved() {
             browser.expandedFolderPreviews = false

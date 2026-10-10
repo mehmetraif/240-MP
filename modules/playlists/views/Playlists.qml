@@ -119,7 +119,7 @@ FocusScope {
             : "Online: plays each video from where it lives"
         anchors.bottom: parent.bottom
         anchors.left: parent.left
-        anchors.bottomMargin: root.sh * 0.1583333 //76
+        anchors.bottomMargin: root.helpLineMargin
         anchors.leftMargin: root.sw * 0.125 //80
     }
 

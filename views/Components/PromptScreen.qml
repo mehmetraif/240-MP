@@ -31,8 +31,9 @@ Item {
     property var choices: []
     property int currentIndex: 0
     // More answers than this show a window of them that follows the cursor,
-    // with ▲ / ▼ while some are hidden above or below it.
-    property int maxChoices: 5
+    // with ▲ / ▼ while some are hidden above or below it; one more with
+    // Settings' Hint Bar off, in its room.
+    property int maxChoices: root.hintBar ? 5 : 6
     // The hint line: unless set, back, with navigate and select while there
     // are answers.
     property string hint: ""
@@ -59,11 +60,12 @@ Item {
         anchors.leftMargin: root.sw * 0.125 //80
     }
 
-    // The space between the bars.
+    // The space between the bars, or with the hint bar off, down to where it
+    // ends: what is in it is centred there.
     Item {
         id: middle
         anchors.top: titleBar.bottom
-        anchors.bottom: hintBar.top
+        anchors.bottom: root.hintBar ? hintBar.top : hintBar.bottom
         anchors.left: parent.left
         anchors.right: parent.right
     }

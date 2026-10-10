@@ -324,8 +324,8 @@ Both can go once the keys are second nature; the keys work as they always do.
 
 | Setting | Values | Default | What it does | Config key |
 |---|---|---|---|---|
-| Hint Bar | On, Off | On | **Off**: no key hints at the foot of any screen | `app.hint_bar` |
-| Help Line | On, Off | On | **Off**: no box with a line about the selected row (About keeps its own, as those lines are the page) | `app.help_line` |
+| Hint Bar | On, Off | On | **Off**: no key hints at the foot of any screen; the menus, the file browser and the dialogs take their room, and a help line moves down into it | `app.hint_bar` |
+| Help Line | On, Off | On | **Off**: no box with a line about the selected row, and a row more in the menu above it (About keeps its own, as those lines are the page) | `app.help_line` |
 
 ## The mouse pointer
 

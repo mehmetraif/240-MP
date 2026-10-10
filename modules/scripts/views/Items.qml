@@ -114,7 +114,9 @@ FocusScope {
         anchors.topMargin: root.sh * 0.25 //120
         anchors.leftMargin: root.sw * 0.115625 //74
         width: root.sw * 0.76875 //492
-        height: root.sh * 0.4666667 //224
+        // A row more with the hint bar off (Main.qml's hintRoom); the detail
+        // bar under it stays, Help Line or not.
+        height: root.sh * 0.4666667 + root.hintRoom //224
         keyNavigationEnabled: true
         clip: true
         focus: true
@@ -210,7 +212,7 @@ FocusScope {
         border.color: root.primaryColor
         anchors.bottom: parent.bottom
         anchors.left: parent.left
-        anchors.bottomMargin: root.sh * 0.1583333 //76
+        anchors.bottomMargin: root.helpLineMargin
         anchors.leftMargin: root.sw * 0.125 //80
         width: root.sw * 0.75 //480
         height: root.sh * 0.0583333 //28
