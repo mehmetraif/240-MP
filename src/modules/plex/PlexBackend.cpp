@@ -2622,8 +2622,8 @@ void PlexBackend::set_subtitle_stream(const QString &streamId, const QString &pa
 // ---------------------------------------------------------------------------
 // Live TV (minimal — watch live channels only, no DVR/recording features)
 //
-// NOTE: the live endpoints below are reverse-engineered/version-sensitive (the
-// bundled openapi documents the shapes but real PMS responses vary). Each parse
+// NOTE: the live endpoints below are reverse-engineered/version-sensitive (Plex's
+// API documentation describes the shapes but real PMS responses vary). Each parse
 // logs its raw input on miss so field mappings can be confirmed against a live
 // DVR server (see the plan's verification step). The channel list is built from
 // the EPG lineup; tuning produces an HLS transcode reusing the same master-m3u8
