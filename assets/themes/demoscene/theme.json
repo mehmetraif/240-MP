@@ -6,7 +6,7 @@
         "background": "Stars",
         "text": "Glow",
         "selector": "Sparkles",
-        "transition": "Cube Left"
+        "transition": "Cube"
     },
     "music": "demoscene.xm"
 }

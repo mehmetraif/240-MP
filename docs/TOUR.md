@@ -185,7 +185,7 @@ Settings → Theme sets the whole look at once: the color scheme, the skin, the 
 <table>
 <tr><th width="50%">Inferno</th><th width="50%">Arcade</th></tr>
 <tr><td><img src="images/theme-inferno.gif" width="100%" alt="Theme: Inferno" /></td><td><img src="images/theme-arcade.gif" width="100%" alt="Theme: Arcade" /></td></tr>
-<tr><td>Amber on brown: pixel flames burning up from under the window, and a welder's sparks bursting from the selected line's corners.</td><td>Synthwave's colors: a starfield, text running through the rainbow, and a pixel rainbow dripping from under the selected line.</td></tr>
+<tr><td>Amber on brown: pixel flames burning up from the window's foot, inside its frame, and a welder's sparks bursting from the selected line's corners.</td><td>Synthwave's colors: a starfield, text running through the rainbow, and a pixel rainbow dripping from under the selected line.</td></tr>
 </table>
 
 <table>

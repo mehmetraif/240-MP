@@ -101,8 +101,8 @@ Item {
 
     // The background effect: in the window, inside its frame (the skin's
     // border, or the line's art pixel), or over the whole screen without
-    // one; or, for one along the foot (fire), from the screen's foot up
-    // through the window.
+    // one; or, for a theme's along the foot ("area": "foot"), from the
+    // screen's foot up through the window.
     BackgroundFx {
         readonly property rect win: ground.windowed ? root.osdWindow : Qt.rect(0, 0, root.sw, root.sh)
         readonly property var border: ground.windowed && ground.framed

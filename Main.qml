@@ -161,13 +161,16 @@ Window {
     })
     readonly property var backgroundPresets: ({
         "Matrix": { "shader": builtInShader("bg-matrix") },
-        "Fire":   { "shader": builtInShader("bg-fire"), "area": "foot" },
+        "Fire":   { "shader": builtInShader("bg-fire") },
         "Stars":  { "shader": builtInShader("bg-stars") },
         "Snow":   { "shader": builtInShader("bg-snow") }
     })
     readonly property var selectorPresets: ["Sparkles", "Welding", "Lightning", "Rainbow"]
-    readonly property var transitionPresets: ["Fade", "Cube", "Cube Left", "Cube Right", "Cube Up", "Cube Down",
-                                              "Ripple", "Wave", "Drop"]
+    readonly property var transitionPresets: ["Fade", "Cube", "Ripple", "Wave", "Drop"]
+    // Cube Left, Right, Up and Down fixed the way the cube turned; it turns a
+    // way of its own each time now, and those names, saved or a theme's, are
+    // the cube.
+    function cubeOf(name) { return /^Cube (Left|Right|Up|Down)$/.test(name) ? "Cube" : name }
     function builtInShader(name) { return appCore ? appCore.effectShader(name) : "" }
 
     // One effect in force: Settings' row unless it is Theme (""), else the
@@ -187,7 +190,7 @@ Window {
     readonly property var textEffect: effectOf(textEffectSetting, themeEffects.text, textPresets)
     readonly property var backgroundEffect: effectOf(backgroundEffectSetting, themeEffects.background, backgroundPresets)
     readonly property string selectorEffect: nameOf(selectorEffectSetting, themeEffects.selector, selectorPresets)
-    readonly property string transition: nameOf(transitionSetting, themeEffects.transition, transitionPresets)
+    readonly property string transition: nameOf(transitionSetting, cubeOf(themeEffects.transition), transitionPresets)
     // The menu music in force: Settings' file (a path as it is: "file://"
     // before it would make a # or ? in its name a URL's), the theme's (a
     // URL), or none.
@@ -297,8 +300,8 @@ Window {
     // module's own) giving way to the next: the old one is caught as a
     // picture (lastFace) a moment before, and the two play out the change.
     // Fade: the old fades away over the new. Cube: the window turns over like
-    // a cube's face, the new on the next face, which face at random (left,
-    // right, up or down); Cube Left, Right, Up and Down always turn that way.
+    // a cube's face, the new on the next face, a way at random each time
+    // (left, right, up or down).
     // Ripple: the old ripples out as the new ripples in. Wave: a wave runs
     // out from a corner and dies away, the new window behind it. Drop: a drop
     // falls in a corner, the new window inside its spreading ring. Which
@@ -443,15 +446,10 @@ Window {
         windowChange.changing = false
         if (plain === true)
             return
-        var kind = transition, way = Math.floor(Math.random() * 4)
-        var cubes = { "Cube Left": 0, "Cube Right": 1, "Cube Up": 2, "Cube Down": 3 }
-        if (kind in cubes) {
-            way = cubes[kind]
-            kind = "Cube"
-        }
+        var kind = transition
         if (!transitionUsable(kind))
             kind = "Fade"
-        windowChange.direction = way
+        windowChange.direction = Math.floor(Math.random() * 4)
         windowChange.shader = transitionShaders[kind] || ""
         windowChange.kind = kind
         windowChange.progress = 0
@@ -629,6 +627,11 @@ Window {
         // before skins had their name was saved as app.theme.
         if (app.skin === undefined && app.theme)
             app.skin = app.theme
+        var cube = root.cubeOf(app.transition)
+        if (cube !== app.transition) {
+            appCore.save_setting("", "transition", cube)
+            app.transition = cube
+        }
         for (var k = 0; k < root.lookKeys.length; ++k)
             root.applyLook(root.lookKeys[k], app[root.lookKeys[k]])
         root.osdFrame = root.osdFrameOf(cfg.app && cfg.app.osd_frame)
