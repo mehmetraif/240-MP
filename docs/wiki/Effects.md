@@ -170,7 +170,7 @@ How one window gives way to the next, as you open a module, a screen inside it, 
 <table>
 <tr><th width="50%">Cube</th><th width="50%">Drop</th></tr>
 <tr><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/images/transition-cube.gif" width="100%" alt="Transition: Cube" /></td><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/images/transition-drop.gif" width="100%" alt="Transition: Drop" /></td></tr>
-<tr><td>YouTube on the main menu: the window turns over, YouTube on the next face.</td><td>A drop falls in a corner, and its ring spreads the next window across the screen.</td></tr>
+<tr><td>Local Files on the main menu: the window turns over, Local Files on the next face.</td><td>A drop falls in a corner, and its ring spreads the next window across the screen.</td></tr>
 </table>
 
 Ripple, Wave and Drop are shaders on the GPU. Where they can't run, Settings doesn't offer them, and a theme's is played as a Fade.
