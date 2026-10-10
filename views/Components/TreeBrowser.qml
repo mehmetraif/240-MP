@@ -33,6 +33,9 @@ FocusScope {
     // Local browsing can expose complete sibling contents, plus the selected
     // folder's child folders. Remote catalogues retain their compact previews.
     property bool expandedFolderPreviews: false
+    // How faint the branches off any other folder than the one under the
+    // cursor are drawn, their lines with half their dots.
+    readonly property real faintOpacity: 0.45
 
     signal activated(var item)
     signal optionsRequested(var item)
@@ -311,7 +314,7 @@ FocusScope {
         var rows = []
         var offset = 0
         if (items.length === 0) {
-            if (around < 0 && !expandedFolderPreviews) return null
+            if (around < 0) return null
             // A branch's glance its source wouldn't fetch: there is more,
             // to be seen once it is opened.
             rows.push({ label: !l.pending ? "(empty)" : l.previewOnly ? "\u2026" : "loading\u2026" })
@@ -349,7 +352,7 @@ FocusScope {
     // that has to turn does it in a lane of its own, the farther from the
     // spine the further left, so no two lines cross.
     function branchLevel(parents, laneLeft, x, room) {
-        var level = { blocks: [], wires: [], width: 0, anchor: null }
+        var level = { blocks: [], wires: [], width: 0, anchor: null, spine: null }
         var top = -rowHeight / 2
         var bottom = rowHeight / 2
         var above = []
@@ -363,7 +366,8 @@ FocusScope {
                 bottom = a.top + a.rows.length * rowHeight
                 level.anchor = a
                 level.blocks.push(a)
-                level.wires.push({ x0: p.end, y0: 0, x1: x - pad, y1: 0, lane: -1 })
+                level.spine = { x0: p.end, y0: 0, x1: x - pad, y1: 0, lane: -1 }
+                level.wires.push(level.spine)
             } else if (p.y < 0) {
                 above.unshift(p)
             } else {
@@ -480,6 +484,13 @@ FocusScope {
             if (second.blocks.length > 0)
                 right = x2 + second.width
         }
+        // The folder under the cursor is the one looked into: its entries, and
+        // the line to them, in full; every other branch faint, so folders side
+        // by side don't run together.
+        for (var f = 0; f < all.length; ++f)
+            all[f].faint = all[f] !== first.anchor
+        for (var g = 0; g < lines.length; ++g)
+            lines[g].faint = lines[g] !== first.spine
         branchLeft = colX
         branchRight = right
         blocks = all
@@ -844,11 +855,11 @@ FocusScope {
                         var ox = x
                         // Cell row 0 is the spine's own line.
                         var oy = tree.spine - c / 2
-                        function dots(gx0, gx1, gy0, gy1) {
+                        function dots(gx0, gx1, gy0, gy1, every) {
                             for (var gx = Math.min(gx0, gx1); gx <= Math.max(gx0, gx1); ++gx)
                                 for (var gy = Math.max(Math.min(gy0, gy1), Math.floor(-oy / c));
                                      gy <= Math.min(Math.max(gy0, gy1), Math.ceil((height - oy) / c)); ++gy)
-                                    if ((gx + gy) % 2 === 0)
+                                    if ((gx + gy) % every === 0)
                                         ctx.fillRect(gx * c - ox, gy * c + oy, c, c)
                         }
                         var ws = tree.wires
@@ -858,15 +869,17 @@ FocusScope {
                             var gy1 = Math.round(w.y1 / c)
                             var gx0 = Math.ceil(w.x0 / c)
                             var gx1 = Math.floor(w.x1 / c) - 1
+                            // A faint branch's line: half its dots.
+                            var every = w.faint ? 4 : 2
                             if (w.lane < 0) {
-                                dots(gx0, gx1, gy0, gy0)
+                                dots(gx0, gx1, gy0, gy0, every)
                             } else {
                                 // On a dot where it leaves the folder's row.
                                 var gl = Math.round(w.lane / c)
                                 if ((gl + gy0) % 2 !== 0) gl += 1
-                                dots(gx0, gl, gy0, gy0)
-                                dots(gl, gl, gy0, gy1)
-                                dots(gl, gx1, gy1, gy1)
+                                dots(gx0, gl, gy0, gy0, every)
+                                dots(gl, gl, gy0, gy1, every)
+                                dots(gl, gx1, gy1, gy1, every)
                             }
                         }
                     }
@@ -878,25 +891,35 @@ FocusScope {
 
                 Repeater {
                     model: tree.blocks
-                    Column {
+                    Item {
                         id: block
                         required property var modelData
                         x: modelData.x
                         readonly property var visiblePart: tree.visibleRows(modelData)
                         y: tree.spine + modelData.top + visiblePart.first * tree.rowHeight
-                        Repeater {
-                            model: block.visiblePart.rows
-                            Text {
-                                required property var modelData
-                                width: Math.min(implicitWidth, block.modelData.width)
-                                height: tree.rowHeight
-                                verticalAlignment: Text.AlignVCenter
-                                text: modelData.label
-                                elide: Text.ElideRight
-                                color: root.primaryColor
-                                font.family: root.globalFont
-                                font.capitalization: Font.AllUppercase
-                                font.pixelSize: tree.fontSize
+                        width: rowsColumn.width
+                        height: rowsColumn.height
+                        // Another folder's entries than the one under the
+                        // cursor: faint. Not dithered as other dimmed things
+                        // are: over a video behind the menus a dither's dots
+                        // would lie on the picture between the letters.
+                        opacity: block.modelData.faint ? tree.faintOpacity : 1
+                        Column {
+                            id: rowsColumn
+                            Repeater {
+                                model: block.visiblePart.rows
+                                Text {
+                                    required property var modelData
+                                    width: Math.min(implicitWidth, block.modelData.width)
+                                    height: tree.rowHeight
+                                    verticalAlignment: Text.AlignVCenter
+                                    text: modelData.label
+                                    elide: Text.ElideRight
+                                    color: root.primaryColor
+                                    font.family: root.globalFont
+                                    font.capitalization: Font.AllUppercase
+                                    font.pixelSize: tree.fontSize
+                                }
                             }
                         }
                     }

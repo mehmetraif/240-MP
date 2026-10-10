@@ -1,6 +1,6 @@
 # Regression tests
 
-Four test programs, built apart from the app. CI runs them on Linux x64 and arm64 for every pull request that touches `src/`, `tests/` or the build ([regression-tests.yml](../.github/workflows/regression-tests.yml)): on Ubuntu, with the oldest Qt the releases are built with (6.4), and on Raspberry Pi OS (Debian 13 "trixie" with Raspberry Pi's archive, arm64), the system the OS image is made of, with the Pi's own Qt (6.8) and mpv (0.40). They need CMake, a C++17 compiler and Qt 6's development packages (Core, Concurrent, Gui, Network, Qml, Quick and Test), and libdrm's on Linux. None needs mpv, FluidSynth or a display.
+Five test programs, built apart from the app. CI runs them on Linux x64 and arm64 for every pull request that touches `src/`, `views/`, `modules/`, `tests/` or the build ([regression-tests.yml](../.github/workflows/regression-tests.yml)): on Ubuntu, with the oldest Qt the releases are built with (6.4), and on Raspberry Pi OS (Debian 13 "trixie" with Raspberry Pi's archive, arm64), the system the OS image is made of, with the Pi's own Qt (6.8) and mpv (0.40). They need CMake, a C++17 compiler and Qt 6's development packages (Core, Concurrent, Gui, Network, Qml, Quick, QuickTest and Test), and libdrm's on Linux; the QML test also needs Qt Quick's QML modules at run time (on Debian and Raspberry Pi OS, `qml6-module-qttest qml6-module-qtquick qml6-module-qtqml-workerscript qml6-module-qtquick-window`). None needs mpv, FluidSynth or a display.
 
 ```sh
 cmake -S tests -B build-tests
@@ -8,6 +8,12 @@ cmake --build build-tests --parallel
 ctest --test-dir build-tests --output-on-failure
 ```
 
+- **tree_browser** (`qml/tst_tree_browser.qml`, run by `tree_browser_test.cpp` on Qt Quick Test, offscreen, with the software renderer): the `TreeBrowser` on its own, over a made-up tree.
+  - With `expandedFolderPreviews`, a folder's branch holds all its entries, and the folders in the one under the cursor branch once more; an empty folder off the spine has no branch.
+  - Only the branch off the folder under the cursor, and its line, are drawn in full; every other is faint, expanded or compact.
+  - No two blocks in a column overlap; of a thousand entries only the rows on the screen are drawn.
+  - A folder opened again comes back with its cursor where it was; the compact branches keep to a few rows.
+  - A picture of it is saved as `tree-browser-preview.png`, which CI keeps.
 - **storage_search** (`storage_search_test.cpp`):
   - Local Files' search keeps the first 200 matches by name.
   - A search replaced by the next is never reported.

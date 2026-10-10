@@ -3,10 +3,12 @@ import OSDOS.Video
 
 // What a player shows while its video starts: a VCR's screen as a tape loads.
 // The theme's ground in a tape's noise (VhsNoise), and a dubbing deck's
-// on-screen display in its corners: TAPE A PLAY at the point the video is
-// (where it starts from), TV between them, TAPE B LOADING with the video's
-// length once that is known and the seconds it has taken until then, and the
-// source under SLP ▶; what loads, when the player knows, across the middle.
+// on-screen display in its corners, in the theme's colours or Video 1's
+// (Settings → Loading Screen Colors: root.loadingInk, root.loadingPaper):
+// TAPE A PLAY at the point the video is (where it starts from), TV between
+// them, TAPE B LOADING with the video's length once that is known and the
+// seconds it has taken until then, and the source under SLP ▶; what loads,
+// when the player knows, across the middle.
 // The tracking band jitters across the top and now and then rolls down over
 // the lot, eating into the letters; Settings' Loading Effect turns all of
 // that off, leaving the display on the plain ground. It runs while it is
@@ -74,17 +76,18 @@ Item {
         width: line.implicitWidth
         height: line.implicitHeight
 
+        // The bleed in the colours' second ink, Video 1's with Default.
         Text {
             x: root.px
             visible: tape.effect
             text: line.text
-            color: root.secondaryColor
+            color: root.loadingThemed ? root.secondaryColor : root.schemes["Video 1"].secondary
             opacity: 0.45
             font: line.font
         }
         Text {
             id: line
-            color: root.primaryColor
+            color: root.loadingInk
             font.family: root.globalFont
             font.pixelSize: tape.fontSize
         }
@@ -92,13 +95,13 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        color: root.surfaceColor
+        color: root.loadingPaper
     }
 
     VhsNoise {
         anchors.fill: parent
         visible: tape.effect
-        color: root.primaryColor
+        color: root.loadingInk
         pixel: root.px
         running: tape.live
     }
@@ -142,7 +145,7 @@ Item {
             width: root.sw * 0.76875 //492
             visible: tape.title !== ""
             text: tape.title
-            color: root.primaryColor
+            color: root.loadingInk
             font.family: root.globalFont
             font.capitalization: Font.AllUppercase
             font.pixelSize: root.sh * 0.0333333 //16
@@ -174,8 +177,8 @@ Item {
     VhsNoise {
         anchors.fill: parent
         visible: tape.effect
-        color: root.primaryColor
-        shade: root.surfaceColor
+        color: root.loadingInk
+        shade: root.loadingPaper
         pixel: root.px
         streaks: 0
         bands: true

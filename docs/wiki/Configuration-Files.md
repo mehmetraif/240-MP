@@ -170,10 +170,12 @@ The `config.json` of an OSD/OS image on a Pi 4 that has been used for a while: a
             "name": "AV Jack"
         },
         "background_effect": "",
+        "boot_colors": "Theme",
         "color_scheme": "",
         "help_line": "On",
         "hint_bar": "On",
         "info_screen": "3",
+        "loading_colors": "Theme",
         "loading_effect": "On",
         "menu_music": "File",
         "menu_music_file": "/media/OSD-OS/Music/menu.mid",
@@ -272,6 +274,7 @@ Every key Settings writes, with the row it belongs to. The values and defaults a
 | `transparent_background` | Transparent Background | number, 0 to 100, or the string `"Off"`. Its first values, `"On"` and `"Dim"`, still read as 0 and 60 |
 | `video_output_levels` | Video Levels | string: `"Auto"`, `"Limited"`, `"Full"` |
 | `loading_effect`, `hint_bar`, `help_line` | Loading Effect, Hint Bar, Help Line | string: `"On"` or `"Off"` |
+| `loading_colors`, `boot_colors` | Loading Screen Colors, Boot Screen Colors | string: `"Theme"` (when unset) or `"Default"` |
 | `video_logo` | Channel Logo | string: `"off"`, `"tl"`, `"tr"`, `"bl"`, `"br"`, `"all"` |
 | `video_logo_image` | Logo Image | string: a full path, `""` for OSD/OS's logo |
 | `screensaver_timeout` | Screen Saver | string: `"OFF"`, `"30"`, `"60"`, `"120"` |
@@ -321,7 +324,7 @@ When each part is read:
 
 | What | When it is read |
 |---|---|
-| The look (Theme and its parts, menu music), OSD Background, Window Frame, Transparent Background's solidity, Loading Effect, Hint Bar, Help Line, Mouse Pointer, Screen Saver | At start, then at each change made in Settings |
+| The look (Theme and its parts, menu music), OSD Background, Window Frame, Transparent Background's solidity, Loading Effect, Loading Screen Colors, Boot Screen Colors, Hint Bar, Help Line, Mouse Pointer, Screen Saver | At start, then at each change made in Settings |
 | `display_index` | At start |
 | Audio Output, Controls' buttons | At start, then at each change made in Settings |
 | The modules' folders (Media Directory, Tags Directory, Scripts Directory, Ambient:Mode's) | At start, then at each change made in their settings |

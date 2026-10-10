@@ -78,11 +78,11 @@ Local Files, YouTube, Netflix and Prime Video are all browsed the same way, as a
 
 <table>
 <tr><th width="50%">Recently Watched</th><th width="50%">Folders</th></tr>
-<tr><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/local-files.png" width="100%" alt="Local Files' tree at the top: RECENTLY WATCHED under the cursor, a dotted line to its first entries, then FAVORITES, SEARCH, ACTION, ADVENTURE, ANIMATION" /></td><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/tree.png" width="100%" alt="Local Files, ACTION open: RAMBO MOVIES under the cursor, branching to its four films, then CLIFFHANGER, COBRA, KILL BILL VOL 1, KILL BILL VOL 2 and TANGO AND CASH" /></td></tr>
-<tr><td>The tree opens on what you played last, then Favorites, Search and your folders. The entry under the cursor branches out to its first few items.</td><td>The open folders run along the line through the middle. The folder under the cursor branches out once more: Action › Rambo Movies › its films.</td></tr>
+<tr><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/local-files.png" width="100%" alt="Local Files' tree at the top: RECENTLY WATCHED under the cursor, a dotted line to its entries, then FAVORITES, SEARCH, ACTION, ADVENTURE, ANIMATION, their lines faint" /></td><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/tree.png" width="100%" alt="Local Files, ACTION open: RAMBO MOVIES under the cursor, branching to its four films, then CLIFFHANGER, COBRA, KILL BILL VOL 1, KILL BILL VOL 2 and TANGO AND CASH" /></td></tr>
+<tr><td>The tree opens on what you played last, then Favorites, Search and your folders. The entry under the cursor branches out to its contents in full; the other folders' branches are faint.</td><td>The open folders run along the line through the middle. The folder under the cursor branches out once more: Action › Rambo Movies › its films.</td></tr>
 </table>
 
-**How it is drawn.** The folders you have opened run from left to right along a line through the middle of the screen, the spine. Each folder's entries are stacked above and below the one the spine runs through, which is the one that leads on. In the folder you are in, every folder branches off to the right, on a dotted line, to its first few entries, and the folder under the cursor shows more of its own and branches once more from each folder in it: you see two levels ahead before opening anything. Folders opened further back slide off to the left, the spine running on from the edge of the screen. The title bar names the folder you are in. A folder still being read shows `loading…`, an empty one `(empty)`. The branches grow once the cursor stops moving.
+**How it is drawn.** The folders you have opened run from left to right along a line through the middle of the screen, the spine. Each folder's entries are stacked above and below the one the spine runs through, which is the one that leads on. In the folder you are in, every folder branches off to the right, on a dotted line, to its first few entries, and the folder under the cursor shows more of its own and branches once more from each folder in it: you see two levels ahead before opening anything. Only the branches of the folder under the cursor are drawn in full, the rest faint, so the folders side by side don't run together. Local Files and the folder picker show a folder's every entry in its branch, not just its first few. Folders opened further back slide off to the left, the spine running on from the edge of the screen. The title bar names the folder you are in. A folder still being read shows `loading…`; the folder under the cursor, if it is empty, `(empty)`, and any other empty folder no branch at all. The branches grow once the cursor stops moving.
 
 **Moving.**
 
@@ -206,6 +206,7 @@ While a video starts, a tape loads: live VHS noise in the color scheme's colors,
 | Setting | Values | Default | What it does | Config key |
 |---|---|---|---|---|
 | Loading Effect | On, Off | On | **Off**: the deck's display alone, on the plain background, without the noise and the bands | `app.loading_effect` |
+| Loading Screen Colors | Theme, Default | Theme | **Default**: white on blue, whatever the theme | `app.loading_colors` |
 
 The theme's effects and the menu music never touch a video: they rest while one plays, loads, or has its menu open.
 
@@ -293,7 +294,7 @@ It needs libmpv, which OSD/OS opens as it runs: `libmpv2` on Raspberry Pi OS (on
 
 <table>
 <tr><th width="50%">Logo Image</th><th width="50%">Picking the picture</th></tr>
-<tr><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/channel-logo-custom.png" width="100%" alt="A playing video with a picture of the user's own in place of the OSD/OS logo" /></td><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/logo-picker.png" width="100%" alt="The file picker for Logo Image: the home folder's folders, LOGOS open on its two pictures" /></td></tr>
+<tr><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/channel-logo-custom.png" width="100%" alt="A playing video with a picture of the user's own in place of the OSD/OS logo" /></td><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/logo-picker.png" width="100%" alt="The file picker for Logo Image: its places, the home folder's folders, LOGOS open on its two pictures" /></td></tr>
 <tr><td>Settings → Logo Image puts a picture of your own there instead, as tall as OSD/OS's logo.</td><td>Picked on the same file browser: select on a picture, or OSD/OS Logo at the top to go back to it.</td></tr>
 </table>
 
@@ -339,13 +340,13 @@ A mouse, or a keyboard's touchpad, shows OSD/OS's own pointer, drawn in its pixe
 Back on the main menu opens Settings, laid out like a camcorder's menu: a line per setting, its value at the end (`COLOR SCHEME······VIDEO 1`). The version is in the title bar, and the IP address at its right.
 
 - ▲ ▼ move, skipping the headings, round from the bottom to the top. ◄ ► change the value, saved at once. Select opens a line that leads somewhere (a module's settings, Bluetooth, Update, a file or folder picker) and turns a slider on or off.
-- The look comes first: Theme, then its parts (Color Scheme, Skin, the effects, Transition, Menu Music), then OSD Background and Window Frame. Then what plays (Start on Module, Play at Startup, Scaling, Transparent Background, Video Levels, Loading Effect, Channel Logo) and the screen (Hint Bar, Help Line, Screen Saver, Mouse Pointer, Info Screen).
+- The look comes first: Theme, then its parts (Color Scheme, Skin, the effects, Transition, Menu Music), then OSD Background and Window Frame. Then what plays (Start on Module, Play at Startup, Scaling, Transparent Background, Video Levels, Loading Effect, Loading Screen Colors, Boot Screen Colors, Channel Logo) and the screen (Hint Bar, Help Line, Screen Saver, Mouse Pointer, Info Screen).
 - **Modules**: a line per module, for its settings, its **Enabled** row among them.
 - **Application**: Display Output (on the image), Audio Output (where plain ALSA plays), Controls, Bluetooth (on Linux), Update, About and Quit.
 
 <table>
 <tr><th width="50%">A module's settings</th><th width="50%">Picking a folder</th></tr>
-<tr><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/module-settings.png" width="100%" alt="Local Files' settings: its folder, looping, shuffle, resume, subtitles, and its own Scaling" /></td><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/folder-picker.png" width="100%" alt="The folder picker open on the films folder: USE THIS FOLDER, then its folders, one for each genre" /></td></tr>
+<tr><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/module-settings.png" width="100%" alt="Local Files' settings: its folder, looping, shuffle, resume, subtitles, and its own Scaling" /></td><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/folder-picker.png" width="100%" alt="The folder picker open on the films folder, the home folder's folders to its left: USE THIS FOLDER, then its folders, one for each genre, ACTION's RAMBO MOVIES faint" /></td></tr>
 <tr><td>Local Files: its folder, looping, shuffle, resume, subtitles, and its own Scaling.</td><td>Folders are picked on the same tree Local Files is browsed with, from home, the drives and the root down: USE THIS FOLDER picks the one open, Default Folder the module's own.</td></tr>
 </table>
 

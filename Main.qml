@@ -574,6 +574,10 @@ Window {
                 root.backdropSolidity = root.solidityOf(value)
             } else if (key === "loading_effect") {
                 root.loadingEffect = value !== "Off"
+            } else if (key === "boot_colors") {
+                root.bootThemed = value !== "Default"
+            } else if (key === "loading_colors") {
+                root.loadingThemed = value !== "Default"
             } else if (key === "hint_bar") {
                 root.hintBar = value !== "Off"
             } else if (key === "help_line") {
@@ -638,6 +642,8 @@ Window {
         root.backdropSolidity = root.solidityOf(cfg.app && cfg.app.transparent_background)
         root.pointerSetting = String((cfg.app && cfg.app.mouse_pointer) || "5")
         root.loadingEffect = !(cfg.app && cfg.app.loading_effect === "Off")
+        root.bootThemed = !(cfg.app && cfg.app.boot_colors === "Default")
+        root.loadingThemed = !(cfg.app && cfg.app.loading_colors === "Default")
         root.hintBar = !(cfg.app && cfg.app.hint_bar === "Off")
         root.helpLine = !(cfg.app && cfg.app.help_line === "Off")
         root.osdBackground = root.osdBackgroundOf(cfg.app && cfg.app.osd_background)
@@ -828,6 +834,16 @@ Window {
     // "help_line": the line about the selected row in the box under a menu
     // (HelpLine), "On" (the default, when unset) or "Off".
     property bool helpLine: true
+    // "boot_colors", "loading_colors": the boot screen's and the loading
+    // screen's colours, the ones in force like every screen's ("Theme", the
+    // default, when unset) or OSD/OS's own, Video 1's white on a VCR's blue
+    // ("Default"), whatever the theme or colour scheme.
+    property bool bootThemed: true
+    property bool loadingThemed: true
+    readonly property string bootInk: bootThemed ? primaryColor : schemes["Video 1"].primary
+    readonly property string bootPaper: bootThemed ? surfaceColor : schemes["Video 1"].surface
+    readonly property string loadingInk: loadingThemed ? primaryColor : schemes["Video 1"].primary
+    readonly property string loadingPaper: loadingThemed ? surfaceColor : schemes["Video 1"].surface
 
     // "transparent_background": how solid the menus' ground is over a video
     // behind them, 0 (TRANSPARENT) to 100 (SOLID: none of it shows, but it

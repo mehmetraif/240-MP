@@ -17,7 +17,7 @@ Every screen below is the app itself, running at 640×480. The film and YouTube 
 <table>
 <tr><th width="50%">Recently Watched</th><th width="50%">Favorites</th></tr>
 <tr><td><img src="screenshots/local-files.png" width="100%" alt="Recently Watched" /></td><td><img src="screenshots/favorites.png" width="100%" alt="Favorites" /></td></tr>
-<tr><td>The tree opens on what you played last, then Favorites, Search and your folders. The entry under the cursor branches out to its first few items.</td><td>Files and playlists you marked from their options.</td></tr>
+<tr><td>The tree opens on what you played last, then Favorites, Search and your folders. The entry under the cursor branches out to its contents in full; the other folders' branches are faint.</td><td>Files and playlists you marked from their options.</td></tr>
 </table>
 
 <table>
@@ -37,7 +37,7 @@ Every screen below is the app itself, running at 640×480. The film and YouTube 
 <table>
 <tr><th width="33%">Resume</th><th width="33%">Loading</th><th width="33%">Deck menu</th></tr>
 <tr><td><img src="screenshots/resume.png" width="100%" alt="Resume" /></td><td><img src="screenshots/loading.png" width="100%" alt="Loading" /></td><td><img src="screenshots/playback-menu.png" width="100%" alt="Deck menu" /></td></tr>
-<tr><td>Pick up where you left off, or start from the beginning.</td><td>While a video starts, a tape loads: live VHS noise in the theme's colours, the tracking band rolling through, and a dubbing deck's display, TAPE A at where the video is and TAPE B LOADING with its length once known. Settings → Loading Effect turns the noise off.</td><td>▲ or ▼ during playback opens the deck's menu: the position bar, audio and subtitle tracks, crop (the four Scalings in turn) and stop.</td></tr>
+<tr><td>Pick up where you left off, or start from the beginning.</td><td>While a video starts, a tape loads: live VHS noise in the theme's colours, the tracking band rolling through, and a dubbing deck's display, TAPE A at where the video is and TAPE B LOADING with its length once known. Settings → Loading Effect turns the noise off, and Loading Screen Colors keeps it white on blue whatever the theme.</td><td>▲ or ▼ during playback opens the deck's menu: the position bar, audio and subtitle tracks, crop (the four Scalings in turn) and stop.</td></tr>
 </table>
 
 <table>

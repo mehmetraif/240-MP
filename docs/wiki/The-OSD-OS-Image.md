@@ -12,7 +12,7 @@ On a Raspberry Pi, OSD/OS can be the whole system: one image that you flash to a
 
 Installed as an app ([Installation](https://github.com/mehmetraif/OSD-OS/wiki/Installation)), OSD/OS runs on a system that is already set up: Raspberry Pi OS, SteamOS or macOS. That system boots its own way first, with its splash, its boot messages and its login prompt or desktop. The image is the system itself:
 
-- **It boots into OSD/OS.** There is no rainbow splash, no boot text and no login prompt. The first thing on screen is OSD/OS's boot screen.
+- **It boots into OSD/OS.** There is no rainbow splash, no boot text and no login prompt. The first thing on screen is OSD/OS's boot screen, in the theme's colours, or white on blue with Settings → Boot Screen Colors → Default.
 - **No desktop.** There is no display server (X11 or Wayland), no window manager and no file manager. OSD/OS draws straight to the screen through the kernel's display driver, and so does mpv ([Nothing between the app and the screen](https://github.com/mehmetraif/OSD-OS/wiki/The-OSD-OS-Image#nothing-between-the-app-and-the-screen)).
 - **Every screen is OSD/OS's own**: the boot screen, the menus, the file browser, the on-screen keyboard, Settings, Bluetooth pairing, updates, and power off. It hands the screen over only to what plays: mpv for a video, Chromium (full screen, nothing around it) for Netflix, Prime Video and YouTube's sign-in, and a script of yours that asks for the screen.
 - **Nothing runs that a TV box doesn't need.** Wi-Fi, Bluetooth, the local network and SSH wait until OSD/OS is on screen. The timers that wake the SD card at random times are gone.
