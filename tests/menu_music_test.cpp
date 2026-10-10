@@ -36,8 +36,8 @@ for a in "$@"; do
   prev="$a"
 done
 echo "render )" + name + R"( $*" >> "$FAKE_MPV_LOG"
-if [ "$FAKE_RENDER_MODE" = fail ]; then exit 1; fi
 if [ -n "$FAKE_RENDER_DELAY" ]; then sleep "$FAKE_RENDER_DELAY"; fi
+if [ "$FAKE_RENDER_MODE" = fail ]; then exit 1; fi
 printf 'RIFF0000WAVEfmt ' > "$out"
 )";
 }
@@ -220,16 +220,20 @@ private slots:
         QVERIFY(renders().first().contains(QStringLiteral("/soundfonts/a.sf2 ")));
     }
 
-    // FluidSynth failing: nothing played, and not tried again until the
-    // source changes.
+    // FluidSynth failing (a moment after it starts): nothing played, and not
+    // tried again until the source changes.
     void renderFails() {
         qputenv("FAKE_RENDER_MODE", "fail");
+        qputenv("FAKE_RENDER_DELAY", "0.3");
         const QString midi = m_dir.path() + QStringLiteral("/bad.mid");
         QVERIFY(writeFile(midi, "MThd"));
         QVERIFY(writeFile(m_dir.path() + QStringLiteral("/bad.sf2"), "sfbk"));
         m_music->setSource(midi);
         m_music->setWanted(true);
         QTRY_COMPARE_WITH_TIMEOUT(renders().size(), 1, 3000);
+        // Its failure taken in (the process gone) first: held while it still
+        // ran, it would be stopped, not failed, and made again on release.
+        QTRY_VERIFY_WITH_TIMEOUT(m_music->findChildren<QProcess *>().isEmpty(), 3000);
         MenuMusic::hold(QStringLiteral("x"));
         MenuMusic::release(QStringLiteral("x"));
         QTest::qWait(1500);
