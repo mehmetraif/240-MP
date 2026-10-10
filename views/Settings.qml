@@ -61,7 +61,7 @@ FocusScope {
         // (themeChosen()). Without a theme they have no THEME: "" is what
         // each is without one (Video 1, OSD/OS's own window, off).
         items.push(lookRow("osd_theme", "Theme", "None", appCore.themes(),
-            "The whole look in one: the color scheme, the skin, the effects and the menu music\n[NONE] OSD/OS's own  Choosing one sets each row below back to the theme's  A new one is a folder in the data folder's themes, see the README"))
+            "The whole look in one: the color scheme, the skin, the effects and the menu music\n[NONE] OSD/OS's own  Choosing one sets each row below back to the theme's  A new one is a folder in the data folder's themes, see the wiki"))
 
         var colorOpts = ["Video 1","Late Night","Synthwave","Terminal","T-120","Amber","Kinescope","SMPTE ECR 1-1978"]
         // Adding a new approach to add multiple custom themes at once
@@ -83,7 +83,7 @@ FocusScope {
         // Saved by folder name, shown by the skin's name.
         // A skin chosen before skins had their name was saved as app.theme.
         var skinRow = lookRow("skin", "Skin", "Theme", appCore.skins(),
-            "How the window is dressed: its frame, the title and hint bars, the selected line and the icons, in the color scheme's colors\n[THEME] The theme's  [NONE] OSD/OS's own  A new one is a folder in the data folder's skins, see the README",
+            "How the window is dressed: its frame, the title and hint bars, the selected line and the icons, in the color scheme's colors\n[THEME] The theme's  [NONE] OSD/OS's own  A new one is a folder in the data folder's skins, see the wiki",
             appSettings["skin"] !== undefined ? appSettings["skin"] : (appSettings["theme"] || ""))
         skinRow.options.splice(1, 0, "None")
         skinRow.values.splice(1, 0, "Off")
