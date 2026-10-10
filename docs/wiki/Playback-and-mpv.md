@@ -363,7 +363,7 @@ While a video starts, the player shows a tape loading, after a dubbing deck's on
 - **Top middle:** TV, the deck's output.
 - **Top right:** TAPE B and LOADING blinking, with how long the video is once that is known (a server's length right away; mpv's once it has opened the file), and until then the seconds the screen has been up.
 - **Bottom:** SLP ▶ with the source (the module's name) on the left, SLP ◀ and DEST on the right.
-- **The tape's look**: VHS noise in the color scheme's colours, drawn afresh about twenty times a second, and a tracking band that jitters across the top and every few seconds rolls down the picture. Settings → Loading Effect → Off leaves the display alone on the plain background.
+- **The tape's look**: VHS noise in the color scheme's colours (white on blue with Settings → Loading Screen Colors → Default), drawn afresh about twenty times a second, and a tracking band that jitters across the top and every few seconds rolls down the picture. Settings → Loading Effect → Off leaves the display alone on the plain background.
 
 On a Pi without Transparent Background, mpv takes the screen as soon as it starts, and what stays on the glass until its picture comes is the frame drawn last: the loading screen, still, which is why OSD/OS starts mpv 50 ms after the player asks. The noise rests while mpv has the screen, leaving the CPU to mpv. With Transparent Background the loading screen keeps moving until the picture comes. A still photo never moves mpv's position, so Local Files ends the loading screen as a photo starts.
 

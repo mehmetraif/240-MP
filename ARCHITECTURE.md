@@ -808,7 +808,7 @@ Pixel-drawn pieces of a deck's on-screen menu, built on `root.px` (one pixel of 
 
 ### TreeBrowser (`views/Components/TreeBrowser.qml`)
 
-Anything shaped like folders, browsed as a horizontal tree, the way Local Files, the Netflix and Prime Video catalogues and YouTube are. The open folders run left to right along a line through the middle of the screen (the spine), each folder's entries stacked above and below the one that leads on. Every folder in the current one branches off to the right on a dotted line to a few of its entries, and the folder under the cursor branches once more. Up/Down move, Right or Select opens a folder, Left or Back closes one. Named columns stay inside the frame (left of it, a CRT's bezel starts), and only whole rows are drawn.
+Anything shaped like folders, browsed as a horizontal tree, the way Local Files, the Netflix and Prime Video catalogues and YouTube are. The open folders run left to right along a line through the middle of the screen (the spine), each folder's entries stacked above and below the one that leads on. Every folder in the current one branches off to the right on a dotted line to a few of its entries (all of them, with `expandedFolderPreviews`), and the folder under the cursor branches once more. Only the branch off the folder under the cursor is drawn in full: every other block and line is faint (`faint`, at `faintOpacity`, 45%, the lines with half their dots), so folders side by side don't run together. Not dithered as other dimmed things are: over a video behind the menus a dither's dots would lie on the picture. An empty folder off the spine has no branch. Up/Down move, Right or Select opens a folder, Left or Back closes one. Named columns stay inside the frame (left of it, a CRT's bezel starts), and only whole rows are drawn.
 
 | Property / signal | Description |
 |---|---|
@@ -817,6 +817,7 @@ Anything shaped like folders, browsed as a horizontal tree, the way Local Files,
 | `labelOf(item)` | What a row says; `item.name` by default (Local Files drops extensions here) |
 | `savedTrail` | A `trailState()` to reopen on creation: pass it through `navigateTo`'s list state so coming back lands in the same folders |
 | `reservedBottom` | Room the host keeps under the tree for a line of its own (a `HelpLine` while it shows); the spine stays put |
+| `expandedFolderPreviews` | A folder's branch holds all its entries, not a few, and the folder under the cursor branches two levels when it has folders in it; rows off the screen are laid out but not drawn, and only folders near the screen are read for the second level. Local Files and the `FilePicker` set it |
 | `activated(item)` | Select on an entry that isn't a folder |
 | `preview`, `previewDelay` | Whether an entry that isn't a folder has an info screen, and how long (ms) the cursor rests on one before asking for it on its own; `0` asks only on Right or the INFO key (Space, which is the play/pause button) |
 | `previewRequested(item)` | Right on an entry that isn't a folder, with `preview` on, or the cursor resting on one: show its info (the tree's last layer, an `InfoPanel`) |
@@ -911,7 +912,7 @@ What a player shows while its video starts, in place of a black screen: a VCR's 
 - bottom left: SLP ▶ and the source;
 - bottom right: SLP ◀ and DEST.
 
-The tracking band jitters across the top and, every few seconds, rolls down the picture, breaking up the letters it passes. The display jumps sideways now and then, and its letters bleed a little to the right. Settings → **Loading Effect** (`app.loading_effect`, `"On"` when unset, or `"Off"`; Main.qml's `root.loadingEffect`) turns all of that off: the display then stands alone on the plain background, its counters and blinking LOADING as before.
+The tracking band jitters across the top and, every few seconds, rolls down the picture, breaking up the letters it passes. The display jumps sideways now and then, and its letters bleed a little to the right. Settings → **Loading Effect** (`app.loading_effect`, `"On"` when unset, or `"Off"`; Main.qml's `root.loadingEffect`) turns all of that off: the display then stands alone on the plain background, its counters and blinking LOADING as before. Settings → **Loading Screen Colors** (`app.loading_colors`) draws it in the colours in force (`"Theme"`, when unset) or in Video 1's white on blue (`"Default"`), whatever the theme: Main.qml's `root.loadingInk` and `root.loadingPaper`. The boot screen has the same choice, Settings → **Boot Screen Colors** (`app.boot_colors`, `root.bootInk`, `root.bootPaper`).
 
 | Property | Type | Description |
 |---|---|---|

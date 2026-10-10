@@ -7,7 +7,7 @@ Local Files is on by default. Its code is in [modules/local_files](https://githu
 <table>
 <tr><th width="50%">Recently Watched</th><th width="50%">Favorites</th></tr>
 <tr><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/local-files.png" width="100%" alt="Local Files opens on Recently Watched, then Favorites, Search and the folders" /></td><td><img src="https://raw.githubusercontent.com/mehmetraif/OSD-OS/main/docs/screenshots/favorites.png" width="100%" alt="The Favorites folder branching out to the films marked as favorites" /></td></tr>
-<tr><td>The tree opens on what you played last, then Favorites, Search and your folders. The entry under the cursor branches out to its first few items.</td><td>Files and playlists you marked from their options.</td></tr>
+<tr><td>The tree opens on what you played last, then Favorites, Search and your folders. The entry under the cursor branches out to its contents in full; the other folders' branches are faint.</td><td>Files and playlists you marked from their options.</td></tr>
 </table>
 
 ## What it plays
@@ -106,7 +106,7 @@ A video playing from a drive that is pulled out ends the way a video that fails 
 <tr><td>The open folders run along the line through the middle. The folder under the cursor branches out once more: Action › Rambo Movies › its films.</td><td>With Transparent Background the tree lies over a video playing on behind it.</td></tr>
 </table>
 
-The folders you have opened run left to right along a line through the middle of the screen. Every folder in the one you are in branches off to the right on a dotted line to its first few entries (up to three; two and `…` when there are more), and the folder under the cursor branches once more. The title bar names the open folder.
+The folders you have opened run left to right along a line through the middle of the screen. Every folder in the one you are in branches off to the right on a dotted line to all of its entries, and the folder under the cursor branches once more, from each folder in it. Only the branches of the folder under the cursor are drawn in full; the others are faint, so whole folders side by side don't run together. An empty folder has no branch, but the folder under the cursor says `(empty)`. The title bar names the open folder.
 
 | Action | Keyboard | Gamepad | What it does |
 |---|---|---|---|
