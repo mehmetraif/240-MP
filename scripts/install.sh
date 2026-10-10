@@ -67,7 +67,10 @@ sudo apt-get install -y \
     libsdl2-2.0-0 \
     libpcsclite1 \
     libmpv2 \
-    mpv
+    mpv \
+    fluidsynth \
+    timgm6mb-soundfont \
+    openmpt123
 
 # ── udev rule: allow tty group to open /dev/tty0 for VT switching ─────────────
 echo 'KERNEL=="tty0", GROUP="tty", MODE="0620"' \

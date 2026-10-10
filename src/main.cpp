@@ -28,12 +28,14 @@
 #include "player/MpvController.h"
 #include "player/VideoSurface.h"
 #include "player/VhsNoise.h"
+#include "fx/SelectorFx.h"
 #include "input/InputManager.h"
 #include "input/IdleTracker.h"
 #include "update/UpdateManager.h"
 #include "boot/BootProgress.h"
 #include "display/DisplayOutput.h"
 #include "audio/AudioOutput.h"
+#include "audio/MenuMusic.h"
 #include "bluetooth/BluetoothManager.h"
 #include "util/ExecPath.h"
 #include "util/DisplayHandoff.h"
@@ -225,6 +227,7 @@ int main(int argc, char *argv[]) {
     BootProgress        bootProgress;      // inert outside the OSD/OS image (os/)
     DisplayOutput       displayOutput(dataRoot); // Settings → Display Output, on the image
     AudioOutput         audioOutput(&appCore);   // Settings → Audio Output (ALSA)
+    MenuMusic           menuMusic(dataRoot);     // Settings → Menu Music, or a theme's
     BluetoothManager    bluetoothManager;  // Settings → Bluetooth (BlueZ on Linux)
 
     // Playback follows the UI's display: mpv gets a --fs-screen* arg derived
@@ -237,6 +240,11 @@ int main(int argc, char *argv[]) {
                      &mpvController, &MpvController::sendKey);
     QObject::connect(&audioOutput, &AudioOutput::cardChanged,
                      &mpvController, &MpvController::followAudioOutput);
+    QObject::connect(&audioOutput, &AudioOutput::cardChanged, &menuMusic, &MenuMusic::restart);
+    // A video over, the menu music may play again: MpvController holds it off
+    // as one starts.
+    QObject::connect(&mpvController, &MpvController::playbackEnded, &menuMusic,
+                     []() { MenuMusic::release(QStringLiteral("video")); });
 
     // Each module backend is wired in one call: stored for action routing, exposed to QML
     // under its context-property name, and its optional signals/slots connected by
@@ -263,6 +271,7 @@ int main(int argc, char *argv[]) {
     ctx->setContextProperty("bootProgress",  &bootProgress);
     ctx->setContextProperty("displayOutput", &displayOutput);
     ctx->setContextProperty("audioOutput",   &audioOutput);
+    ctx->setContextProperty("menuMusic",     &menuMusic);
     ctx->setContextProperty("bluetoothManager", &bluetoothManager);
     // Whether a child has the screen (Main.qml: root.screenHandedOff).
     ctx->setContextProperty("displayHandoff", &displayHandoff);
@@ -287,6 +296,8 @@ int main(int argc, char *argv[]) {
     // and a tape's noise, for the screen a video loads behind (LoadingScreen).
     qmlRegisterType<VideoSurface>("OSDOS.Video", 1, 0, "VideoSurface");
     qmlRegisterType<VhsNoise>("OSDOS.Video", 1, 0, "VhsNoise");
+    // Settings → Selector Effect's sparks round the selected line.
+    qmlRegisterType<SelectorFx>("OSDOS.Video", 1, 0, "SelectorFx");
 
     engine.load(QUrl::fromLocalFile(appRoot + "/Main.qml"));
     if (engine.rootObjects().isEmpty()) {

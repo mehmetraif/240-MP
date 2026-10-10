@@ -33,6 +33,7 @@ Compared with flashing Raspberry Pi OS Lite and running `scripts/install.sh` ([I
   - It lives in the app's data directory (`~/.local/share/OSD-OS/bin/yt-dlp`), where the app looks first, and replaces itself with the newest build two minutes after each boot and once a day (`osdos-yt-dlp-update.timer`). A check is one small request to GitHub. Without a connection within five minutes, it waits for the next run.
   - ffmpeg comes with them, for the Playlists module's offline playlists: above 360p YouTube sends a video's picture and sound apart, and ffmpeg puts a download back together.
   - They add about 90 MB; build with `OSDOS_YOUTUBE=0` to leave them out.
+- **Menu music in any format.** FluidSynth with a small General MIDI SoundFont (TimGM6mb, about 6 MB) plays a theme's or your own MIDI file, and openmpt123 a tracker's module mpv can't play itself (XM, MOD, S3M, IT).
 - **Films go on the card.** On the first boot the system keeps 8 GiB of the card, and the rest becomes a partition of its own in exFAT, labelled **OSD-OS**, which Windows and macOS open too. Local Files opens it, and offline playlists download into it. See [Films on the card](#films-on-the-card).
 - **USB drives mount by themselves.** A USB stick or disk plugged in is mounted read-only and shows up in Local Files under its label. See [USB drives](#usb-drives).
 - **Stopping isn't powering off.** `systemctl stop` and `systemctl restart` leave the Pi on. Quit in the app still powers it off, Restart reboots it, and Exit to Terminal still drops to a login shell, as with `install.sh`.

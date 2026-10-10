@@ -1,0 +1,12 @@
+{
+    "name": "Matrix",
+    "colors": { "primary": "#5CFF5C", "surface": "#000000" },
+    "skin": "dos",
+    "effects": {
+        "background": "Matrix",
+        "text": "Glow",
+        "selector": "Lightning",
+        "transition": "Ripple"
+    },
+    "music": "matrix.ogg"
+}

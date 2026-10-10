@@ -16,6 +16,7 @@ brew install cmake
 
 - Download from [qt.io/download](https://qt.io/download) or `brew install qt@6`.
 - Install to `~/Qt/`
+- With the installer, add **Qt Shader Tools** (under Additional Libraries; Homebrew's Qt includes it): it compiles the effects' shaders into the app. Optional: without it Settings leaves out the text, background and screen effects and the Ripple, Wave and Drop transitions, and a theme's with them.
 
 **Install mpv (required for playback):**
 
@@ -24,6 +25,14 @@ brew install mpv
 ```
 
 Note: OSD/OS uses mpv as an external subprocess for video playback. It does not link against libmpv at build time, so mpv only needs to be on your `PATH` when running the app. The Transparent Background setting (video played inside the app's window) opens Homebrew's libmpv at run time; it is built in when `pkg-config` finds mpv's headers, which `brew install mpv pkgconf` provides.
+
+**Install FluidSynth and libopenmpt (optional, for menu music in MIDI or a tracker's module):**
+
+```bash
+brew install fluid-synth libopenmpt
+```
+
+A MIDI file is played by FluidSynth with a SoundFont, which Homebrew's FluidSynth doesn't bring: put a General MIDI `.sf2` (FluidR3_GM, TimGM6mb, …) in the data directory's `soundfonts` folder. Homebrew's mpv may not play XM, MOD, S3M or IT itself; libopenmpt's `openmpt123` makes them into a WAV for it.
 
 **Install yt-dlp and Deno (optional, required only for the YouTube module):**
 
@@ -104,12 +113,17 @@ sudo apt-get install -y \
   qml6-module-qtquick qml6-module-qtquick-controls \
   qml6-module-qtquick-window \
   libqt6svg6 qt6-svg-dev qt6-svg-plugins qt6-wayland \
+  qt6-shadertools-dev \
   libdrm-dev libxkbcommon-dev libssl-dev \
   libsdl2-dev \
   mpv
 ```
 
 `mpv` is the playback engine — OSD/OS launches it as a subprocess. No libmpv build dependency is required. `libmpv-dev` is optional: with its headers the Transparent Background setting is built in, which plays video inside the app's window through libmpv (`libmpv2`, opened at run time; `install.sh` and the OS image install it).
+
+`qt6-shadertools-dev` is optional too: it compiles the effects' shaders (`shaders/`) into the app, for the text, background and screen effects and the Ripple, Wave and Drop transitions; without it they are left out. Nothing of it is needed at run time. To compile a theme's own shader, `qt6-shader-baker` brings `qsb` (`/usr/lib/qt6/bin/qsb`; see the [theme template](docs/theme-template/)).
+
+The menu music plays MIDI files with FluidSynth and a SoundFont, and a tracker's module mpv can't play with openmpt123, at run time only: `sudo apt install fluidsynth timgm6mb-soundfont openmpt123` (`install.sh` and the OS image install them). Without them those files don't play; recordings (MP3, OGG, FLAC, WAV …) need only mpv.
 
 For the NFC Reader module, `libpcsclite-dev` is optional and only needed for PC/SC readers such as the ACR122U — it is detected automatically at configure time. A PN532 USB reader needs no build dependency at all.
 
@@ -219,7 +233,7 @@ sudo apt-get install -y build-essential cmake \
 
 `libpcsclite-dev` is optional and only adds PC/SC reader support to the NFC module. It is listed here because CI builds with it, so the released AppImage bundles `libpcsclite.so.1` and PC/SC works on any host running `pcscd`. Leaving it out still produces a working build — the PN532 USB driver links nothing.
 
-Qt 6 can come from your distro (`qt6-base-dev qt6-declarative-dev qt6-svg-dev qml6-module-qtquick*`) or from the [Qt online installer](https://www.qt.io/download-qt-installer) (set `CMAKE_PREFIX_PATH` to it, matching CI's Qt 6.7).
+Qt 6 can come from your distro (`qt6-base-dev qt6-declarative-dev qt6-svg-dev qt6-shadertools-dev qml6-module-qtquick*`) or from the [Qt online installer](https://www.qt.io/download-qt-installer) with Qt Shader Tools (set `CMAKE_PREFIX_PATH` to it, matching CI's Qt 6.7).
 
 > **The bundled `mpv` must be modern (≥ 0.38)** — the app's "forced subtitles only" option (`--subs-with-matching-audio=forced`) was added in mpv 0.38, and distro packages are often older (Ubuntu 24.04 ships 0.37, 22.04 ships 0.34.1). If your distro's mpv is too old, build one first and point `MPV_BIN` at it:
 >
@@ -417,7 +431,7 @@ Set them inline, e.g. `QML_IMPORT_TRACE=1 APP_ROOT=$(pwd) ./build/osdos`.
 
 ## GitHub Actions
 
-Besides the release workflow below, two run on their own: **Regression tests** ([regression-tests.yml](.github/workflows/regression-tests.yml)) builds the app and runs the tests in `tests/` on Linux x64 and arm64 for every pull request, and every push to `main`, that touches the C++ (see [tests/README.md](tests/README.md)); **OS image** ([os-image.yml](.github/workflows/os-image.yml)) builds the OSD/OS image for a pull request that touches it.
+Besides the release workflow below, three run on their own: **Regression tests** ([regression-tests.yml](.github/workflows/regression-tests.yml)) builds the app and runs the tests in `tests/` on Linux x64 and arm64 for every pull request, and every push to `main`, that touches the C++ (see [tests/README.md](tests/README.md)), and once more on Raspberry Pi OS: a Debian 13 "trixie" container with Raspberry Pi's archive added as pi-gen adds it for the OS image, on arm64; **OS image** ([os-image.yml](.github/workflows/os-image.yml)) builds the OSD/OS image for a pull request that touches it; and **Wiki** ([wiki.yml](.github/workflows/wiki.yml)) publishes `docs/wiki` to the [GitHub wiki](https://github.com/mehmetraif/OSD-OS/wiki) whenever it changes on `main`, replacing what the wiki had (GitHub makes a wiki's repository only once its first page is saved in the web interface, so that is done once first).
 
 ### How to trigger a build
 

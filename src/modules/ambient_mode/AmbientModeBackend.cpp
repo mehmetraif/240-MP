@@ -1,6 +1,7 @@
 #include "AmbientModeBackend.h"
 #include "../../util/MpvLocator.h"
 #include "../../audio/AudioOutput.h"
+#include "../../audio/MenuMusic.h"
 #include <QDir>
 #include <QFile>
 #include <QJsonDocument>
@@ -105,6 +106,8 @@ void AmbientModeBackend::startAudio(const QStringList &paths, bool shuffle)
     // Settings → Audio Output's card, while it is plugged in.
     args << AudioOutput::mpvArgs();
 
+    // The menu music stops first: this has the sound card now.
+    MenuMusic::hold(QStringLiteral("ambient"));
     m_audioProcess = new QProcess(this);
     m_audioProcess->start(bin, args);
     qDebug("[AmbientMode] audio process started: %lld entr%s%s",
@@ -123,6 +126,7 @@ void AmbientModeBackend::stopAudio()
     }
     m_audioProcess->deleteLater();
     m_audioProcess = nullptr;
+    MenuMusic::release(QStringLiteral("ambient"));
     qDebug("[AmbientMode] audio process stopped");
 }
 

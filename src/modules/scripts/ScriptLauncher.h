@@ -79,6 +79,8 @@ private slots:
     void onErrorOccurred(QProcess::ProcessError error);
 
 private:
+    // The name it holds the menu music off by while it runs (MenuMusic).
+    QString musicHolder() const;
     void appendOutput(const QString &chunk);
     void pushLine();
     void trimOutput();

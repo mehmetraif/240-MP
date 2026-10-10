@@ -52,18 +52,10 @@ Item {
         text: "M"
     }
 
-    // The selected line's bar, or the theme's picture of it.
-    ThemeImage {
-        id: themedBar
+    // The selected line's bar, or the skin's picture of it.
+    SelectionBox {
         anchors.fill: parent
         visible: menuRow.selected
-        part: root.theme.selection
-    }
-    Rectangle {
-        anchors.fill: parent
-        visible: menuRow.selected && !themedBar.shown
-        color: root.primaryColor
-        antialiasing: false
     }
 
     Text {

@@ -7,9 +7,10 @@
 //     image://osdicon/<rrggbb>/<url>
 //
 // renders what <url> draws, trimmed of the margin around it, from the original
-// (a vector is drawn at the requested height, not scaled from a bitmap), and
-// colours it, keeping its smooth edges. Unlike a shader effect it draws on
-// every scene graph backend, the software one included.
+// (a vector is drawn at the requested height, not scaled from a bitmap; a
+// picture of pixels, a skin's icon, grows with its pixels sharp), and colours
+// it, keeping its smooth edges. Unlike a shader effect it draws on every scene
+// graph backend, the software one included.
 class OsdIconProvider : public QQuickImageProvider {
 public:
     OsdIconProvider() : QQuickImageProvider(QQuickImageProvider::Image) {}

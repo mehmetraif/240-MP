@@ -1,6 +1,7 @@
 #include "WeatherBackend.h"
 #include "../../util/MpvLocator.h"
 #include "../../audio/AudioOutput.h"
+#include "../../audio/MenuMusic.h"
 
 #include <QDir>
 #include <QFile>
@@ -603,6 +604,8 @@ void WeatherBackend::startMusic() {
          << tracks;
 
     m_musicPaused = false;
+    // The menu music stops first: this has the sound card now.
+    MenuMusic::hold(QStringLiteral("weather"));
     m_music = new QProcess(this);
     // mpv exiting on its own (no network, no readable files) leaves a stale
     // pointer that would make startMusic() a no-op on the next visit.
@@ -651,6 +654,7 @@ void WeatherBackend::stopMusic() {
         p->deleteLater();
     }
     m_musicPaused = false;
+    MenuMusic::release(QStringLiteral("weather"));
     emit musicStateChanged();
 }
 

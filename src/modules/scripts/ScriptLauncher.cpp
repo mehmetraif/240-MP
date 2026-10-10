@@ -1,4 +1,5 @@
 #include "ScriptLauncher.h"
+#include "../../audio/MenuMusic.h"
 #include "../../util/DisplayHandoff.h"
 #include "../../audio/AudioOutput.h"
 #include <QFileInfo>
@@ -328,6 +329,8 @@ bool ScriptLauncher::start(const ScriptEntry &entry, QString *errorOut) {
                                 ? QStringList()
                                 : QProcess::splitCommand(entry.meta.args);
 
+    // The menu music stops first: what runs may play sound of its own.
+    MenuMusic::hold(musicHolder());
     // The absolute path always goes first so it can never be read as a flag.
     if (direct) {
         m_process->start(fi.absoluteFilePath(), extra);
@@ -545,5 +548,11 @@ void ScriptLauncher::releaseDisplayAndReport() {
 }
 
 void ScriptLauncher::report() {
+    MenuMusic::release(musicHolder());
     emit finished(m_lastExitCode, m_pendingReason);
+}
+
+QString ScriptLauncher::musicHolder() const {
+    // One for each launcher: a script's, a web player's.
+    return QStringLiteral("script:") + m_handoffOwner;
 }

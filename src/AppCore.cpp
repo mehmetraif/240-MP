@@ -438,63 +438,111 @@ QVariantMap AppCore::getCustomColorSchemes() const {
 
 namespace {
 
-// Where themes are, the data folder's first: one there takes the place of the
-// app's of the same folder name.
-QStringList themeRoots(const QString &appRoot, const QString &dataRoot) {
-    return { dataRoot + QStringLiteral("/themes"), appRoot + QStringLiteral("/assets/themes") };
+// A theme.json of window pictures only, a skin made before skins had their
+// name (in the data folder's themes): read as a skin, not as a theme.
+bool isEarlySkin(const QJsonObject &obj) {
+    for (const char *key : { "colors", "skin", "effects", "music" }) {
+        if (obj.contains(QLatin1String(key)))
+            return false;
+    }
+    for (const char *key : { "window", "titleBar", "hintBar", "selection" }) {
+        if (obj.contains(QLatin1String(key)))
+            return true;
+    }
+    return false;
 }
 
-// A theme's theme.json, read as an object; false (and a line in the log for
-// one that is there but not JSON) when it can't be.
-bool readThemeJson(const QString &dir, QJsonObject *out) {
-    QFile f(dir + QStringLiteral("/theme.json"));
+// A folder looks of a kind are in: its JSON's name there, and which of its
+// theme.json files it takes (an early skin's or a theme's).
+struct LookRoot {
+    enum Take { Any, EarlySkins, NoEarlySkins };
+    QString dir;
+    QString file;
+    Take take;
+};
+
+// Where the looks of a kind ("skin", "theme") are, the data folder's first:
+// one there takes the place of the app's of the same folder name. Skins are
+// in the data folder's themes too, where they were before they had their name.
+QList<LookRoot> lookRoots(const QString &appRoot, const QString &dataRoot, const QString &kind) {
+    if (kind == QLatin1String("skin"))
+        return { { dataRoot + QStringLiteral("/skins"), QStringLiteral("skin.json"), LookRoot::Any },
+                 { dataRoot + QStringLiteral("/themes"), QStringLiteral("theme.json"), LookRoot::EarlySkins },
+                 { appRoot + QStringLiteral("/assets/skins"), QStringLiteral("skin.json"), LookRoot::Any } };
+    return { { dataRoot + QStringLiteral("/themes"), QStringLiteral("theme.json"), LookRoot::NoEarlySkins },
+             { appRoot + QStringLiteral("/assets/themes"), QStringLiteral("theme.json"), LookRoot::NoEarlySkins } };
+}
+
+// A look's JSON in its folder, read as an object; false (and a line in the log
+// for one that is there but not JSON) when it can't be, or isn't of the kind
+// the folder it is in takes.
+bool readLookJson(const LookRoot &root, const QString &id, QJsonObject *out) {
+    QFile f(root.dir + QLatin1Char('/') + id + QLatin1Char('/') + root.file);
     if (!f.open(QIODevice::ReadOnly))
         return false;
     QJsonParseError err;
     const QJsonDocument doc = QJsonDocument::fromJson(f.readAll(), &err);
     if (err.error != QJsonParseError::NoError || !doc.isObject()) {
-        qWarning("[AppCore] %s/theme.json: %s", qPrintable(dir),
+        qWarning("[AppCore] %s: %s", qPrintable(f.fileName()),
                  err.error != QJsonParseError::NoError ? qPrintable(err.errorString()) : "not an object");
         return false;
     }
-    *out = doc.object();
+    const QJsonObject obj = doc.object();
+    if ((root.take == LookRoot::EarlySkins && !isEarlySkin(obj))
+            || (root.take == LookRoot::NoEarlySkins && isEarlySkin(obj)))
+        return false;
+    *out = obj;
     return true;
 }
 
-// The theme's name, or its folder's when it gives none, or one too long for a
+// The look's name, or its folder's when it gives none, or one too long for a
 // line of Settings.
-QString themeName(const QJsonObject &obj, const QString &id) {
+QString lookName(const QJsonObject &obj, const QString &id) {
     const QString name = obj.value(QStringLiteral("name")).toString().simplified();
     return name.isEmpty() || name.size() > 28 ? id : name;
 }
 
-// A picture of the theme's own, as a URL: a path in its folder (none out of
-// it, through a link either), a PNG, GIF or BMP, whose pixels the colour
-// scheme's two colours take. Empty, with a line in the log for one named but
-// not found or not of these, when there is none.
-QString themeFile(const QDir &dir, const QJsonValue &value, const QString &id, const char *what) {
-    static const QStringList types = { "png", "gif", "bmp" };
+// [{ id, name }] for Settings, by name.
+QVariantList listByName(const QMap<QString, QJsonObject> &found) {
+    QVariantList list;
+    for (auto it = found.cbegin(); it != found.cend(); ++it)
+        list.append(QVariantMap{ { "id", it.key() }, { "name", lookName(it.value(), it.key()) } });
+    std::sort(list.begin(), list.end(), [](const QVariant &a, const QVariant &b) {
+        return QString::compare(a.toMap().value("name").toString(), b.toMap().value("name").toString(),
+                                Qt::CaseInsensitive) < 0;
+    });
+    return list;
+}
+
+// A file of the look's own, as a URL: a path in its folder (none out of it,
+// through a link either), of one of these types. Empty, with a line in the
+// log for one named but not found or not of these, when there is none. look
+// names it there: "skin dos", "theme matrix".
+QString lookFile(const QDir &dir, const QJsonValue &value, const QStringList &types,
+                 const QString &look, const QString &what) {
     if (!value.isString())
         return {};
     const QString path = QFileInfo(dir.filePath(value.toString())).canonicalFilePath();
     const QFileInfo file(path);
     if (path.isEmpty() || !path.startsWith(dir.canonicalPath() + QLatin1Char('/')) || !file.isFile()
             || !types.contains(file.suffix().toLower())) {
-        qWarning("[AppCore] theme %s: its %s, \"%s\", is not a %s file in its folder", qPrintable(id), what,
-                 qPrintable(value.toString()), qPrintable(types.join(QLatin1Char('/'))));
+        qWarning("[AppCore] %s: its %s, \"%s\", is not a %s file in its folder", qPrintable(look),
+                 qPrintable(what), qPrintable(value.toString()), qPrintable(types.join(QLatin1Char('/'))));
         return {};
     }
     return QUrl::fromLocalFile(path).toString();
 }
 
-// One of a theme's pictures, for QML: "file.png", or { "image": "file.png",
+// One of a skin's pictures, for QML: "file.png", or { "image": "file.png",
 // "border": 4 or [left, top, right, bottom], "tile": "stretch" | "repeat" |
-// "round" }, read as { source, border: [left, top, right, bottom], tile }.
-// Empty for none.
-QVariantMap themeImage(const QDir &dir, const QJsonValue &value, const QString &id, const char *what) {
+// "round" }, read as { source, border: [left, top, right, bottom], tile }. A
+// PNG, GIF or BMP, whose pixels the colour scheme's two colours take. Empty
+// for none.
+QVariantMap skinImage(const QDir &dir, const QJsonValue &value, const QString &look, const char *what) {
+    static const QStringList types = { "png", "gif", "bmp" };
     const QJsonObject obj = value.isObject() ? value.toObject()
                                              : QJsonObject{{QStringLiteral("image"), value}};
-    const QString source = themeFile(dir, obj.value(QStringLiteral("image")), id, what);
+    const QString source = lookFile(dir, obj.value(QStringLiteral("image")), types, look, QLatin1String(what));
     if (source.isEmpty())
         return {};
     // In the picture's own pixels, the art pixels it is drawn on.
@@ -508,8 +556,8 @@ QVariantMap themeImage(const QDir &dir, const QJsonValue &value, const QString &
                                                 [](const QJsonValue &v) { return v.isDouble(); })) {
         border = { side(sides[0]), side(sides[1]), side(sides[2]), side(sides[3]) };
     } else if (!b.isUndefined()) {
-        qWarning("[AppCore] theme %s: its %s's border is not a number or four: drawn whole, stretched",
-                 qPrintable(id), what);
+        qWarning("[AppCore] %s: its %s's border is not a number or four: drawn whole, stretched",
+                 qPrintable(look), what);
     }
     static const QStringList tiles = { "stretch", "repeat", "round" };
     const QString tile = obj.value(QStringLiteral("tile")).toString();
@@ -517,59 +565,203 @@ QVariantMap themeImage(const QDir &dir, const QJsonValue &value, const QString &
              { "tile", tiles.contains(tile) ? tile : QStringLiteral("stretch") } };
 }
 
+// What a skin dresses, from its folder (a theme's own skin, from the
+// theme's): a picture for any of { window, titleBar, hintBar, selection }, and
+// icons { name: URL }, each drawn in place of OSD/OS's of that name (a module's
+// by its folder's name: "youtube"), those there are that can be used.
+QVariantMap skinParts(const QDir &dir, const QJsonObject &obj, const QString &look) {
+    static const QStringList iconTypes = { "png", "svg", "gif", "bmp", "jpg", "jpeg" };
+    static const QRegularExpression iconName(QStringLiteral("^[a-z0-9_-]{1,40}$"));
+    QVariantMap parts;
+    for (const char *key : { "window", "titleBar", "hintBar", "selection" }) {
+        const QVariantMap part = skinImage(dir, obj.value(QLatin1String(key)), look, key);
+        if (!part.isEmpty())
+            parts[key] = part;
+    }
+    const QJsonObject icons = obj.value(QStringLiteral("icons")).toObject();
+    QVariantMap iconUrls;
+    for (auto it = icons.constBegin(); it != icons.constEnd(); ++it) {
+        const QString name = it.key().toLower();
+        if (!iconName.match(name).hasMatch()) {
+            qWarning("[AppCore] %s: \"%s\" is not an icon's name", qPrintable(look), qPrintable(it.key()));
+            continue;
+        }
+        const QString url = lookFile(dir, it.value(), iconTypes, look, QStringLiteral("icon ") + name);
+        if (!url.isEmpty())
+            iconUrls[name] = url;
+    }
+    if (!iconUrls.isEmpty())
+        parts[QStringLiteral("icons")] = iconUrls;
+    return parts;
+}
+
+// A theme's own colours: { "primary": "#rrggbb", "surface": "#rrggbb" }, the
+// two everything is drawn in (a colour scheme's other three may be there
+// too, unused). Empty, with a line in the log, when they aren't both there.
+QVariantMap themeColors(const QJsonValue &value, const QString &look) {
+    static const QRegularExpression kHexColor("^#[0-9A-Fa-f]{6}$");
+    const QJsonObject obj = value.toObject();
+    QVariantMap colors;
+    for (const char *key : { "primary", "surface" }) {
+        const QString color = obj.value(QLatin1String(key)).toString();
+        if (!kHexColor.match(color).hasMatch()) {
+            qWarning("[AppCore] %s: its colors are not a color scheme's name or a #rrggbb primary and surface:"
+                     " drawn in Video 1's", qPrintable(look));
+            return {};
+        }
+        colors[key] = color;
+    }
+    return colors;
+}
+
+// One of a theme's effects: a preset's name ("CRT", "Matrix", "Off"), or its
+// own: numbers, each 0 to 1 (knobs: those this kind takes, none when left
+// out), "animate": true for a shader that moves, and "shader", a .qsb in its
+// folder; a background's "area" too, "window" (as left out) or "foot", along
+// the window's foot and up into it from below, as a fire burns. Read with
+// each number within bounds and the shader as a URL.
+QVariant themeEffect(const QDir &dir, const QJsonValue &value, const QStringList &knobs,
+                     const QString &look, const QString &kind) {
+    if (value.isString())
+        return value.toString();
+    if (!value.isObject()) {
+        qWarning("[AppCore] %s: its %s effect is not a name or an object: none", qPrintable(look),
+                 qPrintable(kind));
+        return QVariantMap();
+    }
+    const QJsonObject obj = value.toObject();
+    QVariantMap effect;
+    for (const QString &key : knobs) {
+        const QJsonValue v = obj.value(key);
+        if (v.isDouble())
+            effect[key] = qBound(0.0, v.toDouble(), 1.0);
+        else if (!v.isUndefined())
+            qWarning("[AppCore] %s: its %s effect's %s is not a number from 0 to 1: none", qPrintable(look),
+                     qPrintable(kind), qPrintable(key));
+    }
+    if (obj.value(QStringLiteral("animate")).toBool())
+        effect["animate"] = true;
+    if (kind == QLatin1String("background")) {
+        const QJsonValue area = obj.value(QStringLiteral("area"));
+        if (area.toString() == QLatin1String("foot"))
+            effect["area"] = area.toString();
+        else if (!area.isUndefined() && area.toString() != QLatin1String("window"))
+            qWarning("[AppCore] %s: its background effect's area is not \"window\" or \"foot\": the window",
+                     qPrintable(look));
+    }
+    const QString shader = lookFile(dir, obj.value(QStringLiteral("shader")), { "qsb" }, look,
+                                    kind + QStringLiteral(" shader"));
+    if (!shader.isEmpty())
+        effect["shader"] = shader;
+    return effect;
+}
+
 } // namespace
 
-QString AppCore::themeDir(const QString &id, QJsonObject *json) const {
+QString AppCore::lookDir(const QString &kind, const QString &id, QJsonObject *json) const {
     // A folder's name, no way up or across.
     if (id.isEmpty() || id == QLatin1String(".") || id == QLatin1String("..")
             || id.contains(QLatin1Char('/')) || id.contains(QLatin1Char('\\')))
         return {};
-    for (const QString &root : themeRoots(m_appRoot, m_dataRoot)) {
-        const QString dir = root + QLatin1Char('/') + id;
-        if (readThemeJson(dir, json))
-            return dir;
+    for (const LookRoot &root : lookRoots(m_appRoot, m_dataRoot, kind)) {
+        if (readLookJson(root, id, json))
+            return root.dir + QLatin1Char('/') + id;
     }
     return {};
 }
 
-QVariantList AppCore::themes() const {
-    QMap<QString, QString> names;   // id → name, the first found of each id
-    for (const QString &root : themeRoots(m_appRoot, m_dataRoot)) {
-        const QStringList ids = QDir(root).entryList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
+QMap<QString, QJsonObject> AppCore::looks(const QString &kind) const {
+    QMap<QString, QJsonObject> found;
+    for (const LookRoot &root : lookRoots(m_appRoot, m_dataRoot, kind)) {
+        const QStringList ids = QDir(root.dir).entryList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
         for (const QString &id : ids) {
             QJsonObject obj;
-            if (!names.contains(id) && readThemeJson(root + QLatin1Char('/') + id, &obj))
-                names.insert(id, themeName(obj, id));
+            if (!found.contains(id) && readLookJson(root, id, &obj))
+                found.insert(id, obj);
         }
     }
-    QVariantList list;
-    for (auto it = names.cbegin(); it != names.cend(); ++it)
-        list.append(QVariantMap{ { "id", it.key() }, { "name", it.value() } });
-    std::sort(list.begin(), list.end(), [](const QVariant &a, const QVariant &b) {
-        return QString::compare(a.toMap().value("name").toString(), b.toMap().value("name").toString(),
-                                Qt::CaseInsensitive) < 0;
-    });
-    return list;
+    return found;
+}
+
+QVariantList AppCore::skins() const {
+    return listByName(looks(QStringLiteral("skin")));
+}
+
+QVariantMap AppCore::skin(const QString &id) const {
+    QJsonObject obj;
+    const QString path = lookDir(QStringLiteral("skin"), id, &obj);
+    if (path.isEmpty()) {
+        if (!id.isEmpty())
+            qWarning("[AppCore] skin %s: not found, none used", qPrintable(id));
+        return {};
+    }
+    // The window's parts it has a picture of, and its icons: the colours stay
+    // the scheme's.
+    QVariantMap skin = skinParts(QDir(path), obj, QStringLiteral("skin ") + id);
+    skin["id"] = id;
+    skin["name"] = lookName(obj, id);
+    qInfo("[AppCore] skin %s: %s", qPrintable(id), qPrintable(path));
+    return skin;
+}
+
+QVariantList AppCore::themes() const {
+    return listByName(looks(QStringLiteral("theme")));
 }
 
 QVariantMap AppCore::theme(const QString &id) const {
+    static const QStringList textKnobs = { "rainbow", "shimmer", "flicker", "glow" };
+    static const QStringList screenKnobs = { "scanlines", "curvature", "glow", "bleed", "noise", "vignette" };
+    static const QStringList musicTypes = { "ogg", "opus", "mp3", "flac", "wav", "m4a", "aac",
+                                            "mid", "midi", "xm", "mod", "s3m", "it" };
     QJsonObject obj;
-    const QString path = themeDir(id, &obj);
+    const QString path = lookDir(QStringLiteral("theme"), id, &obj);
     if (path.isEmpty()) {
         if (!id.isEmpty())
             qWarning("[AppCore] theme %s: not found, none used", qPrintable(id));
         return {};
     }
-    // The window's parts it has a picture of: the colours stay the scheme's.
+    // Each part a colour scheme's, a skin's or an effect preset's name, or its
+    // own, its files in its folder. One that can't be used is drawn as with
+    // none of it: Video 1's colours, OSD/OS's own window, no effect.
     const QDir dir(path);
-    QVariantMap theme = { { "id", id }, { "name", themeName(obj, id) } };
-    for (const char *key : { "window", "titleBar", "hintBar", "selection" }) {
-        const QVariantMap part = themeImage(dir, obj.value(QLatin1String(key)), id, key);
-        if (!part.isEmpty())
-            theme[key] = part;
+    const QString look = QStringLiteral("theme ") + id;
+    QVariantMap theme = { { "id", id }, { "name", lookName(obj, id) } };
+    const QJsonValue colors = obj.value(QStringLiteral("colors"));
+    if (colors.isString())
+        theme["colors"] = colors.toString();
+    else if (!colors.isUndefined() && !colors.isNull())
+        theme["colors"] = themeColors(colors, look);
+    const QJsonValue skin = obj.value(QStringLiteral("skin"));
+    if (skin.isString()) {
+        theme["skin"] = this->skin(skin.toString());
+    } else if (skin.isObject()) {
+        theme["skin"] = skinParts(dir, skin.toObject(), look);
+    } else if (!skin.isUndefined() && !skin.isNull()) {
+        qWarning("[AppCore] %s: its skin is not a skin's name or an object: none", qPrintable(look));
+        theme["skin"] = QVariantMap();
     }
+    const QJsonObject effects = obj.value(QStringLiteral("effects")).toObject();
+    QVariantMap themeEffects;
+    const struct { const char *kind; QStringList knobs; } kinds[] = {
+        { "text", textKnobs }, { "background", {} }, { "selector", {} }, { "screen", screenKnobs },
+        { "transition", {} } };
+    for (const auto &k : kinds) {
+        const QJsonValue v = effects.value(QLatin1String(k.kind));
+        if (!v.isUndefined() && !v.isNull())
+            themeEffects[k.kind] = themeEffect(dir, v, k.knobs, look, QLatin1String(k.kind));
+    }
+    theme["effects"] = themeEffects;
+    const QString music = lookFile(dir, obj.value(QStringLiteral("music")), musicTypes, look,
+                                   QStringLiteral("music"));
+    if (!music.isEmpty())
+        theme["music"] = music;
     qInfo("[AppCore] theme %s: %s", qPrintable(id), qPrintable(path));
     return theme;
+}
+
+QString AppCore::effectShader(const QString &name) const {
+    const QString shader = QStringLiteral(":/shaders/") + name + QStringLiteral(".frag.qsb");
+    return QFile::exists(shader) ? QStringLiteral("qrc") + shader : QString();
 }
 
 QVariantList AppCore::filePlaces() const {

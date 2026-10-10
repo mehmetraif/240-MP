@@ -27,4 +27,5 @@ PromptScreen PromptScreen.qml
 MenuList MenuList.qml
 PlaylistAdder PlaylistAdder.qml
 OsdGround OsdGround.qml
-ThemeImage ThemeImage.qml
+SkinImage SkinImage.qml
+SelectionBox SelectionBox.qml

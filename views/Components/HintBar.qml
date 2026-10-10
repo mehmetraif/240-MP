@@ -35,17 +35,17 @@ Text {
         text: hint.text
     }
 
-    // The bar, or the theme's picture of it (Settings → Theme).
-    ThemeImage {
-        id: themedBar
+    // The bar, or the skin's picture of it (Settings → Skin).
+    SkinImage {
+        id: skinnedBar
         z: -1
         anchors.fill: parent
-        part: root.theme.hintBar
+        part: root.skin.hintBar
     }
     Rectangle {
         z: -1
         anchors.fill: parent
-        visible: !themedBar.shown
+        visible: !skinnedBar.shown
         color: root.primaryColor
         antialiasing: false
     }

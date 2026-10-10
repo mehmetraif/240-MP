@@ -1,0 +1,12 @@
+{
+    "name": "Winter",
+    "colors": { "primary": "#EAF4FF", "surface": "#0B1E3A" },
+    "skin": "rounded",
+    "effects": {
+        "background": "Snow",
+        "text": "Shimmer",
+        "selector": "Sparkles",
+        "transition": "Drop"
+    },
+    "music": "winter.ogg"
+}

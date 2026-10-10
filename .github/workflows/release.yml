@@ -37,6 +37,8 @@ jobs:
           host: mac
           target: desktop
           arch: clang_64
+          # Compiles the screen's effects (shaders/) into the app.
+          modules: 'qtshadertools'
           cache: true
 
       - name: Build SDL2 from source (pinned — Homebrew's sdl2 is now the sdl2-compat/SDL3 shim)
@@ -194,6 +196,7 @@ jobs:
             qt6-declarative-dev \
             libqt6svg6 \
             qt6-svg-dev \
+            qt6-shadertools-dev \
             qml6-module-qtquick \
             qml6-module-qtquick-controls \
             qml6-module-qtquick-window \
@@ -254,6 +257,8 @@ jobs:
           host: linux
           target: desktop
           arch: linux_gcc_64
+          # Compiles the screen's effects (shaders/) into the app.
+          modules: 'qtshadertools'
           cache: true
 
       - name: Install build + bundling dependencies

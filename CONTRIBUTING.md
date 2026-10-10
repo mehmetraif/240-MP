@@ -44,6 +44,8 @@ A module is a folder under `modules/` with a `manifest.json` and QML views, plus
 
 4. **(Optional) Contribute main-menu rows** by declaring `Q_INVOKABLE QVariantList get_menu_entries()` on the backend — `AppCore` probes for it and appends `{name, params}` rows to the main menu, with no changes to the app shell. See [Probed, not connected](ARCHITECTURE.md#probed-not-connected).
 
+5. **Describe it for users** in [docs/wiki/Modules.md](docs/wiki/Modules.md), with a short line in the README's list if it is a big one. The wiki's pages live in `docs/wiki` and are published to the [GitHub wiki](https://github.com/mehmetraif/OSD-OS/wiki) when they change on `main`, so they are reviewed with the code.
+
 A pure-QML module needs **no C++ changes** — the shell discovers it from its manifest. `PlexBackend` is the most complete backend and the best one to study.
 
 **If your module hands off the whole screen** to an external program, use `DisplayHandoff` (`src/util/DisplayHandoff.h`) — never re-implement the VT/DRM ioctls. `MpvController` and the scripts module's `ScriptLauncher` are both worked examples; see [Adding a different hand-off target](ARCHITECTURE.md#adding-a-different-hand-off-target) for the traps, all of which end in a black screen with no way back if you get them wrong.
@@ -54,7 +56,9 @@ A pure-QML module needs **no C++ changes** — the shell discovers it from its m
 - **Preserve the manifest contract.** If you add a setting, follow the existing [setting types](ARCHITECTURE.md#setting-types); if it needs dynamic options, wire up the `dynamicOptionsReady` / `apply_slot` pattern rather than inventing a new mechanism.
 - **Follow the existing view and navigation patterns** in that module — the `navigateTo` / `goBack` contract and `navListState` position restoration. Don't introduce a different nav style.
 - **Reuse shared `Components`** (e.g. `AppBar`) instead of re-implementing them.
-- **Keep the window standard.** The title bar at the top, the `HintBar` in its fixed place at the foot, whatever is between them. A question or a notice is a `PromptScreen`: the question in the title bar behind a ? (a notice's behind a !), never a small line in the middle with the hint line under it. A layer that hides the whole view draws its ground with `OsdGround`, never a `Rectangle` of `root.surfaceColor`, so Settings' OSD Background (its window, or black) holds under it too. The window's parts come from the shared components (`AppBar`, `HintBar`, `MenuRow`, `PromptScreen`), and a selected line drawn elsewhere puts a `ThemeImage` of `root.theme.selection` over its box, so Settings → Theme reaches them.
+- **Keep the window standard.** The title bar at the top, the `HintBar` in its fixed place at the foot, whatever is between them. A question or a notice is a `PromptScreen`: the question in the title bar behind a ? (a notice's behind a !), never a small line in the middle with the hint line under it. A layer that hides the whole view draws its ground with `OsdGround`, never a `Rectangle` of `root.surfaceColor`, so Settings' OSD Background (its window, or black) holds under it too. The window's parts come from the shared components (`AppBar`, `HintBar`, `MenuRow`, `PromptScreen`), and a selected line drawn elsewhere is a `SelectionBox`, so the skin dresses it and the selector effect plays round it. Colours are `root.primaryColor` and `root.surfaceColor`, never a scheme's own, so a theme's reach them too.
+- **Change views through `root.changeWindow()`.** A module's router sets its loader's view with `root.changeWindow(loader, source, { "navParams": … })`, never `loader.source` or `setSource()`, so the transition plays and a video's view (`…Player.qml`, `Launch.qml`, …) is known to rest the effects.
+- **Nothing over a video.** No effect, no transition and no menu music while a video plays, loads or has its menu open: a layer of a video's tells `Main.qml` with `root.restFor(item, true)` (as `LoadingScreen` and `PlayerMenu` do), and a backend about to play sound of its own holds the menu music off first with `MenuMusic::hold(who)`, and releases it after (as Weather's and Ambient Mode's music do).
 - **Keep it self-contained** — module source stays under `modules/[name]` and `src/modules/[name]`.
 
 ### Use a Consistent Coding Style
@@ -67,7 +71,7 @@ A pure-QML module needs **no C++ changes** — the shell discovers it from its m
 
 ### Testing your change
 
-A few things that are easy to get wrong have regression tests in `tests/` (Local Files' search, settings and state files written whole, one video handed over to the next; see [tests/README.md](tests/README.md)). CI runs them on every pull request that touches the C++, and you can run them yourself in a minute. Everything else is tested by hand:
+A few things that are easy to get wrong have regression tests in `tests/` (Local Files' search, settings and state files written whole, themes and skins read from their folders, one video handed over to the next, the menu music and what holds it off; see [tests/README.md](tests/README.md)). CI runs them on every pull request that touches the C++, and you can run them yourself in a minute. Everything else is tested by hand:
 
 - **Build and run** on at least one target (macOS ARM or Raspberry Pi). See [BUILDING.md](BUILDING.md#run).
 - **Navigate with a remote/keyboard only** and confirm every screen in your change is reachable and exitable.

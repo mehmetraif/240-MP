@@ -23,14 +23,14 @@ FocusScope {
         var resolved = Qt.resolvedUrl(viewPath)
         navStack.push({ source: internalLoader.source, params: currentParams, listState: fromState || {} })
         currentParams = params || {}
-        internalLoader.setSource(resolved, { "navParams": params || {} })
+        root.changeWindow(internalLoader, resolved, { "navParams": params || {} })
     }
 
     function replaceWith(viewPath, params) {
         var resolved = Qt.resolvedUrl(viewPath)
         currentParams = params || {}
         navStack = []
-        internalLoader.setSource(resolved, { "navParams": params || {} })
+        root.changeWindow(internalLoader, resolved, { "navParams": params || {} })
     }
 
     // Swap the current view in place without touching navStack — used when a
@@ -41,7 +41,7 @@ FocusScope {
     function replaceCurrent(viewPath, params) {
         var resolved = Qt.resolvedUrl(viewPath)
         currentParams = params || {}
-        internalLoader.setSource(resolved, { "navParams": params || {} })
+        root.changeWindow(internalLoader, resolved, { "navParams": params || {} })
     }
 
     // Repoint the BACK target after autoplay advances in place. The top of the
@@ -66,7 +66,7 @@ FocusScope {
         var restored = Object.assign({}, prev.params)
         restored.navListState = prev.listState || {}
         currentParams = restored
-        internalLoader.setSource(prev.source, { "navParams": restored })
+        root.changeWindow(internalLoader, prev.source, { "navParams": restored })
     }
 
     Loader {

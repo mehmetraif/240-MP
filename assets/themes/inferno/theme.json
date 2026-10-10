@@ -1,0 +1,11 @@
+{
+    "name": "Inferno",
+    "colors": { "primary": "#FFC860", "surface": "#1C0500" },
+    "skin": "rounded",
+    "effects": {
+        "background": "Fire",
+        "selector": "Welding",
+        "transition": "Cube"
+    },
+    "music": "inferno.ogg"
+}

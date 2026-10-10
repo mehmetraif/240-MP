@@ -16,6 +16,15 @@ target_link_libraries(storage_search_test PRIVATE
     Qt6::Core Qt6::Concurrent Qt6::Network Qt6::Qml Qt6::Test)
 add_test(NAME storage_search COMMAND storage_search_test)
 
+# Themes and skins, read from the app's folder and the data folder's (AppCore).
+add_executable(looks_test
+    looks_test.cpp
+    ../src/AppCore.cpp
+    ../src/util/LegacyNames.cpp)
+target_include_directories(looks_test PRIVATE ../src)
+target_link_libraries(looks_test PRIVATE Qt6::Core Qt6::Network Qt6::Qml Qt6::Test)
+add_test(NAME looks COMMAND looks_test)
+
 # One video handed over to the next (MpvController), against a stand-in for
 # mpv. Linux only: the stand-in is a shell script that looks in /proc.
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
@@ -34,9 +43,23 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
         ../src/util/FontconfigOverride.cpp
         ../src/util/LegacyNames.cpp
         ../src/util/MpvLocator.cpp
-        ../src/util/YtDlpLocator.cpp)
+        ../src/util/YtDlpLocator.cpp
+        ../src/audio/MenuMusic.cpp)
     target_include_directories(playback_retire_test PRIVATE ../src ${Libdrm_INCLUDE_DIRS})
     target_link_libraries(playback_retire_test PRIVATE
         Qt6::Core Qt6::Gui Qt6::Quick Qt6::Qml Qt6::Network Qt6::Test ${Libdrm_LIBRARIES})
     add_test(NAME playback_retire COMMAND playback_retire_test)
+
+    # The menu music, against a stand-in for mpv: it plays in the menus, and
+    # stops at once when anything else is about to play sound.
+    add_executable(menu_music_test
+        menu_music_test.cpp
+        ../src/audio/MenuMusic.cpp
+        ../src/audio/AudioOutput.cpp
+        ../src/AppCore.cpp
+        ../src/util/LegacyNames.cpp
+        ../src/util/MpvLocator.cpp)
+    target_include_directories(menu_music_test PRIVATE ../src)
+    target_link_libraries(menu_music_test PRIVATE Qt6::Core Qt6::Network Qt6::Qml Qt6::Test)
+    add_test(NAME menu_music COMMAND menu_music_test)
 endif()

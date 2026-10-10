@@ -42,7 +42,8 @@ FocusScope {
         : [{ label: "Yes", action: "quit" },
            { label: "No",  action: "cancel" }]
 
-    function buildModel() {
+    // `at`: the row the cursor stays on, else the one it was on last.
+    function buildModel(at) {
         var cfg = appCore.get_settings()
         appSettings = cfg.app || {}
         installedModules = appCore.get_installed_modules()
@@ -52,6 +53,16 @@ FocusScope {
         var items = []
 
         // APPLICATION section
+        // Theme — the whole look in one (AppCore::themes(), the app's own and
+        // the data folder's themes folder; read in Main.qml as root.theme):
+        // the color scheme, the skin, the effects and the menu music. Each of
+        // those has its row below, THEME (as the theme has it) unless set
+        // otherwise; choosing a theme sets them all back to THEME
+        // (themeChosen()). Without a theme they have no THEME: "" is what
+        // each is without one (Video 1, OSD/OS's own window, off).
+        items.push(lookRow("osd_theme", "Theme", "None", appCore.themes(),
+            "The whole look in one: the color scheme, the skin, the effects and the menu music\n[NONE] OSD/OS's own  Choosing one sets each row below back to the theme's  A new one is a folder in the data folder's themes, see the README"))
+
         var colorOpts = ["Video 1","Late Night","Synthwave","Terminal","T-120","Amber","Kinescope","SMPTE ECR 1-1978"]
         // Adding a new approach to add multiple custom themes at once
         var cThemes = appCore.getCustomColorSchemes()
@@ -63,41 +74,75 @@ FocusScope {
         // Still support the single-theme approach
         var custom = appCore.getCustomColorScheme()
         if (!colorOpts.includes("Custom") && Object.keys(custom).length === 5) colorOpts.push("Custom")
+        items.push(partRow("color_scheme", "Color Scheme", colorOpts, false,
+            "The two colors everything is drawn in\n[THEME] The theme's, else Video 1  Please see the wiki for details on adding a custom one"))
+
+        // Skin — how the window is dressed, apart from the colours: the
+        // shapes of its frame, bars and selected line, and its icons, in the
+        // scheme's colours (AppCore::skins(); read in Main.qml as root.skin).
+        // Saved by folder name, shown by the skin's name.
+        // A skin chosen before skins had their name was saved as app.theme.
+        var skinRow = lookRow("skin", "Skin", "Theme", appCore.skins(),
+            "How the window is dressed: its frame, the title and hint bars, the selected line and the icons, in the color scheme's colors\n[THEME] The theme's  [NONE] OSD/OS's own  A new one is a folder in the data folder's skins, see the README",
+            appSettings["skin"] !== undefined ? appSettings["skin"] : (appSettings["theme"] || ""))
+        skinRow.options.splice(1, 0, "None")
+        skinRow.values.splice(1, 0, "Off")
+        if (appSettings["skin"] === "Off" || (!appSettings["osd_theme"] && skinRow.value === "Theme"))
+            skinRow.value = "None"
+        if (!appSettings["osd_theme"]) {
+            skinRow.options.shift()
+            skinRow.values.shift()
+        }
+        items.push(skinRow)
+
+        // The effects (Main.qml; their names root.*Presets): never on a video,
+        // nor while one loads or has its menu open. Those the GPU draws are
+        // offered only where it can.
+        if (root.effectsUsable) {
+            items.push(partRow("text_effect", "Text Effect", Object.keys(root.textPresets), true,
+                "What the text, the lines and the bars do, on the GPU\n[THEME] The theme's  [RAINBOW] Run through the colors  [SHIMMER] A glint sweeping across now and then  [GLOW] A halo round them  [FLICKER] Like a failing neon sign"))
+            items.push(partRow("background_effect", "Background Effect", Object.keys(root.backgroundPresets), true,
+                "What goes on behind the menus, in the window, on the GPU\n[THEME] The theme's  [MATRIX] A rain of glyphs  [FIRE] Pixel flames burning up from under the window  [STARS] A starfield drifting by  [SNOW] Snow falling"))
+        }
+        items.push(partRow("selector_effect", "Selector Effect", root.selectorPresets, true,
+            "What goes on round the selected line\n[THEME] The theme's  [SPARKLES] Sparks flying off its corners  [WELDING] A welder's sparks bursting from its corners  [LIGHTNING] Bolts crackling out of it  [RAINBOW] A pixel rainbow running down from under it"))
+        if (root.effectsUsable) {
+            items.push(partRow("screen_effect", "Screen Effect", Object.keys(root.screenPresets), true,
+                "A picture tube's or a tape's look over the menus, on the GPU\n[THEME] The theme's  [SCANLINES] Dark lines between the picture's  [CRT] A tube's curve, scanlines and glow  [VHS] A tape's color bleed and noise"))
+        }
+        items.push(partRow("transition", "Transition", root.transitionPresets.filter(root.transitionUsable), true,
+            "How one window gives way to the next\n[THEME] The theme's  [FADE] The old fades away  [CUBE] The window turns over like a cube, the next on a face at random  [CUBE LEFT / RIGHT / UP / DOWN] Always turning that way  [RIPPLE] The old ripples out as the new ripples in  [WAVE] A wave runs out from a corner and dies away, the new one behind it  [DROP] A drop falls in a corner, the new one inside its spreading ring"))
+
+        // Menu Music — a tune under the menus (MenuMusic), never while a video
+        // plays: the theme's, or a file of the user's own, picked on the file
+        // picker; and how loud.
+        items.push(partRow("menu_music", "Menu Music", ["File"], true,
+            "A tune under the menus, never while a video plays, loads or has its menu open\n[THEME] The theme's, if it has one  [FILE] A file of your own, below"))
+        var musicFile = appSettings["menu_music_file"] || ""
         items.push({
-            type: "list_single",
-            key: "color_scheme",
-            label: "Color Scheme",
-            options: colorOpts,
-            value: appSettings["color_scheme"] || "Video 1",
-            description: "Choose your prefered color scheme\nPlease see the wiki for details on adding a custom one",
+            type: "file",
+            key: "menu_music_file",
+            label: "Music File",
+            value: musicFile !== "" ? musicFile.substring(musicFile.lastIndexOf("/") + 1) : "None",
+            path: musicFile,
+            picker: { mode: "file", types: ["ogg", "opus", "mp3", "flac", "wav", "m4a", "aac",
+                                            "mid", "midi", "xm", "mod", "s3m", "it"],
+                      defaultLabel: "No File" },
+            description: "The menu music's file, played over and over\n[ENTER] Pick it on the file browser: an MP3, WAV, OGG, FLAC, Opus or M4A, a MIDI file (played with a SoundFont), or a tracker's XM, MOD, S3M or IT",
+            shownWith: { key: "menu_music", value: "File" },
             moduleId: ""
         })
-
-        // Theme — how the window is dressed, apart from the colour scheme: the
-        // shapes of its frame, bars and selected line, in the scheme's colours
-        // (AppCore::themes(), the app's own and the data folder's themes
-        // folder; read in Main.qml as root.theme). Saved by folder name, shown
-        // by the theme's name.
-        var themeList = appCore.themes()
-        var themeOpts = ["None"], themeVals = [""], themeValue = "None"
-        for (var ti = 0; ti < themeList.length; ti++) {
-            var themeName = themeList[ti].name
-            // Two of one name apart by their folders.
-            if (themeOpts.indexOf(themeName) >= 0)
-                themeName += " (" + themeList[ti].id + ")"
-            themeOpts.push(themeName)
-            themeVals.push(themeList[ti].id)
-            if (themeList[ti].id === appSettings["theme"])
-                themeValue = themeName
-        }
+        var volume = parseInt(appSettings["menu_music_volume"])
         items.push({
-            type: "list_single",
-            key: "theme",
-            label: "Theme",
-            options: themeOpts,
-            values: themeVals,
-            value: themeValue,
-            description: "How the window is dressed: its frame, the title and hint bars and the selected line, in the color scheme's colors\n[NONE] OSD/OS's own  A new one is a folder in the data folder's themes, see the README",
+            type: "slider",
+            key: "menu_music_volume",
+            label: "Music Volume",
+            value: isNaN(volume) ? 60 : Math.max(0, Math.min(100, volume)),
+            step: 10,
+            startText: "QUIET",
+            endText: "LOUD",
+            description: "How loud the menu music is",
+            shownWith: { key: "menu_music", not: "Off" },
             moduleId: ""
         })
 
@@ -464,7 +509,8 @@ FocusScope {
         settingsItems = items
 
         // Restore saved position, or default to first selectable row
-        var start = navListState.currentIndex !== undefined ? Math.min(navListState.currentIndex, items.length - 1) : 0
+        var start = at !== undefined ? Math.min(at, items.length - 1)
+                  : navListState.currentIndex !== undefined ? Math.min(navListState.currentIndex, items.length - 1) : 0
         for (var k = 0; k < items.length; k++) {
             if (selectable((start + k) % items.length)) {
                 settingsList.currentIndex = (start + k) % items.length
@@ -477,9 +523,9 @@ FocusScope {
 
     // A row offered only while another row has a value (its shownWith,
     // { key, value }), or any but one ({ key, not }): Window Frame while OSD
-    // Background is Window, Logo Image while Channel Logo isn't Off. It is in
-    // the model all the time, so the list stays where it is as it comes and
-    // goes.
+    // Background is Window, Logo Image while Channel Logo isn't Off, Music
+    // File while Menu Music is File. It is in the model all the time, so the
+    // list stays where it is as it comes and goes.
     function rowShown(idx) {
         var row = settingsItems[idx]
         if (!row || !row.shownWith)
@@ -490,6 +536,51 @@ FocusScope {
                                                       : settingsItems[i].value === row.shownWith.value
         }
         return false
+    }
+
+    // A row choosing one of the themes or the skins there are (AppCore's
+    // themes(), skins(): [{ id, name }]), or none (`none`, saved as ""):
+    // saved by folder name, shown by name, two of one name apart by their
+    // folders.
+    // `saved` is the setting as saved, appSettings[key] unless given.
+    function lookRow(key, label, none, looks, description, saved) {
+        if (saved === undefined)
+            saved = appSettings[key]
+        var row = { type: "list_single", key: key, label: label, options: [none], values: [""],
+                    value: none, description: description, moduleId: "" }
+        for (var i = 0; i < looks.length; i++) {
+            var name = looks[i].name
+            if (row.options.indexOf(name) >= 0)
+                name += " (" + looks[i].id + ")"
+            row.options.push(name)
+            row.values.push(looks[i].id)
+            if (looks[i].id === saved)
+                row.value = name
+        }
+        return row
+    }
+
+    // A row for one of the theme's parts: THEME (saved as "", as the theme
+    // has it) while there is a theme, OFF (with `off`, saved as "Off") and
+    // the choices. Without a theme, "" shows as the first of those, what it
+    // is then.
+    function partRow(key, label, choices, off, description) {
+        var themed = !!appSettings["osd_theme"]
+        var options = (themed ? ["Theme"] : []).concat(off ? ["Off"] : [], choices)
+        var values = (themed ? [""] : []).concat(off ? ["Off"] : [], choices)
+        var at = values.indexOf(appSettings[key] === undefined ? "" : String(appSettings[key]))
+        return { type: "list_single", key: key, label: label, options: options, values: values,
+                 value: options[Math.max(0, at)], description: description, moduleId: "" }
+    }
+
+    // The theme's parts, each set back to THEME as a theme is chosen (to what
+    // it is without one, for None), hidden rows too; the rows made again.
+    readonly property var themeParts: ["color_scheme", "skin", "text_effect", "background_effect",
+                                       "selector_effect", "screen_effect", "transition", "menu_music"]
+    function themeChosen() {
+        for (var i = 0; i < themeParts.length; i++)
+            appCore.save_setting("", themeParts[i], "")
+        buildModel(settingsList.currentIndex)
     }
 
     // The cursor stops on rows, not on headings or rows not offered now.
@@ -636,6 +727,8 @@ FocusScope {
                 var savedVal = row.values ? row.values[newIdx] : newVal
                 replaceCurrentRow(Object.assign({}, row, { value: newVal }))
                 appCore.save_setting(row.moduleId, row.key, savedVal)
+                if (row.key === "osd_theme")
+                    settingsRoot.themeChosen()
             }
         }
 
@@ -652,6 +745,8 @@ FocusScope {
                 var savedVal = row.values ? row.values[newIdx] : newVal
                 replaceCurrentRow(Object.assign({}, row, { value: newVal }))
                 appCore.save_setting(row.moduleId, row.key, savedVal)
+                if (row.key === "osd_theme")
+                    settingsRoot.themeChosen()
             }
         }
 

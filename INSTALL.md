@@ -305,7 +305,7 @@ If you don't have a Raspberry Pi and would like to try OSD/OS, I also provide a 
 
 1. Download the DMG archive from the latest release
 2. Mount it and move the osdos.app into your Applications folder
-3. Make sure you have mpv installed (OSD/OS requires MPV for playback): `brew install mpv`
+3. Make sure you have mpv installed (OSD/OS requires MPV for playback): `brew install mpv`. For menu music in MIDI or a tracker's XM, MOD, S3M or IT, also `brew install fluid-synth libopenmpt`, with a General MIDI SoundFont (`.sf2`) in the data folder's `soundfonts` (`~/Library/Application Support/OSD-OS/soundfonts/`).
 4. Double click the app (`osdos.app`) and it should open full screen. If macOS refuses to open it because it can't check it (a release that isn't notarized; its notes say so), go to System Settings → Privacy & Security and choose **Open Anyway**, or run `xattr -dr com.apple.quarantine /Applications/osdos.app` and open it again. You need to do this only the first time you open it.
 
 ### Post Install

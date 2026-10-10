@@ -5,8 +5,8 @@ import QtQuick
 //   FULL    the colour scheme's background all over (the default);
 //   WINDOW  a window of it behind what a view shows (root.osdWindow), black
 //           around it, framed as Settings' WINDOW FRAME has it
-//           (root.osdFrame): ON a line in the scheme's colour, or the theme's
-//           frame (Settings → Theme, root.theme.window); OFF none; SHADOW the
+//           (root.osdFrame): ON a line in the scheme's colour, or the skin's
+//           frame (Settings → Skin, root.skin.window); OFF none; SHADOW the
 //           frame and a shadow below and to the right, like a DOS window's;
 //   OFF     none: black, the menus in the scheme's lighter colour on it, as a
 //           deck's OSD with nothing playing (root.surfaceColor is then black).
@@ -18,9 +18,21 @@ import QtQuick
 // strip of it (the keyboard's, below the title bar), and the window shows
 // through that strip as it lies on the screen.
 //
+// Over the window's ground goes the background effect (Settings → Background
+// Effect, or the theme's: BackgroundFx), the same picture under every ground.
+// One laid over a view `cover`s it: the selector effect plays round a selected
+// line in front of it only (Main.qml's root.selector).
+//
 //     OsdGround { anchors.fill: parent }
 Item {
     id: ground
+
+    // Laid over a view, hiding it (true but for Main.qml's, under them all).
+    property bool cover: true
+    readonly property bool covering: cover && visible
+    onCoveringChanged: root.coverShown(ground, covering)
+    Component.onCompleted: if (covering) root.coverShown(ground, true)
+    Component.onDestruction: root.coverShown(ground, false)
 
     // Black around the window. Main.qml turns it off over a video playing
     // behind the menus, which then shows there whole.
@@ -72,18 +84,37 @@ Item {
         y: root.osdWindow.y - ground.y
         width: root.osdWindow.width
         height: root.osdWindow.height
-        // The theme's frame draws the window whole, its middle too: what the
+        // The skin's frame draws the window whole, its middle too: what the
         // picture leaves clear (a rounded corner) shows what is around it.
-        color: ground.framed && themedFrame.shown ? "transparent" : root.surfaceColor
+        color: ground.framed && skinnedFrame.shown ? "transparent" : root.surfaceColor
         border.color: root.primaryColor
-        border.width: ground.framed && !themedFrame.shown ? root.px : 0
+        border.width: ground.framed && !skinnedFrame.shown ? root.px : 0
         antialiasing: false
 
-        ThemeImage {
-            id: themedFrame
+        SkinImage {
+            id: skinnedFrame
             anchors.fill: parent
             visible: ground.framed
-            part: root.theme.window
+            part: root.skin.window
         }
+    }
+
+    // The background effect: in the window, inside its frame (the skin's
+    // border, or the line's art pixel), or over the whole screen without
+    // one; or, for one along the foot (fire), from the screen's foot up
+    // through the window.
+    BackgroundFx {
+        readonly property rect win: ground.windowed ? root.osdWindow : Qt.rect(0, 0, root.sw, root.sh)
+        readonly property var border: ground.windowed && ground.framed
+                                      ? (skinnedFrame.shown ? root.skin.window.border : [1, 1, 1, 1]) : [0, 0, 0, 0]
+        area: root.backgroundEffect.area === "foot"
+              ? Qt.rect(win.x, win.y, win.width, root.sh - win.y)
+              : Qt.rect(win.x + border[0] * root.px, win.y + border[1] * root.px,
+                        win.width - (border[0] + border[2]) * root.px,
+                        win.height - (border[1] + border[3]) * root.px)
+        x: area.x - ground.x
+        y: area.y - ground.y
+        width: area.width
+        height: area.height
     }
 }

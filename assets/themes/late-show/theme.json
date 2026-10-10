@@ -1,0 +1,11 @@
+{
+    "name": "Late Show",
+    "colors": "Late Night",
+    "skin": "dos",
+    "effects": {
+        "screen": "VHS",
+        "text": "Flicker",
+        "transition": "Fade"
+    },
+    "music": "late-show.ogg"
+}

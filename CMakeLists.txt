@@ -87,6 +87,7 @@ add_executable(osdos
     src/player/EmbeddedMpv.cpp
     src/player/VideoSurface.cpp
     src/player/VhsNoise.cpp
+    src/fx/SelectorFx.cpp
     src/util/YtDlpLocator.cpp
     src/util/MpvLocator.cpp
     src/util/ExecPath.cpp
@@ -100,6 +101,7 @@ add_executable(osdos
     src/boot/BootProgress.cpp
     src/display/DisplayOutput.cpp
     src/audio/AudioOutput.cpp
+    src/audio/MenuMusic.cpp
     src/bluetooth/BluetoothManager.cpp
     $<$<BOOL:${APPLE}>:src/util/MacosUtils.mm>
 )
@@ -152,6 +154,29 @@ if(MPV_FOUND)
     target_include_directories(osdos PRIVATE ${MPV_INCLUDEDIR})
 else()
     message(STATUS "libmpv headers not found — Transparent Background will be unavailable")
+endif()
+
+# Qt Shader Tools compiles the menus' effects (shaders/: the screen and text
+# effects, the backgrounds, the ripple between windows) into the binary, for
+# every graphics API Qt draws with: OpenGL (ES on the Pi), Metal, Direct3D.
+# Optional: without it the app builds and runs, those effects left out
+# (qt6-shadertools-dev on Debian / Raspberry Pi OS; Qt Shader Tools in Qt's
+# installer). The selector's effects and the cube need none of it.
+find_package(Qt6 QUIET COMPONENTS ShaderTools)
+if(Qt6ShaderTools_FOUND)
+    qt_add_shaders(osdos "osdos_shaders"
+        PREFIX "/"
+        FILES
+            shaders/effects.frag
+            shaders/bg-matrix.frag
+            shaders/bg-fire.frag
+            shaders/bg-stars.frag
+            shaders/bg-snow.frag
+            shaders/ripple.frag
+            shaders/wave.frag
+            shaders/drop.frag)
+else()
+    message(STATUS "Qt Shader Tools not found — the shader effects will be unavailable")
 endif()
 
 # BlueZ over D-Bus for Settings → Bluetooth (src/bluetooth). Linux only: a Mac
