@@ -2,8 +2,9 @@ import QtQuick
 import QtTest
 import "../../views/Components" as Components
 
-Item {
+Rectangle {
     id: root
+    color: surfaceColor
     width: 1280
     height: 960
     property real sw: width
@@ -103,7 +104,10 @@ Item {
         }
         function test_referencePreview() {
             wait(250)
-            verify(grabImage(root).save("tree-browser-preview.png"))
+            var image = grabImage(root)
+            compare(image.width, root.width)
+            compare(image.height, root.height)
+            image.save("tree-browser-preview.png")
         }
     }
 }
