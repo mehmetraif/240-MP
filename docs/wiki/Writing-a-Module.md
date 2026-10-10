@@ -170,7 +170,7 @@ An `enabled` toggle, a folder, a list with fixed choices, another toggle, and th
 </svg>
 ```
 
-The title bar draws a logo through `OsdIconProvider`: trimmed to its shape, at the bar's height, in the colour scheme's text colour, from its alpha. So draw it white on clear, as OSD/OS's own are. A skin can draw it differently by its folder's name, with `"icons": { "hello_channel": "tv.png" }` in its `skin.json` ([Skins](https://github.com/mehmetraif/OSD-OS/wiki/Skins)).
+The title bar draws a logo through `OsdIconProvider`: trimmed to its shape, a fifth taller than the bar, in the colour scheme's text colour, from its alpha. So draw it white on clear, as OSD/OS's own are. A skin can draw it differently by its folder's name, with `"icons": { "hello_channel": "tv.png" }` in its `skin.json` ([Skins](https://github.com/mehmetraif/OSD-OS/wiki/Skins)).
 
 ### Root.qml: the router
 

@@ -51,7 +51,7 @@ brew install fluid-synth libopenmpt      # optional: menu music in MIDI and trac
 brew install yt-dlp deno                 # optional: the YouTube module
 ```
 
-- `sdl2` is Homebrew's `sdl2-compat`, SDL2's API on top of SDL3, as BUILDING.md has it. The release workflow builds SDL2 2.32.10 from source instead, so that the DMG carries SDL2 itself and no SDL3.
+- `sdl2`, the formula BUILDING.md names, is Homebrew's `sdl2-compat`, SDL2's API on top of SDL3. The release workflow builds SDL2 2.32.10 from source instead, so that the DMG carries SDL2 itself and no SDL3.
 - mpv is found on the `PATH` when a video plays; OSD/OS adds `/opt/homebrew/bin` and `/usr/local/bin` to its own `PATH` at start, since an app opened from the Finder gets a short one. With `pkgconf`, CMake finds mpv's headers and builds Transparent Background in, which opens Homebrew's libmpv at run time.
 - A MIDI file needs a General MIDI SoundFont as well, which Homebrew's FluidSynth doesn't bring: put a `.sf2` in the data folder's `soundfonts` folder (`~/Library/Application Support/OSD-OS/soundfonts/`).
 - macOS needs no package for the NFC Reader: the PN532 USB driver talks to the reader directly, and PC/SC is part of the system.
@@ -89,7 +89,7 @@ sudo apt-get install -y \
   mpv
 ```
 
-This is [BUILDING.md](https://github.com/mehmetraif/OSD-OS/blob/main/BUILDING.md#raspberry-pi-os-arm64)'s list with two additions: `pkgconf`, which CMake needs to find libdrm (the CI job on Raspberry Pi OS installs it), and `qml6-module-qtquick-effects`, which the Weather and NFC Reader screens import (`install.sh` installs it). The optional parts:
+This is [BUILDING.md](https://github.com/mehmetraif/OSD-OS/blob/main/BUILDING.md#raspberry-pi-os-arm64)'s list less `libpcsclite-dev` and `libmpv-dev`, which are optional (below). `pkgconf` is there for CMake to find libdrm (the CI job on Raspberry Pi OS installs it), and `qml6-module-qtquick-effects` for the Weather and NFC Reader screens, which import it (`install.sh` installs it). The optional parts:
 
 | Package | Adds |
 |---|---|
@@ -250,7 +250,7 @@ git tag v2026.06.04
 git push origin v2026.06.04
 ```
 
-Any tag matching `v*.*.*` starts `release.yml`; one containing `-rc`, `-beta` or `-alpha` (`v1.0.0-rc1`) is published as a pre-release, a way to try the workflow without a public release. Four builds run, the image after the arm64 one:
+Any tag matching `v*.*.*` starts `release.yml`; one containing `-rc`, `-beta` or `-alpha` (`v1.0.0-rc1`) is published as a pre-release, a way to try the workflow: `install.sh` and the in-app updater only take the latest full release. Four builds run, the image after the arm64 one:
 
 | Job | Runner | Makes |
 |---|---|---|
@@ -290,7 +290,7 @@ Its settings are environment variables:
 | `OSDOS_ROOT_SIZE` | `8` | GiB the system keeps of the card; the rest becomes the films partition on the first boot. `0`: no films partition |
 | `ENABLE_SSH` | `0` | `1` turns SSH on |
 | `TARGET_HOSTNAME`, `IMG_NAME` | `osdos` | |
-| `WPA_COUNTRY`, `LOCALE_DEFAULT`, `KEYBOARD_KEYMAP`, `KEYBOARD_LAYOUT`, `TIMEZONE_DEFAULT`, `PUBKEY_SSH_FIRST_USER`, `PUBKEY_ONLY_SSH`, `DEPLOY_COMPRESSION` | pi-gen's | Passed on to pi-gen |
+| `WPA_COUNTRY`, `LOCALE_DEFAULT`, `KEYBOARD_KEYMAP`, `KEYBOARD_LAYOUT`, `TIMEZONE_DEFAULT`, `PUBKEY_SSH_FIRST_USER`, `PUBKEY_ONLY_SSH`, `DEPLOY_COMPRESSION` | pi-gen's; `xz` for `DEPLOY_COMPRESSION` | Passed on to pi-gen |
 | `OSDOS_NATIVE` | `0` | `1` runs pi-gen directly on a Debian host, as root, instead of in Docker |
 | `OSDOS_PREPARE_ONLY` | `0` | `1` sets up the pi-gen tree and its config, and stops |
 | `PI_GEN_REF` | pinned | The pi-gen commit to build from |

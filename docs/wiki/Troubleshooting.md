@@ -36,7 +36,7 @@ On the image, the user OSD/OS runs as (`pi`) is in the `adm` group, so `journalc
 
 ### mpv's own log
 
-The player's messages reach OSD/OS's log as `[mpv] …` lines, with every token blanked out. mpv also writes a complete, verbose log of the latest video to `/tmp/osdos-mpv.log` (the system's temporary folder; on a Mac, `$TMPDIR`). mpv starts the file afresh for each video, so copy it before playing the next one. It is readable by its owner only: it holds each video's full address, and a media server's token with it. Look through it before you post it anywhere.
+The player's messages reach OSD/OS's log as `[mpv] …` lines, with every token blanked out; with Transparent Background, libmpv's warnings and errors are logged as they come. mpv also writes a complete, verbose log of the latest video to `/tmp/osdos-mpv.log` (the system's temporary folder; on a Mac, `$TMPDIR`). mpv starts the file afresh for each video, so copy it before playing the next one. It is readable by its owner only: it holds each video's full address, and a media server's token with it. Look through it before you post it anywhere.
 
 ### What a build from source adds
 
@@ -214,7 +214,7 @@ More in [Netflix and Prime Video](https://github.com/mehmetraif/OSD-OS/wiki/Netf
 | Plex: the Server, Current User and Libraries settings are missing | They only show once the module is signed in | Open Plex and sign in first |
 | Plex asks for a profile's PIN | The Plex Home profile has a PIN | Type it. A card tapped on the NFC Reader never switches profile, and never asks for a PIN |
 | Plex asks to sign in again | `[PlexBackend] Device no longer authorized — triggering reauth`: plex.tv answered 401, as for a device removed from the account's authorized devices | Sign in again |
-| Jellyfin: **QUICK CONNECT NOT ENABLED ON SERVER** | The server answered 401 to Quick Connect | Turn Quick Connect on in the Jellyfin server's settings, then enter the code at `<server>/web/#quickconnect` |
+| Jellyfin: **CONNECTION FAILED: Host requires authentication** as Quick Connect starts | The server answered 401 to Quick Connect | Turn Quick Connect on in the Jellyfin server's settings, then enter the code at `<server>/web/#quickconnect` |
 | Jellyfin or Emby: **CONNECTION FAILED: …**, or nothing | The server URL: OSD/OS takes it as typed, so it needs the scheme and the port (`http://192.168.1.20:8096`) | Type the whole URL. A self-signed or private certificate on your own server is accepted for that server; an expired one isn't |
 | Signed out by itself | `Token rejected — signing out` in the log: the server no longer knows the token (a password changed, the device removed) | Sign in again |
 | A Plex film fails, then plays after a while | Plex retries with a transcode when mpv can't play the file directly | Set Settings → Plex → Video Quality to one of its Mbps choices instead of Direct Play, or read the server's log for why the stream failed |
@@ -397,8 +397,8 @@ Other files hold the rest, and stay when only `config.json` goes:
 
 | File | What it holds |
 |---|---|
-| `lists.json` | Each module's Recently Watched and Favorites |
-| `local_files_history.json`, `youtube_history.json`, `nfc_reader_history.json` | Resume points |
+| `lists.json` | Each module's Recently Watched and Favorites, but YouTube's Recently Watched |
+| `local_files_history.json`, `youtube_history.json`, `nfc_reader_history.json` | Resume points, and YouTube's Recently Watched |
 | `youtube_watch_later.json`, `playlists.json` | Watch Later, and the playlists |
 | `plex_auth.json`, `plex_key.pem`, `jellyfin_auth.json`, `emby_auth.json` | The media servers' sign-ins |
 | `netflix/browser`, `prime_video/browser`, `youtube/browser` | The web players' browser profiles, with their sign-ins |
@@ -408,7 +408,7 @@ Moving the whole data folder aside starts OSD/OS as on its first day. On the ima
 
 ## How to report a bug
 
-Open an issue at [github.com/mehmetraif/OSD-OS/issues](https://github.com/mehmetraif/OSD-OS/issues); its bug report form asks for the following. Questions and setup help go to [Discussions → Q&A](https://github.com/mehmetraif/OSD-OS/discussions/categories/q-a), and a security problem never to an issue: report it privately as [SECURITY.md](https://github.com/mehmetraif/OSD-OS/blob/main/SECURITY.md) says.
+Open an issue at [github.com/mehmetraif/OSD-OS/issues](https://github.com/mehmetraif/OSD-OS/issues); its bug report form asks for most of the following. Questions and setup help go to [Discussions → Q&A](https://github.com/mehmetraif/OSD-OS/discussions/categories/q-a), and a security problem never to an issue: report it privately as [SECURITY.md](https://github.com/mehmetraif/OSD-OS/blob/main/SECURITY.md) says.
 
 - **What you did, step by step, what you expected and what happened.**
 - **The module**, or the part of the app (browsing, Settings, playback).
