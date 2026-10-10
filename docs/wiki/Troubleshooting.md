@@ -16,7 +16,7 @@ OSD/OS writes what it has to say to its standard output and standard error, one 
 
 On the image, the user OSD/OS runs as (`pi`) is in the `adm` group, so `journalctl` needs no `sudo`.
 
-**When the Pi switches itself off.** Under the autostart service, quitting OSD/OS powers the Pi off, and so does OSD/OS ending with an error: the service's stop helper, `osdos-stop`, powers off for every exit code it doesn't know, which leaves no screen to read. Two ways round it:
+**When OSD/OS crashes.** Under the autostart service, only quitting (Quit → Power Off, or Ctrl+Q) powers the Pi off. A crash or an error exit leaves it on: systemd starts OSD/OS again five seconds later, and when it has failed three times in two minutes, gives up and puts a login prompt on the screen instead. `journalctl -u osdos -b` shows why it ended, the crash's last lines included. Once it has given up, `sudo systemctl reset-failed osdos` and then `sudo systemctl start osdos` try again, as does switching the Pi off and on. Images and installs from before this switched the Pi off at a crash, which left no screen to read. Two ways round that, or to read a crash at your own pace:
 
 - If the system keeps its journal from one boot to the next, `journalctl -u osdos -b -1` shows the boot before. `journalctl --list-boots` says which boots it has.
 - Run OSD/OS by hand instead of through the service. Stop the service, then start the launcher in your shell; quitting it then returns to the shell and leaves the Pi on ([BUILDING.md → Debugging & logs](https://github.com/mehmetraif/OSD-OS/blob/main/BUILDING.md#debugging--logs)):

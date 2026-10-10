@@ -213,6 +213,9 @@ The `[boot]` lines read `boot screen up, watching 4 unit(s)`, `first frame … m
 Description=OSD/OS Media Player
 After=sound.target
 Wants=network-online.target
+StartLimitIntervalSec=120
+StartLimitBurst=3
+OnFailure=osdos-terminal.service
 
 [Service]
 Type=simple
@@ -232,7 +235,8 @@ ExecStartPre=-/usr/lib/osdos/wait-for-display
 ExecStart=/usr/local/bin/osdos
 Restart=on-failure
 RestartSec=5s
-RestartPreventExitStatus=10 12 20 21 22 23 24 25 26 27 28 29
+RestartMode=direct
+SuccessExitStatus=10 12 20 21 22 23 24 25 26 27 28 29 129 130 143
 ExecStopPost=+/usr/local/bin/osdos-stop
 StandardOutput=journal
 StandardError=journal
@@ -244,7 +248,8 @@ WantedBy=multi-user.target
 - **After `sound.target`, not `multi-user.target`.** The default dependencies put it after `basic.target`. `Wants=network-online.target` pulls in the online check the boot screen ends on, without waiting for it.
 - **`SupplementaryGroups` and `CAP_SYS_TTY_CONFIG`** let it switch virtual terminals and hand the screen to mpv. A udev rule (`/etc/udev/rules.d/99-osdos-tty.rules`) lets the `tty` group open `/dev/tty0` for that.
 - **`OSDOS_AUTOSTART=1`** tells OSD/OS it runs as the system's own: Quit offers Power Off, Restart and Exit to Terminal, and Settings offers Display Output.
-- **`RestartPreventExitStatus`** keeps systemd from starting OSD/OS again over Exit to Terminal (10), a restart (12) or a display switch (20 to 29). `osdos-stop` acts on them ([Quitting](https://github.com/mehmetraif/OSD-OS/wiki/The-OSD-OS-Image#quitting-restarting-and-exit-to-terminal)).
+- **`Restart=on-failure`** starts OSD/OS again five seconds after a crash or an error exit. **`StartLimitBurst=3`** in **`StartLimitIntervalSec=120`** makes the third start in two minutes the last: when that one fails too, the service is failed, and **`OnFailure=`** starts `osdos-terminal.service`, a login prompt on the screen. **`RestartMode=direct`** (systemd 254 or later; the image has 257) keeps the failures before that from bringing the prompt up too: without it, systemd runs `OnFailure=` at every failure, a restart to follow or not. The Pi stays on throughout.
+- **`SuccessExitStatus`** counts Exit to Terminal (10), a restart (12), a display switch (20 to 29) and a stop from outside (129, 130, 143) as no failure, so systemd neither starts OSD/OS again over them nor brings up the login prompt. `osdos-stop` acts on them ([Quitting](https://github.com/mehmetraif/OSD-OS/wiki/The-OSD-OS-Image#quitting-restarting-and-exit-to-terminal)).
 - **The drop-in** `/etc/systemd/system/osdos.service.d/osdos-media.conf` adds `Environment=OSDOS_MEDIA_DIR=/media/OSD-OS`: Local Files opens the film partition while its Media Directory setting is unset.
 
 ## Nothing between the app and the screen
@@ -464,12 +469,15 @@ The service's `ExecStopPost=+/usr/local/bin/osdos-stop` runs as root each time O
 
 ```bash
 case "${EXIT_STATUS:-}" in
+    0)  systemctl poweroff ;;  # Quit → Power Off, or Ctrl+Q
     10) systemctl start osdos-terminal.service ;;
     11) : ;;  # in-app update restart — Restart=on-failure brings the app back up
     12) systemctl reboot ;;  # the quit menu's Restart
     2[0-9]) display_output "${DISPLAY_PRESETS[EXIT_STATUS - 20]}"; systemctl reboot ;;
-    129|130|143|HUP|INT|TERM|KILL) : ;;  # stopped from outside, not by the user
-    *)  systemctl poweroff ;;
+    # Anything else leaves the Pi on: a stop from outside (129, 130, 143, or the
+    # signal itself), and a crash or an error exit, after which systemd starts
+    # the app again (Restart=on-failure), or brings up a login prompt.
+    *)  : ;;
 esac
 ```
 
@@ -482,7 +490,7 @@ esac
 | 20 to 28 | Settings → Display Output | That output's preset written, then a reboot ([Display Output](https://github.com/mehmetraif/OSD-OS/wiki/Display-Output#what-the-switch-writes)) |
 | 29 | A new display output not kept | The previous preset written back, then a reboot |
 | 129, 130, 143, or killed by SIGHUP, SIGINT, SIGTERM or SIGKILL | `systemctl stop`, `systemctl restart`, a shutdown | Nothing: the Pi stays on |
-| anything else, a crash included | | Power off |
+| anything else: a crash, an error exit such as 1 | | Nothing: systemd starts OSD/OS again five seconds later (`Restart=on-failure`). The third start in two minutes is the last; when it fails too, `osdos-terminal.service` starts (`OnFailure=`) |
 
 OSD/OS catches SIGTERM, SIGINT and SIGHUP and exits with 128 plus the signal's number (143, 130, 129), so `sudo systemctl stop osdos` and `sudo systemctl restart osdos` leave the Pi on.
 
