@@ -801,9 +801,6 @@ Pixel-drawn pieces of a deck's on-screen menu, built on `root.px` (one pixel of 
 | `BackgroundFx` | The background effect in an area (`area`, in screen coordinates), drawn on art pixels on the screen's grid; `OsdGround` places it (see [Effects](#effects)). |
 | `PixelIcon` | A symbol from a small bitmap: `play`, `left`, `up`, `down`, `ff`, `rew`, `pause`, `stop`, `rec`, `eject`, plus the `ok` key and `tape` badges. |
 | `OsdTicks` | The segment bar, `||||----`: a tick per filled step and a dash per empty one. The boot screen's progress bar. |
-| `OsdBar` | The VOLUME bar: an outline with a solid fill inside. |
-| `OsdSlider` | The TRACKING slider: a double outline with a mark that moves out from the middle. |
-| `OsdChoices` | A row of settings like `SP EP SLP`, with the one in force inverted. |
 | `OsdTapeBar` | The tape position bar: a ▼ over the position, a ruled bar filled up to it, and the names of its ends under them: BEGIN and END, or a setting's own (`startText`, `endText`), as Settings' TRANSPARENT … SOLID slider. |
 
 ### TreeBrowser (`views/Components/TreeBrowser.qml`)
