@@ -165,7 +165,7 @@ Window {
         "Stars":  { "shader": builtInShader("bg-stars") },
         "Snow":   { "shader": builtInShader("bg-snow") }
     })
-    readonly property var selectorPresets: ["Sparkles", "Welding", "Lightning", "Rainbow"]
+    readonly property var selectorPresets: ["Sparkles", "Welding", "Lightning", "Rainbow", "Snow"]
     readonly property var transitionPresets: ["Fade", "Cube", "Ripple", "Wave", "Drop"]
     // Cube Left, Right, Up and Down fixed the way the cube turned; it turns a
     // way of its own each time now, and those names, saved or a theme's, are
@@ -1052,6 +1052,7 @@ Window {
                 target: root.selector
                 effect: root.selectorEffect !== "Rainbow" || root.selectorInLayer ? root.selectorEffect : ""
                 ink: root.primaryColor
+                paper: root.surfaceColor
                 pixel: root.px
                 running: !root.effectsRest
             }

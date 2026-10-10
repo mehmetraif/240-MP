@@ -67,6 +67,7 @@ void SelectorFx::setEffect(const QString &effect) {
            : e == QLatin1String("welding") ? Kind::Welding
            : e == QLatin1String("lightning") ? Kind::Lightning
            : e == QLatin1String("rainbow") ? Kind::Rainbow
+           : e == QLatin1String("snow") ? Kind::Snow
                                             : Kind::None;
     // What the last one left flies on only if this is the same kind of thing.
     m_sparks.clear();
@@ -80,6 +81,13 @@ void SelectorFx::setInk(const QColor &ink) {
         return;
     m_ink = ink;
     emit inkChanged();
+}
+
+void SelectorFx::setPaper(const QColor &paper) {
+    if (paper == m_paper)
+        return;
+    m_paper = paper;
+    emit paperChanged();
 }
 
 void SelectorFx::setPixel(int pixel) {
@@ -236,6 +244,29 @@ void SelectorFx::emitLightning(const QRectF &b) {
     }
 }
 
+void SelectorFx::emitSnow(const QRectF &b) {
+    // A flake a second for every seven art pixels of the box's width: a
+    // steady fall off a menu's line, never a blizzard.
+    m_snowDue += float(b.width()) / 7.0f * kFrame;
+    while (m_snowDue >= 1) {
+        m_snowDue -= 1;
+        if (m_sparks.size() >= 400)
+            continue;
+        Spark s;
+        // About one in four nearer: a small cross, falling faster.
+        s.cross = uniform(0, 1) < 0.25f;
+        s.x = s.lastX = uniform(float(b.left()), float(b.right()));
+        s.y = s.lastY = float(b.top()) + uniform(-1.0f, 0.5f);
+        s.vx = uniform(-2.5f, 2.5f);
+        s.vy = s.cross ? uniform(14, 22) : uniform(7, 15);
+        s.age = 0;
+        s.life = uniform(1.6f, 2.8f);
+        s.sway = uniform(0.4f, 1.4f);
+        s.phase = uniform(0, 6.2832f);
+        m_sparks << s;
+    }
+}
+
 void SelectorFx::drawRainbow(const QRectF &b) {
     const int top = int(qCeil(b.bottom()));
     const int left = int(qFloor(b.left()));
@@ -277,6 +308,7 @@ void SelectorFx::tick() {
         case Kind::Sparkles: emitSparkles(b); break;
         case Kind::Welding: emitWelding(b); break;
         case Kind::Lightning: emitLightning(b); break;
+        case Kind::Snow: emitSnow(b); break;
         default: break;
         }
     }
@@ -293,6 +325,13 @@ void SelectorFx::tick() {
         drawRainbow(b);
 
     const QRgb light = mixed(m_ink.rgb(), qRgb(255, 255, 255), 0.45f);
+    // Snow in the scheme's colour, lighter, as the background's; over the
+    // box, the box's own other colour.
+    const QRgb flake = mixed(m_ink.rgb(), qRgb(255, 255, 255), 0.6f);
+    const auto snowPlot = [&](int x, int y, float alpha) {
+        const bool over = !b.isEmpty() && b.contains(QPointF(x + 0.5, y + 0.5));
+        plot(x, y, over ? m_paper.rgb() : flake, alpha);
+    };
     const int frame = int(m_time / kFrame);
     for (int i = m_sparks.size() - 1; i >= 0; --i) {
         Spark &s = m_sparks[i];
@@ -320,6 +359,23 @@ void SelectorFx::tick() {
             const QRgb color = f < 0.15f ? qRgb(255, 255, 235) : f < 0.4f ? qRgb(255, 226, 92)
                              : f < 0.7f ? qRgb(255, 140, 32) : qRgb(222, 54, 24);
             line(QPointF(s.lastX, s.lastY), QPointF(s.x, s.y), color, 1.0f - qPow(f, 1.5f));
+        } else if (m_kind == Kind::Snow) {
+            // Straight down where it is, whatever the box does now, swaying.
+            s.x += s.vx * kFrame;
+            s.y += s.vy * kFrame;
+            const int x = int(qFloor(s.x + s.sway * qSin(s.phase + s.age * 2.6f)));
+            const int y = int(qFloor(s.y));
+            // Melting away over the last third of its fall.
+            const float alpha = f < 0.66f ? 1.0f : 1.0f - (f - 0.66f) / 0.34f;
+            if (s.cross) {
+                snowPlot(x, y, alpha);
+                snowPlot(x - 1, y, alpha * 0.6f);
+                snowPlot(x + 1, y, alpha * 0.6f);
+                snowPlot(x, y - 1, alpha * 0.6f);
+                snowPlot(x, y + 1, alpha * 0.6f);
+            } else {
+                snowPlot(x, y, alpha * 0.85f);
+            }
         } else {
             s.vx *= 0.955f;
             s.vy *= 0.955f;
