@@ -1,6 +1,6 @@
 # Regression tests
 
-Four test programs, built apart from the app. CI runs them on Linux x64 and arm64 for every pull request that touches `src/`, `tests/` or the build ([regression-tests.yml](../.github/workflows/regression-tests.yml)). They need CMake, a C++17 compiler and Qt 6's development packages (Core, Concurrent, Gui, Network, Qml, Quick and Test), and libdrm's on Linux. None needs mpv, FluidSynth or a display.
+Four test programs, built apart from the app. CI runs them on Linux x64 and arm64 for every pull request that touches `src/`, `tests/` or the build ([regression-tests.yml](../.github/workflows/regression-tests.yml)): on Ubuntu, with the oldest Qt the releases are built with (6.4), and on Raspberry Pi OS (Debian 13 "trixie" with Raspberry Pi's archive, arm64), the system the OS image is made of, with the Pi's own Qt (6.8) and mpv (0.40). They need CMake, a C++17 compiler and Qt 6's development packages (Core, Concurrent, Gui, Network, Qml, Quick and Test), and libdrm's on Linux. None needs mpv, FluidSynth or a display.
 
 ```sh
 cmake -S tests -B build-tests

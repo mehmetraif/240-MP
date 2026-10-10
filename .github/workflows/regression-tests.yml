@@ -1,7 +1,8 @@
 name: Regression tests
 
 # Builds the app and the regression tests (tests/, see tests/README.md) on
-# both Linux architectures, and runs the tests.
+# both Linux architectures, and runs the tests; then once more on the Pi's own
+# system, Raspberry Pi OS, with its newer Qt and mpv.
 
 on:
   push:
@@ -54,3 +55,57 @@ jobs:
         run: cmake --build build-tests --parallel 2
       - name: Run regression tests
         run: ctest --test-dir build-tests --output-on-failure --timeout 60
+
+  # Raspberry Pi OS, as the OS image is made of it (os/README.md): Debian 13
+  # "trixie" with Raspberry Pi's archive on top, arm64. Its Qt (6.8) and mpv
+  # (0.40) are what OSD/OS runs on on the Pi; Ubuntu's above (Qt 6.4) are the
+  # oldest the releases are built with.
+  raspberry-pi-os:
+    name: Raspberry Pi OS (trixie, arm64)
+    runs-on: ubuntu-24.04-arm
+    container: debian:trixie
+    timeout-minutes: 30
+    env:
+      LANG: C.UTF-8
+    defaults:
+      run:
+        # With pipefail: a download that fails fails its step.
+        shell: bash
+    steps:
+      - name: Install git
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends ca-certificates curl git
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+      # As pi-gen sets apt up for the image, at the commit os/build.sh pins:
+      # Raspberry Pi's archive, signed by the key pi-gen carries, and everything
+      # upgraded to it (its libc, FFmpeg, Mesa and libdrm are its own).
+      - name: Add Raspberry Pi's archive
+        run: |
+          ref=$(sed -n 's/^PI_GEN_REF=\${PI_GEN_REF:-\([0-9a-f]*\)}$/\1/p' os/build.sh)
+          test -n "$ref"
+          files="https://raw.githubusercontent.com/RPi-Distro/pi-gen/${ref}/stage0/00-configure-apt/files"
+          curl -fsSL -o /usr/share/keyrings/raspberrypi-archive-keyring.pgp "${files}/raspberrypi-archive-keyring.pgp"
+          curl -fsSL "${files}/raspi.sources" | sed 's/RELEASE/trixie/g' > /etc/apt/sources.list.d/raspi.sources
+          apt-get update
+          apt-get dist-upgrade -y
+      - name: Install dependencies
+        run: |
+          apt-get install -y build-essential cmake pkgconf qt6-base-dev qt6-declarative-dev qt6-svg-dev \
+            qt6-shadertools-dev libdrm-dev libssl-dev libsdl2-dev libpcsclite-dev libmpv-dev
+      - name: Configure application
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+      - name: Build application
+        run: cmake --build build --parallel "$(nproc)"
+      - name: Configure tests
+        run: cmake -S tests -B build-tests -DCMAKE_BUILD_TYPE=Debug
+      - name: Build tests
+        run: cmake --build build-tests --parallel "$(nproc)"
+      # As a user, as OSD/OS runs on the Pi: root would write to the read-only
+      # folder one of the tests is about, and that test would skip itself.
+      - name: Run regression tests
+        run: |
+          useradd --create-home tester
+          chown -R tester build-tests
+          runuser -u tester -- ctest --test-dir build-tests --output-on-failure --timeout 60
